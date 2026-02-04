@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Production & Build
+dist/
+build/
+backend/dist/
+frontend/dist/
+
+# Environment Variables (Bao mat)
+.env
+.env.*
+!.env.example
+
+# IDEs & System
+.idea/
+.vscode/
+*.swp
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
