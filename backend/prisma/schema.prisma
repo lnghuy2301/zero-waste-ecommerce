@@ -9,6 +9,281 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// Ánh xạ enum từ DB ra code
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED_AMOUNT
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  OUT_OF_STOCK
+}
+
+enum ProductType {
+  RETAIL
+  BUNDLE
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPING
+  COMPLETED
+  CANCELLED
+}
+
+// Bảng: SAN_PHAM
+model Product {
+  id         Int    @id @default(autoincrement()) @map("id")
+  categoryId Int    @map("id_danh_muc")
+  name       String @map("ten_san_pham") @db.VarChar(255)
+  slug       String @unique @map("slug") @db.VarChar(255)
+
+  // Dùng Enum
+  type   ProductType   @default(RETAIL) @map("loai_san_pham")
+  status ProductStatus @default(ACTIVE) @map("trang_thai")
+
+  description     String? @map("mo_ta") @db.Text
+  material        String? @map("chat_lieu") @db.VarChar(255)
+  ecoFriendliness Int?    @map("muc_do_than_thien")
+  reusability     String? @map("kha_nang_tai_su_dung") @db.VarChar(255)
+  mainImage       String? @map("hinh_anh_chinh") @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("ngay_tao")
+  updatedAt DateTime @updatedAt @map("ngay_cap_nhat")
+
+  // QUAN HỆ
+  category   Category           @relation(fields: [categoryId], references: [id], onDelete: NoAction)
+  variants   ProductVariant[]
+  greenCerts GreenCertificate[] @relation("ProductGreenCert")
+  comments   Comment[]
+
+  bundleItems BundleItem[] @relation("BundleParent")
+  carts       Cart[]
+
+  @@map("SAN_PHAM")
+}
+
+// Bảng: DANH_MUC_SAN_PHAM
+model Category {
+  id          Int     @id @default(autoincrement()) @map("id")
+  name        String  @map("ten_danh_muc") @db.VarChar(100)
+  description String? @map("mo_ta") @db.VarChar(255)
+
+  products Product[]
+
+  @@map("DANH_MUC_SAN_PHAM")
+}
+
+// Bảng: CHUNG_NHAN_XANH
+model GreenCertificate {
+  id          Int     @id @default(autoincrement()) @map("id")
+  name        String  @map("ten_chung_nhan") @db.VarChar(255)
+  code        String? @map("ma_chung_nhan") @db.VarChar(50)
+  description String? @map("mo_ta") @db.Text
+
+  products Product[] @relation("ProductGreenCert")
+
+  @@map("CHUNG_NHAN_XANH")
+}
+
+// Bảng: SAN_PHAM_BIEN_THE
+model ProductVariant {
+  id          Int  @id @default(autoincrement()) @map("id")
+  productId   Int  @map("id_san_pham")
+  promotionId Int? @map("id_khuyen_mai")
+
+  sku   String  @unique @map("sku") @db.VarChar(50)
+  name  String  @map("ten_bien_the") @db.VarChar(255)
+  price Decimal @map("gia_ban") @db.Decimal(18, 2)
+  stock Int     @default(0) @map("ton_kho")
+
+  weight Int?    @map("trong_luong_gram")
+  volume Int?    @map("dung_tich_ml")
+  color  String? @map("mau_sac") @db.VarChar(50)
+  size   String? @map("kich_thuoc") @db.VarChar(50)
+
+  // QUAN HỆ
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promotion Promotion? @relation(fields: [promotionId], references: [id])
+
+  cartItems  Cart[]
+  orderItems OrderDetail[]
+  inBundles  BundleItem[]  @relation("BundleComponent")
+
+  @@map("SAN_PHAM_BIEN_THE")
+}
+
+// Bảng: CHI_TIET_SET_QUA_TANG
+model BundleItem {
+  id                 Int @id @default(autoincrement()) @map("id")
+  bundleProductId    Int @map("id_san_pham_set")
+  componentVariantId Int @map("id_bien_the_thanh_phan")
+  quantity           Int @default(1) @map("so_luong")
+
+  // QUAN HỆ
+  bundleProduct    Product        @relation("BundleParent", fields: [bundleProductId], references: [id], onDelete: Cascade)
+  componentVariant ProductVariant @relation("BundleComponent", fields: [componentVariantId], references: [id], onDelete: NoAction)
+
+  @@map("CHI_TIET_SET_QUA_TANG")
+}
+
+// Bảng: KHUYEN_MAI
+model Promotion {
+  id   Int    @id @default(autoincrement()) @map("id")
+  code String @unique @map("ma_khuyen_mai") @db.VarChar(50)
+  name String @map("ten_chuong_trinh") @db.VarChar(255)
+
+  discountType DiscountType @default(PERCENT) @map("loai_giam_gia")
+
+  discountValue Decimal  @map("gia_tri_giam") @db.Decimal(18, 2)
+  startDate     DateTime @map("ngay_bat_dau")
+  endDate       DateTime @map("ngay_ket_thuc")
+  isActive      Boolean  @default(true) @map("kich_hoat")
+
+  variants ProductVariant[]
+
+  @@map("KHUYEN_MAI")
+}
+
+// Bảng: TAI_KHOAN
+model Account {
+  id       Int    @id @default(autoincrement()) @map("id")
+  email    String @unique @map("email") @db.VarChar(100)
+  password String @map("mat_khau") @db.VarChar(255)
+
+  role Role @default(CUSTOMER) @map("quyen")
+
+  isActive Boolean @default(true) @map("trang_thai")
+
+  profileId Int             @unique @map("id_thong_tin_khach_hang")
+  profile   CustomerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  carts    Cart[]
+  orders   Order[]
+  comments Comment[]
+
+  @@map("TAI_KHOAN")
+}
+
+// Bảng: THONG_TIN_KHACH_HANG
+model CustomerProfile {
+  id       Int       @id @default(autoincrement()) @map("id")
+  fullName String    @map("ho_ten") @db.VarChar(100)
+  phone    String?   @map("sdt") @db.VarChar(15)
+  address  String?   @map("dia_chi") @db.VarChar(255)
+  gender   String?   @map("gioi_tinh") @db.VarChar(10)
+  dob      DateTime? @map("ngay_sinh") @db.Date
+
+  account Account?
+
+  @@map("THONG_TIN_KHACH_HANG")
+}
+
+// Bảng: GIO_HANG
+model Cart {
+  id        Int  @id @default(autoincrement()) @map("id")
+  accountId Int  @map("id_tai_khoan")
+  quantity  Int  @default(1) @map("so_luong")
+  variantId Int  @map("id_bien_the")
+  bundleId  Int? @map("id_set_qua_tang")
+
+  // QUAN HỆ
+  account Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction)
+  bundle  Product?       @relation(fields: [bundleId], references: [id], onDelete: NoAction)
+
+  @@map("GIO_HANG")
+}
+
+// Bảng: DON_HANG
+model Order {
+  id          Int     @id @default(autoincrement()) @map("id")
+  code        String  @unique @map("ma_don_hang") @db.VarChar(20)
+  accountId   Int     @map("id_tai_khoan")
+  totalAmount Decimal @map("tong_tien") @db.Decimal(18, 2)
+
+  status OrderStatus @default(PENDING) @map("trang_thai")
+
+  shippingAddress String   @map("dia_chi_giao_hang") @db.VarChar(500)
+  paymentMethodId Int      @map("id_phuong_thuc_tt")
+  createdAt       DateTime @default(now()) @map("ngay_tao")
+
+  account       Account       @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  orderItems    OrderDetail[]
+
+  @@map("DON_HANG")
+}
+
+// Bảng: CHI_TIET_DON_HANG
+model OrderDetail {
+  id        Int  @id @default(autoincrement()) @map("id")
+  orderId   Int  @map("id_don_hang")
+  variantId Int  @map("id_bien_the")
+  bundleId  Int? @map("id_set_qua_tang")
+
+  quantity Int     @map("so_luong")
+  price    Decimal @map("don_gia_luc_mua") @db.Decimal(18, 2)
+
+  // QUAN HỆ
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction)
+
+  @@map("CHI_TIET_DON_HANG")
+}
+
+// Bảng: PHUONG_THUC_THANH_TOAN
+model PaymentMethod {
+  id       Int     @id @default(autoincrement()) @map("id")
+  name     String  @map("ten_phuong_thuc") @db.VarChar(100)
+  code     String  @unique @map("ma_phuong_thuc") @db.VarChar(50)
+  isActive Boolean @default(true) @map("kich_hoat")
+
+  orders Order[]
+
+  @@map("PHUONG_THUC_THANH_TOAN")
+}
+
+// Bảng: BINH_LUAN
+model Comment {
+  id        Int      @id @default(autoincrement()) @map("id")
+  content   String   @map("noi_dung") @db.Text
+  rating    Int      @default(5) @map("danh_gia_sao")
+  createdAt DateTime @default(now()) @map("ngay_tao")
+
+  accountId Int  @map("id_tai_khoan")
+  productId Int  @map("id_san_pham")
+  parentId  Int? @map("id_binh_luan_cha")
+
+  account Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  parent  Comment?      @relation("CommentThread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies Comment[]     @relation("CommentThread")
+  media   ReviewMedia[]
+
+  @@map("BINH_LUAN")
+}
+
+// Bảng: MEDIA_BINH_LUAN
+model ReviewMedia {
+  id        Int    @id @default(autoincrement()) @map("id")
+  commentId Int    @map("id_binh_luan")
+  url       String @map("duong_dan") @db.VarChar(500)
+  type      String @default("IMAGE") @map("loai_media") @db.VarChar(20)
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@map("MEDIA_BINH_LUAN")
 }
