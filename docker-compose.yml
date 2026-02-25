@@ -5,7 +5,7 @@ services:
     container_name: zero_waste_pg
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Password@123
+      POSTGRES_PASSWORD: Password123
       POSTGRES_DB: ZeroWasteDB
     ports:
       - "5432:5432" # Cổng mặc định của Postgres

@@ -13,7 +13,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Ánh xạ enum từ DB ra code
+// Anh xa enum tu DB
 enum Role {
   ADMIN
   CUSTOMER
@@ -43,14 +43,14 @@ enum OrderStatus {
   CANCELLED
 }
 
-// Bảng: SAN_PHAM
+// SAN_PHAM
 model Product {
   id         Int    @id @default(autoincrement()) @map("id")
   categoryId Int    @map("id_danh_muc")
   name       String @map("ten_san_pham") @db.VarChar(255)
   slug       String @unique @map("slug") @db.VarChar(255)
 
-  // Dùng Enum
+  // Enum
   type   ProductType   @default(RETAIL) @map("loai_san_pham")
   status ProductStatus @default(ACTIVE) @map("trang_thai")
 
@@ -63,7 +63,7 @@ model Product {
   createdAt DateTime @default(now()) @map("ngay_tao")
   updatedAt DateTime @updatedAt @map("ngay_cap_nhat")
 
-  // QUAN HỆ
+  // QUAN_HE
   category   Category           @relation(fields: [categoryId], references: [id], onDelete: NoAction)
   variants   ProductVariant[]
   greenCerts GreenCertificate[] @relation("ProductGreenCert")
@@ -75,7 +75,7 @@ model Product {
   @@map("SAN_PHAM")
 }
 
-// Bảng: DANH_MUC_SAN_PHAM
+// DANH_MUC_SAN_PHAM
 model Category {
   id          Int     @id @default(autoincrement()) @map("id")
   name        String  @map("ten_danh_muc") @db.VarChar(100)
@@ -86,7 +86,7 @@ model Category {
   @@map("DANH_MUC_SAN_PHAM")
 }
 
-// Bảng: CHUNG_NHAN_XANH
+// CHUNG_NHAN_XANH
 model GreenCertificate {
   id          Int     @id @default(autoincrement()) @map("id")
   name        String  @map("ten_chung_nhan") @db.VarChar(255)
@@ -98,7 +98,7 @@ model GreenCertificate {
   @@map("CHUNG_NHAN_XANH")
 }
 
-// Bảng: SAN_PHAM_BIEN_THE
+// SAN_PHAM_BIEN_THE
 model ProductVariant {
   id          Int  @id @default(autoincrement()) @map("id")
   productId   Int  @map("id_san_pham")
@@ -114,7 +114,7 @@ model ProductVariant {
   color  String? @map("mau_sac") @db.VarChar(50)
   size   String? @map("kich_thuoc") @db.VarChar(50)
 
-  // QUAN HỆ
+  // QUAN_HE
   product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   promotion Promotion? @relation(fields: [promotionId], references: [id])
 
@@ -125,21 +125,21 @@ model ProductVariant {
   @@map("SAN_PHAM_BIEN_THE")
 }
 
-// Bảng: CHI_TIET_SET_QUA_TANG
+// CHI_TIET_SET_QUA_TANG
 model BundleItem {
   id                 Int @id @default(autoincrement()) @map("id")
   bundleProductId    Int @map("id_san_pham_set")
   componentVariantId Int @map("id_bien_the_thanh_phan")
   quantity           Int @default(1) @map("so_luong")
 
-  // QUAN HỆ
+  // QUAN_HE
   bundleProduct    Product        @relation("BundleParent", fields: [bundleProductId], references: [id], onDelete: Cascade)
   componentVariant ProductVariant @relation("BundleComponent", fields: [componentVariantId], references: [id], onDelete: NoAction)
 
   @@map("CHI_TIET_SET_QUA_TANG")
 }
 
-// Bảng: KHUYEN_MAI
+// KHUYEN_MAI
 model Promotion {
   id   Int    @id @default(autoincrement()) @map("id")
   code String @unique @map("ma_khuyen_mai") @db.VarChar(50)
@@ -157,27 +157,25 @@ model Promotion {
   @@map("KHUYEN_MAI")
 }
 
-// Bảng: TAI_KHOAN
+// TAI_KHOAN
 model Account {
-  id       Int    @id @default(autoincrement()) @map("id")
-  email    String @unique @map("email") @db.VarChar(100)
-  password String @map("mat_khau") @db.VarChar(255)
-
-  role Role @default(CUSTOMER) @map("quyen")
-
+  id       Int     @id @default(autoincrement()) @map("id")
+  email    String  @unique @map("email") @db.VarChar(100)
+  password String  @map("mat_khau") @db.VarChar(255)
+  role     Role    @default(CUSTOMER) @map("quyen")
   isActive Boolean @default(true) @map("trang_thai")
 
-  profileId Int             @unique @map("id_thong_tin_khach_hang")
-  profile   CustomerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile CustomerProfile?
 
-  carts    Cart[]
-  orders   Order[]
-  comments Comment[]
+  carts             Cart[]
+  orders            Order[]
+  comments          Comment[]
+  customerProfileId Int?
 
   @@map("TAI_KHOAN")
 }
 
-// Bảng: THONG_TIN_KHACH_HANG
+// THONG_TIN_KHACH_HANG
 model CustomerProfile {
   id       Int       @id @default(autoincrement()) @map("id")
   fullName String    @map("ho_ten") @db.VarChar(100)
@@ -186,12 +184,13 @@ model CustomerProfile {
   gender   String?   @map("gioi_tinh") @db.VarChar(10)
   dob      DateTime? @map("ngay_sinh") @db.Date
 
-  account Account?
+  accountId Int     @unique @map("id_tai_khoan")
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@map("THONG_TIN_KHACH_HANG")
 }
 
-// Bảng: GIO_HANG
+// GIO_HANG
 model Cart {
   id        Int  @id @default(autoincrement()) @map("id")
   accountId Int  @map("id_tai_khoan")
@@ -199,7 +198,7 @@ model Cart {
   variantId Int  @map("id_bien_the")
   bundleId  Int? @map("id_set_qua_tang")
 
-  // QUAN HỆ
+  // QUAN_HE
   account Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction)
   bundle  Product?       @relation(fields: [bundleId], references: [id], onDelete: NoAction)
@@ -207,7 +206,7 @@ model Cart {
   @@map("GIO_HANG")
 }
 
-// Bảng: DON_HANG
+// DON_HANG
 model Order {
   id          Int     @id @default(autoincrement()) @map("id")
   code        String  @unique @map("ma_don_hang") @db.VarChar(20)
@@ -227,7 +226,7 @@ model Order {
   @@map("DON_HANG")
 }
 
-// Bảng: CHI_TIET_DON_HANG
+// CHI_TIET_DON_HANG
 model OrderDetail {
   id        Int  @id @default(autoincrement()) @map("id")
   orderId   Int  @map("id_don_hang")
@@ -237,14 +236,14 @@ model OrderDetail {
   quantity Int     @map("so_luong")
   price    Decimal @map("don_gia_luc_mua") @db.Decimal(18, 2)
 
-  // QUAN HỆ
+  // QUAN_HE
   order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: NoAction)
 
   @@map("CHI_TIET_DON_HANG")
 }
 
-// Bảng: PHUONG_THUC_THANH_TOAN
+// PHUONG_THUC_THANH_TOAN
 model PaymentMethod {
   id       Int     @id @default(autoincrement()) @map("id")
   name     String  @map("ten_phuong_thuc") @db.VarChar(100)
@@ -256,7 +255,7 @@ model PaymentMethod {
   @@map("PHUONG_THUC_THANH_TOAN")
 }
 
-// Bảng: BINH_LUAN
+// BINH_LUAN
 model Comment {
   id        Int      @id @default(autoincrement()) @map("id")
   content   String   @map("noi_dung") @db.Text
@@ -276,7 +275,7 @@ model Comment {
   @@map("BINH_LUAN")
 }
 
-// Bảng: MEDIA_BINH_LUAN
+// MEDIA_BINH_LUAN
 model ReviewMedia {
   id        Int    @id @default(autoincrement()) @map("id")
   commentId Int    @map("id_binh_luan")
