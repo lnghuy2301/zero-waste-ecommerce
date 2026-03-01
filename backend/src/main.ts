@@ -18,20 +18,20 @@ async function bootstrap() {
 
   // 3. Cấu hình Validation Pipe (Kiểm soát dữ liệu đầu vào)
   app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true, // Tự động loại bỏ các field không được khai báo trong DTO
-        forbidNonWhitelisted: true, // Báo lỗi nếu gửi lên field thừa
-        transform: true, // Tự động chuyển đổi kiểu dữ liệu (VD: string '1' -> number 1)
-      }),
+    new ValidationPipe({
+      whitelist: true, // Tự động loại bỏ các field không được khai báo trong DTO
+      forbidNonWhitelisted: true, // Báo lỗi nếu gửi lên field thừa
+      transform: true, // Tự động chuyển đổi kiểu dữ liệu (VD: string '1' -> number 1)
+    }),
   );
 
   // 4. Cấu hình Swagger (Tài liệu API tự động)
   const config = new DocumentBuilder()
-      .setTitle('Zero Waste E-commerce API')
-      .setDescription('API documentation for Zero Waste Project')
-      .setVersion('1.0')
-      .addBearerAuth() // Hỗ trợ xác thực JWT trong Swagger
-      .build();
+    .setTitle('Zero Waste E-commerce API')
+    .setDescription('API documentation for Zero Waste Project')
+    .setVersion('1.0')
+    .addBearerAuth() // Hỗ trợ xác thực JWT trong Swagger
+    .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);

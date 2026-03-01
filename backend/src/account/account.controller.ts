@@ -1,72 +1,98 @@
-import {Body, Controller, Delete, Get, Param, ParseFilePipe, ParseIntPipe, Post, Put, UseGuards} from "@nestjs/common";
-import {AccountService} from "./account.service";
-import {AccountRequestDto} from "./dto/account.request.dto";
-import {AccountResponseDto} from "./dto/account.response.dto";
-import {ResetPasswordRequestDto} from "./dto/reset_password.request.dto";
-import {UpdateActiveRequestDto} from "./dto/update_active.request.dto";
-import {UpdateRoleRequesrDto} from "./dto/update_role.request.dto";
-import {List_accountRequestDto} from "./dto/list_account.request.dto";
-import {JwtAuthGuard} from "../auth/auth.jwt.guard";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  //   ParseFilePipe,
+  ParseIntPipe,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
+import { AccountService } from './account.service';
+import { AccountRequestDto } from './dto/account.request.dto';
+import { AccountResponseDto } from './dto/account.response.dto';
+import { ResetPasswordRequestDto } from './dto/reset_password.request.dto';
+import { UpdateActiveRequestDto } from './dto/update_active.request.dto';
+import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
+import { List_accountRequestDto } from './dto/list_account.request.dto';
+import { JwtAuthGuard } from '../auth/auth.jwt.guard';
 
 @Controller('account')
 export class AccountController {
-    constructor(private accountService: AccountService) {}
+  constructor(private accountService: AccountService) {}
 
-    @Post()
-    async createAccount(@Body() account: AccountRequestDto): Promise<AccountResponseDto> {
-        return this.accountService.createAccount(account);
-    }
+  @Post()
+  async createAccount(
+    @Body() account: AccountRequestDto,
+  ): Promise<AccountResponseDto> {
+    return this.accountService.createAccount(account);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Put(':id/password')
-    async updateAccount(@Body() resetPassword: ResetPasswordRequestDto, @Param('id', ParseIntPipe) id: number){
-        return this.accountService.resetPassword(id, resetPassword);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/password')
+  async updateAccount(
+    @Body() resetPassword: ResetPasswordRequestDto,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.accountService.resetPassword(id, resetPassword);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Put(':id/active')
-    async updateActive(@Param('id', ParseIntPipe) id: number, @Body() account: UpdateActiveRequestDto): Promise<AccountResponseDto> {
-        return this.accountService.updateActive(id, account)
-    }
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/active')
+  async updateActive(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() account: UpdateActiveRequestDto,
+  ): Promise<AccountResponseDto> {
+    return this.accountService.updateActive(id, account);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Put(':id/role')
-    async updateRole(@Param('id', ParseIntPipe) id: number, @Body() account: UpdateRoleRequesrDto): Promise<AccountResponseDto> {
-        return this.accountService.updateRole(id, account)
-    }
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/role')
+  async updateRole(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() account: UpdateRoleRequesrDto,
+  ): Promise<AccountResponseDto> {
+    return this.accountService.updateRole(id, account);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get('stats/count')
-    async statsAccount(){
-        return this.accountService.statsAccount();
-    }
+  @UseGuards(JwtAuthGuard)
+  @Get('stats/count')
+  async statsAccount() {
+    return this.accountService.statsAccount();
+  }
 
-    @Get(':id/status')
-    async isActive(@Param('id', ParseIntPipe) id: number){
-        return this.accountService.checkActive(id);
-    }
+  @Get(':id/status')
+  async isActive(@Param('id', ParseIntPipe) id: number) {
+    return this.accountService.checkActive(id);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get(':id')
-    async getAccount(@Param('id', ParseIntPipe) id: number): Promise<AccountResponseDto|null> {
-        return this.accountService.getAccountById(id);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Get(':id')
+  async getAccount(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<AccountResponseDto | null> {
+    return this.accountService.getAccountById(id);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get()
-    async getAllAccounts(): Promise<AccountResponseDto[]> {
-        return this.accountService.getAllAccounts();
-    }
+  @UseGuards(JwtAuthGuard)
+  @Get()
+  async getAllAccounts(): Promise<AccountResponseDto[]> {
+    return this.accountService.getAllAccounts();
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Delete(':id')
-    async deleteAccountById(@Param('id', ParseIntPipe) id: number): Promise<AccountResponseDto | null> {
-        return this.accountService.deleteAccountById(id);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteAccountById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<AccountResponseDto | null> {
+    return this.accountService.deleteAccountById(id);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Delete()
-    async list_delete_account(@Body() listAccount: List_accountRequestDto){
-        return this.accountService.deleteListAccount(listAccount);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Delete()
+  async list_delete_account(@Body() listAccount: List_accountRequestDto) {
+    return this.accountService.deleteListAccount(listAccount);
+  }
 }
