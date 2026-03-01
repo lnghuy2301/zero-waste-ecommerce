@@ -7,7 +7,7 @@ import { CategoryRepository } from './category.repository';
 import { CategoryResponseDto } from './dto/category.response.dto';
 import { CategoryRequestDto } from './dto/category.request.dto';
 import { AccountHelper } from '../account/account.helper';
-import { AccountRepository } from '../account/account.repository';
+// import { AccountRepository } from '../account/account.repository';
 import { CategoryHelper } from './category.helper';
 import { Delete_list_categoryDto } from './dto/delete_list_category.dto';
 

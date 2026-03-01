@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
 import { AuthLocalStrantegy } from './auth.local.strantegy';
 import { JwtStrategy } from './auth.jwt.strantegy';
 import { AuthController } from './auth.controller';
-import { AccountService } from '../account/account.service';
+// import { AccountService } from '../account/account.service';
 
 @Module({
   imports: [
@@ -14,7 +14,7 @@ import { AccountService } from '../account/account.service';
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '60s' },
+      signOptions: { expiresIn: '1h' }, // Tui sửa lại nhe đang test cái hết thời gian phải login lại ;)
     }),
   ],
   controllers: [AuthController],
