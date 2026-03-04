@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-// import { AccountController } from '../account/account.controller';
 import { AccountService } from '../account/account.service';
 import { CustomerProfileService } from './customer_profile.service';
 import { CustomerProfileHelper } from './customer_profile.helper';
