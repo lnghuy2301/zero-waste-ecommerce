@@ -18,34 +18,22 @@ export class CustomerProfileService {
     idAccount: number,
     customerProfileRequestDto: CustomerProfileRequestDto,
   ): Promise<CustomerProfileResponseDto> {
-    try {
-      await this.customerProfileHelper.check_profile_account(id, idAccount);
-      return this.customerProfileRepository.updateCustomerProfile(
-        id,
-        customerProfileRequestDto,
-      );
-    } catch (error) {
-      this.accountHelper.handleError(error);
-    }
+    await this.customerProfileHelper.check_profile_account(id, idAccount);
+    return this.customerProfileRepository.updateCustomerProfile(
+      id,
+      customerProfileRequestDto,
+    );
   }
 
   async getCustomerProfileById(
     id: number,
     idAccount: number,
   ): Promise<CustomerProfileResponseDto | null> {
-    try {
-      await this.customerProfileHelper.check_profile_account(id, idAccount);
-      return this.customerProfileRepository.getCustomerProfileById(id);
-    } catch (error) {
-      this.accountHelper.handleError(error);
-    }
+    await this.customerProfileHelper.check_profile_account(id, idAccount);
+    return this.customerProfileRepository.getCustomerProfileById(id);
   }
 
   async getAllCustomerProfile(): Promise<CustomerProfileResponseDto[]> {
-    try {
-      return this.customerProfileRepository.getAllCustomerProfiles();
-    } catch (error) {
-      this.accountHelper.handleError(error);
-    }
+    return this.customerProfileRepository.getAllCustomerProfiles();
   }
 }
