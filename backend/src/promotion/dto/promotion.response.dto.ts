@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { DiscountType } from '@prisma/client';
 
 export class PromotionResponseDto {
@@ -15,6 +15,7 @@ export class PromotionResponseDto {
   discountType: DiscountType;
 
   @Expose()
+  @Transform(({ value }) => Number(value)) // tự động convert Decimal về number
   discountValue: number;
 
   @Expose()

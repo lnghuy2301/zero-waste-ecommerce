@@ -13,13 +13,7 @@ export class PromotionRepository {
   async createPromotion(
     data: PromotionRequestDto,
   ): Promise<PromotionResponseDto> {
-    console.log(
-      'Incoming discountValue:',
-      data.discountValue,
-      typeof data.discountValue,
-    );
     const decimalValue = new Prisma.Decimal(String(data.discountValue));
-    console.log('Parsed Decimal:', decimalValue.toString());
 
     const created = await this.prismaService.promotion.create({
       data: {
@@ -32,7 +26,11 @@ export class PromotionRepository {
         isActive: data.isActive ?? true,
       },
     });
-    return plainToInstance(PromotionResponseDto, created);
+
+    return plainToInstance(PromotionResponseDto, {
+      ...created,
+      discountValue: Number(created.discountValue), // convert trước khi instance
+    });
   }
 
   async updatePromotion(
@@ -51,26 +49,46 @@ export class PromotionRepository {
         isActive: data.isActive,
       },
     });
-    return plainToInstance(PromotionResponseDto, updated);
+
+    return plainToInstance(PromotionResponseDto, {
+      ...updated,
+      discountValue: Number(updated.discountValue),
+    });
   }
 
   async getPromotionById(id: number): Promise<PromotionResponseDto | null> {
     const promotion = await this.prismaService.promotion.findUnique({
       where: { id },
     });
-    return promotion ? plainToInstance(PromotionResponseDto, promotion) : null;
+
+    if (!promotion) return null;
+
+    return plainToInstance(PromotionResponseDto, {
+      ...promotion,
+      discountValue: Number(promotion.discountValue),
+    });
   }
 
   async getAllPromotions(): Promise<PromotionResponseDto[]> {
     const promotions = await this.prismaService.promotion.findMany();
-    return plainToInstance(PromotionResponseDto, promotions);
+
+    return promotions.map((p) =>
+      plainToInstance(PromotionResponseDto, {
+        ...p,
+        discountValue: Number(p.discountValue),
+      }),
+    );
   }
 
   async deletePromotion(id: number): Promise<PromotionResponseDto | null> {
     const deleted = await this.prismaService.promotion.delete({
       where: { id },
     });
-    return plainToInstance(PromotionResponseDto, deleted);
+
+    return plainToInstance(PromotionResponseDto, {
+      ...deleted,
+      discountValue: Number(deleted.discountValue),
+    });
   }
 
   async deleteListPromotions(
