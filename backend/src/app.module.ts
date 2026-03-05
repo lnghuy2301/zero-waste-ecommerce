@@ -14,6 +14,7 @@ import { GreenCertificateModule } from './green-certificate/green-certificate.mo
 import { CustomerProfileModule } from './customer_profile/customer_profile.module';
 import { ProductVariantModule } from './product-variant/product-variant.module';
 import { CartModule } from './cart/cart.module';
+import { BundleItemModule } from './bundle-item/bundle-item.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -27,6 +28,7 @@ import { CartModule } from './cart/cart.module';
     GreenCertificateModule,
     ProductVariantModule,
     CartModule,
+    BundleItemModule,
   ],
   controllers: [AppController],
   providers: [AppService],
