@@ -13,6 +13,7 @@ import { PromotionModule } from './promotion/promotion.module';
 import { GreenCertificateModule } from './green-certificate/green-certificate.module';
 import { CustomerProfileModule } from './customer_profile/customer_profile.module';
 import { ProductVariantModule } from './product-variant/product-variant.module';
+import { CartModule } from './cart/cart.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -25,6 +26,7 @@ import { ProductVariantModule } from './product-variant/product-variant.module';
     PromotionModule,
     GreenCertificateModule,
     ProductVariantModule,
+    CartModule,
   ],
   controllers: [AppController],
   providers: [AppService],
