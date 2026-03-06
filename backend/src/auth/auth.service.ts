@@ -3,7 +3,6 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-// import { CustomerProfileResponseDto } from '../customer_profile/dto/customer_profile.response.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { AuthLoginDto } from './dto/auth.login.dto';
@@ -11,6 +10,7 @@ import { AccountResponseDto } from '../account/dto/account.response.dto';
 import { JwtService } from '@nestjs/jwt';
 import { AccountService } from '../account/account.service';
 import { AccountRequestDto } from '../account/dto/account.request.dto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class AuthService {
@@ -32,7 +32,7 @@ export class AuthService {
       throw new BadRequestException('Mật khẩu không chính xác');
     }
     const { password, ...result } = user;
-    return user;
+    return plainToInstance(AccountResponseDto, result); // dùng plainToInstance để loại password đúng type
   }
 
   async register(account: AccountRequestDto): Promise<AccountResponseDto> {
@@ -41,14 +41,14 @@ export class AuthService {
 
   async login(user: any) {
     const payload = {
-      sub: user.id,
+      id: user.id,
       email: user.email,
       role: user.role,
       isActive: user.isActive,
     };
     return {
       token: this.jwtService.sign(payload),
-      id: payload.sub,
+      id: payload.id, // sửa thành payload.id
       email: payload.email,
       role: payload.role,
       isActive: payload.isActive,

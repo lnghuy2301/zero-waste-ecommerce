@@ -25,8 +25,8 @@ export class PromotionRequestDto {
   discountType: DiscountType;
 
   @IsNotEmpty({ message: 'Giá trị giảm không được bỏ trống' })
-  @IsString({ message: 'Giá trị giảm phải là chuỗi số' }) // đổi thành IsString
-  discountValue: string; // đổi type thành string
+  @IsString({ message: 'Giá trị giảm phải là chuỗi số' })
+  discountValue: string;
 
   @IsNotEmpty({ message: 'Ngày bắt đầu không được bỏ trống' })
   @IsDateString()

@@ -43,7 +43,10 @@ export class CommentController {
         'Không xác định được người dùng từ token',
       );
     }
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Token không hợp lệ hoặc hết hạn');
+    }
     return this.commentService.create(userId, productId, createCommentDto);
   }
 }

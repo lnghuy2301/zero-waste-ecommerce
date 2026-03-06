@@ -1,18 +1,60 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { MediaService } from './media.service';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 
-describe('MediaService', () => {
-  let service: MediaService;
+@Injectable()
+export class MediaService {
+  constructor(private prisma: PrismaService) {}
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [MediaService],
-    }).compile();
+  async uploadReviewMedia(
+    userId: number,
+    commentId: number,
+    file: Express.Multer.File,
+  ) {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+    });
+    if (!comment) {
+      throw new NotFoundException('Không tìm thấy bình luận.');
+    }
 
-    service = module.get<MediaService>(MediaService);
-  });
+    if (comment.accountId !== userId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền upload media cho bình luận này.',
+      );
+    }
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-});
+    const fileType = file.mimetype?.startsWith('image') ? 'IMAGE' : 'VIDEO';
+
+    return this.prisma.reviewMedia.create({
+      data: {
+        commentId,
+        url: `/uploads/${file.filename}`,
+        type: fileType,
+      },
+    });
+  }
+
+  async deleteReviewMedia(userId: number, mediaId: number) {
+    const media = await this.prisma.reviewMedia.findUnique({
+      where: { id: mediaId },
+      include: { comment: true },
+    });
+
+    if (!media) {
+      throw new NotFoundException('Không tìm thấy media.');
+    }
+
+    if (media.comment.accountId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền xóa media này.');
+    }
+
+    // TODO: xóa file vật lý nếu cần (fs.unlinkSync)
+    await this.prisma.reviewMedia.delete({ where: { id: mediaId } });
+
+    return { message: 'Xóa media thành công.' };
+  }
+}

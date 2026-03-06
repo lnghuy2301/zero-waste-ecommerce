@@ -4,7 +4,7 @@
     "moduleResolution": "nodenext",
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
-    "isolatedModules": true,
+    "isolatedModules": false, // Tắt false là giải pháp phổ biến khi dùng Multer/FileInterceptor + type Express.Multer.File trong decorator.
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -23,6 +23,6 @@
     "noFallthroughCasesInSwitch": false,
     "strictPropertyInitialization": false,
     "strictFunctionTypes": false,
-    "types": ["jest"]
+    "types": ["jest", "multer", "express"]
   }
 }

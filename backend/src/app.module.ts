@@ -18,6 +18,8 @@ import { BundleItemModule } from './bundle-item/bundle-item.module';
 import { OrderModule } from './order/order.module';
 import { OrderDetailModule } from './order-detail/order-detail.module';
 import { CommentModule } from './comment/comment.module';
+import { PaymentMethodModule } from './payment_method/payment-method.module';
+import { MediaModule } from './media/media.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -35,6 +37,8 @@ import { CommentModule } from './comment/comment.module';
     OrderModule,
     OrderDetailModule,
     CommentModule,
+    PaymentMethodModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
