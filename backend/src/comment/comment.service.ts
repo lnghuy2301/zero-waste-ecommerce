@@ -4,21 +4,21 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateCommentDto } from './dto/create-comment.dto';
-import { GetCommentsFilterDto } from './dto/get-comments-filter.dto';
+
+import { CommentRequestDto } from './dto/comment.request.dto';
+import { CommentResponseDto } from './dto/comment.response.dto';
+import {PrismaService} from "../../prisma/prisma.service";
+import {CommentHelper} from "./comment.helper";
 
 @Injectable()
 export class CommentService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly commentHelper: CommentHelper,
+    ) {}
 
-    async create(
-        userId: number, // ID lấy từ JWT
-        productId: number,
-        createCommentDto: CreateCommentDto,
-    ) {
-        // 1. Kiểm tra xem User đã mua sản phẩm này chưa (Trạng thái COMPLETED)
-        const hasPurchased = await this.checkPurchaseHistory(userId, productId);
+    async create(commentRequestDto: CommentRequestDto): Promise<CommentResponseDto> {
+        const hasPurchased = await this.commentHelper.checkPurchaseHistory(commentRequestDto.accountId, commentRequestDto.productId);
 
         if (!hasPurchased) {
             throw new ForbiddenException(
@@ -26,56 +26,31 @@ export class CommentService {
             );
         }
 
-        // 2. Kiểm tra Parent Comment (nếu có)
-        if (createCommentDto.parentId) {
+        if (commentRequestDto.parentId) {
             const parentComment = await this.prisma.comment.findUnique({
-                where: { id: createCommentDto.parentId },
+                where: { id: commentRequestDto.parentId },
             });
             if (!parentComment) {
                 throw new NotFoundException('Không tìm thấy bình luận cha để trả lời.');
             }
             // Optional: Kiểm tra xem parentComment có thuộc productId này không để tránh logic sai
-            if (parentComment.productId !== productId) {
+            if (parentComment.productId !== commentRequestDto.productId) {
                 throw new ForbiddenException('Bình luận cha không thuộc sản phẩm này.');
             }
         }
 
-        // 3. Tạo bình luận vào Database
         return this.prisma.comment.create({
             data: {
-                content: createCommentDto.content,
-                rating: createCommentDto.rating,
-                productId: productId,
-                accountId: userId, // Link với tài khoản đang đăng nhập
-                parentId: createCommentDto.parentId,
+                content: commentRequestDto.content,
+                rating: commentRequestDto.rating,
+                productId: commentRequestDto.productId,
+                accountId: commentRequestDto.accountId,
+                parentId: commentRequestDto.parentId,
             },
         });
     }
 
-    // Hàm phụ: Kiểm tra lịch sử mua hàng
-    private async checkPurchaseHistory(userId: number, productId: number): Promise<boolean> {
-        // Tìm xem có đơn hàng nào thỏa mãn 3 điều kiện:
-        // 1. Của user này
-        // 2. Trạng thái COMPLETED
-        // 3. Chứa sản phẩm này (thông qua Variant)
-        const order = await this.prisma.order.findFirst({
-            where: {
-                accountId: userId,
-                status: OrderStatus.COMPLETED,
-                orderItems: {
-                    some: {
-                        variant: {
-                            productId: productId,
-                        },
-                    },
-                },
-            },
-        });
-
-        return !!order; // Trả về true nếu tìm thấy, false nếu không
-    }
-
-    findAll(filterDto: GetCommentsFilterDto) {
+    findAll(filterDto: CommentResponseDto) {
         const { productId, accountId } = filterDto;
 
         return this.prisma.comment.findMany({
