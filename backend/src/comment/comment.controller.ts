@@ -1,12 +1,14 @@
 import {
-    Body,
-    Controller, Get,
-    Param,
-    ParseIntPipe,
-    Post,
-    Req,
-    UseGuards,
-    Query,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -17,25 +19,31 @@ import { GetCommentsFilterDto } from './dto/get-comments-filter.dto';
 @ApiTags('Comments')
 @Controller('comments')
 export class CommentController {
-    constructor(private readonly commentService: CommentService) {}
+  constructor(private readonly commentService: CommentService) {}
 
-    @Get()
-    @ApiOperation({ summary: 'Lấy danh sách bình luận (có thể lọc)' })
-    findAll(@Query() filterDto: GetCommentsFilterDto) {
-        return this.commentService.findAll(filterDto);
+  @Get()
+  @ApiOperation({ summary: 'Lấy danh sách bình luận (có thể lọc)' })
+  findAll(@Query() filterDto: GetCommentsFilterDto) {
+    return this.commentService.findAll(filterDto);
+  }
+
+  @Post('product/:productId')
+  @ApiOperation({
+    summary: 'Tạo đánh giá mới (Yêu cầu đăng nhập & Đã mua hàng)',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async create(
+    @Param('productId', ParseIntPipe) productId: number,
+    @Body() createCommentDto: CreateCommentDto,
+    @Req() req: any,
+  ) {
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException(
+        'Không xác định được người dùng từ token',
+      );
     }
-
-    @Post()
-    @ApiOperation({ summary: 'Tạo đánh giá mới (Yêu cầu đăng nhập & Đã mua hàng)' })
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard('jwt'))
-    create(
-        @Param('productId', ParseIntPipe) productId: number,
-        @Body() createCommentDto: CreateCommentDto,
-        @Req() req: any,
-    ) {
-        const userId = req.user.id;
-
-        return this.commentService.create(userId, productId, createCommentDto);
-    }
+    const userId = req.user.id;
+    return this.commentService.create(userId, productId, createCommentDto);
+  }
 }

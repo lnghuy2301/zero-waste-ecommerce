@@ -21,7 +21,7 @@ export class OrderService {
     id: number,
     status: OrderStatus,
   ): Promise<OrderResponseDto> {
-    await this.orderHelper.checkOrder(id);
+    await this.orderHelper.checkOrder(id); // chỉ check tồn tại
     return this.orderRepository.updateOrderStatus(id, status);
   }
 

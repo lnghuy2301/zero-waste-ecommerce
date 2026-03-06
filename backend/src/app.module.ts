@@ -17,6 +17,7 @@ import { CartModule } from './cart/cart.module';
 import { BundleItemModule } from './bundle-item/bundle-item.module';
 import { OrderModule } from './order/order.module';
 import { OrderDetailModule } from './order-detail/order-detail.module';
+import { CommentModule } from './comment/comment.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -33,6 +34,7 @@ import { OrderDetailModule } from './order-detail/order-detail.module';
     BundleItemModule,
     OrderModule,
     OrderDetailModule,
+    CommentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

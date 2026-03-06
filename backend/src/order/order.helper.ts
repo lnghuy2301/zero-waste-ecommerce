@@ -1,22 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { OrderResponseDto } from './dto/order.response.dto';
-import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class OrderHelper {
   constructor(private prismaService: PrismaService) {}
 
-  async checkOrder(id: number): Promise<OrderResponseDto> {
+  async checkOrder(id: number): Promise<void> {
     const order = await this.prismaService.order.findUnique({
       where: { id },
-      include: { orderItems: { include: { variant: true } } },
+      select: { id: true }, // chỉ lấy id để check tồn tại, không include gì để tránh lỗi Decimal
     });
 
     if (!order) {
       throw new NotFoundException('Đơn hàng không tồn tại');
     }
-
-    return plainToInstance(OrderResponseDto, order);
   }
 }
