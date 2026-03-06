@@ -18,6 +18,9 @@ import { UpdateActiveRequestDto } from './dto/update_active.request.dto';
 import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
 import { List_accountRequestDto } from './dto/list_account.request.dto';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
+import {Role} from "@prisma/client";
+import {Roles} from "../auth/auth.role.decorator";
+import {RolesGuard} from "../auth/auth.role.guard";
 
 @Controller('account')
 export class AccountController {
@@ -76,7 +79,8 @@ export class AccountController {
     return this.accountService.getAccountById(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get()
   async getAllAccounts(): Promise<AccountResponseDto[]> {
     return this.accountService.getAllAccounts();
