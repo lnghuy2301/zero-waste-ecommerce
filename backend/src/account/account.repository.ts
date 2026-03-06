@@ -17,9 +17,7 @@ import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
 export class AccountRepository {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async createAccount(
-    account: AccountRequestDto,
-  ): Promise<Account_profileResponseDto> {
+  async createAccount(account: AccountRequestDto,): Promise<Account_profileResponseDto> {
     const newAccount = await this.prismaService.account.create({
       data: {
         email: account.email,
@@ -41,10 +39,7 @@ export class AccountRepository {
     return plainToInstance(Account_profileResponseDto, newAccount);
   }
 
-  async updatePassword(
-    id: number,
-    hashPassword: string,
-  ): Promise<AccountResponseDto> {
+  async updatePassword(id: number, hashPassword: string): Promise<AccountResponseDto> {
     return this.prismaService.account.update({
       where: {
         id: id,
