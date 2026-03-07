@@ -14,6 +14,7 @@ import { UpdateActiveRequestDto } from './dto/update_active.request.dto';
 import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
 import { List_accountRequestDto } from './dto/list_account.request.dto';
 import { AccountHelper } from './account.helper';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class AccountService {
@@ -33,10 +34,11 @@ export class AccountService {
 
     const saltRounds = 10;
     const hash_password = await bcrypt.hash(account.password, saltRounds);
-    return await this.accountRepository.createAccount({
+    const created = await this.accountRepository.createAccount({
       ...account,
       password: hash_password,
     });
+    return plainToInstance(AccountResponseDto, created);
   }
 
   async resetPassword(id: number, resetPassword: ResetPasswordRequestDto) {

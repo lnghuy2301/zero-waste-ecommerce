@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { OrderRepository } from './order.repository';
 import { OrderHelper } from './order.helper';
 import { OrderRequestDto } from './dto/order.request.dto';
@@ -29,16 +34,30 @@ export class OrderService {
     return this.orderRepository.getOrdersByUser(accountId);
   }
 
-  async getOrderById(id: number): Promise<OrderResponseDto | null> {
-    const order = await this.orderRepository.getOrderById(id);
-    if (!order) {
-      throw new NotFoundException('Đơn hàng không tồn tại');
+  async getOrderById(
+    id: number,
+    userId: number,
+  ): Promise<OrderResponseDto | null> {
+    const order = await this.orderHelper.checkOrder(id);
+    if (order.accountId !== userId) {
+      throw new ForbiddenException('Không được xem đơn hàng của người khác');
     }
     return order;
   }
 
-  async cancelOrder(id: number): Promise<OrderResponseDto | null> {
-    await this.orderHelper.checkOrder(id);
+  async cancelOrder(
+    id: number,
+    userId: number,
+  ): Promise<OrderResponseDto | null> {
+    const order = await this.orderHelper.checkOrder(id);
+    if (order.accountId !== userId) {
+      throw new ForbiddenException('Không được hủy đơn hàng của người khác');
+    }
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        'Chỉ hủy được đơn hàng ở trạng thái PENDING',
+      );
+    }
     return this.orderRepository.cancelOrder(id);
   }
 

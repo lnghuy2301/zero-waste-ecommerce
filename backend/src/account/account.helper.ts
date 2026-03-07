@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AccountResponseDto } from './dto/account.response.dto';
 import { AccountRepository } from './account.repository';
 

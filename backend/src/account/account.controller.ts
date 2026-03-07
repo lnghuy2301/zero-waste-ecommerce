@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  //   ParseFilePipe,
   ParseIntPipe,
   Post,
   Put,
@@ -18,15 +17,15 @@ import { UpdateActiveRequestDto } from './dto/update_active.request.dto';
 import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
 import { List_accountRequestDto } from './dto/list_account.request.dto';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
-import { Role } from '@prisma/client';
-import { Roles } from '../auth/auth.role.decorator';
 import { RolesGuard } from '../auth/auth.role.guard';
+import { Roles } from '../auth/auth.role.decorator';
+import { Role } from '@prisma/client';
 
 @Controller('account')
 export class AccountController {
   constructor(private accountService: AccountService) {}
 
-  @Post()
+  @Post() // public (register)
   async createAccount(
     @Body() account: AccountRequestDto,
   ): Promise<AccountResponseDto> {
@@ -51,7 +50,8 @@ export class AccountController {
     return this.accountService.updateActive(id, account);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN) // chỉ admin sửa role
   @Put(':id/role')
   async updateRole(
     @Param('id', ParseIntPipe) id: number,
@@ -60,12 +60,14 @@ export class AccountController {
     return this.accountService.updateRole(id, account);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Get('stats/count')
   async statsAccount() {
     return this.accountService.statsAccount();
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(':id/status')
   async isActive(@Param('id', ParseIntPipe) id: number) {
     return this.accountService.checkActive(id);
@@ -79,14 +81,15 @@ export class AccountController {
     return this.accountService.getAccountById(id);
   }
 
-  @Roles(Role.ADMIN)
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Get()
   async getAllAccounts(): Promise<AccountResponseDto[]> {
     return this.accountService.getAllAccounts();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete(':id')
   async deleteAccountById(
     @Param('id', ParseIntPipe) id: number,
@@ -94,7 +97,8 @@ export class AccountController {
     return this.accountService.deleteAccountById(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete()
   async list_delete_account(@Body() listAccount: List_accountRequestDto) {
     return this.accountService.deleteListAccount(listAccount);

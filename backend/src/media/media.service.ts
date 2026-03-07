@@ -58,6 +58,7 @@ export class MediaService {
       throw new ForbiddenException('Bạn không có quyền xóa media này.');
     }
 
+    // TODO: xóa file vật lý nếu cần (fs.unlinkSync)
     await this.prisma.reviewMedia.delete({ where: { id: mediaId } });
 
     return { message: 'Xóa media thành công.' };

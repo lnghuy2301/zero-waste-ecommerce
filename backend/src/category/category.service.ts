@@ -4,11 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CategoryRepository } from './category.repository';
-import { CategoryResponseDto } from './dto/category.response.dto';
-import { CategoryRequestDto } from './dto/category.request.dto';
-import { AccountHelper } from '../account/account.helper';
 import { CategoryHelper } from './category.helper';
+import { CategoryRequestDto } from './dto/category.request.dto';
+import { CategoryResponseDto } from './dto/category.response.dto';
 import { Delete_list_categoryDto } from './dto/delete_list_category.dto';
+import { AccountHelper } from '../account/account.helper';
 
 @Injectable()
 export class CategoryService {
@@ -18,13 +18,11 @@ export class CategoryService {
     private accountHelper: AccountHelper,
   ) {}
 
-  async createCategory(
-    category: CategoryRequestDto,
-  ): Promise<CategoryResponseDto> {
+  async create(category: CategoryRequestDto): Promise<CategoryResponseDto> {
     return this.categoryRepository.createCategory(category);
   }
 
-  async updateCategory(
+  async update(
     id: number,
     category: CategoryRequestDto,
   ): Promise<CategoryResponseDto> {
@@ -40,12 +38,12 @@ export class CategoryService {
     return category;
   }
 
-  async deleteCategory(id: number): Promise<CategoryResponseDto | null> {
+  async delete(id: number): Promise<CategoryResponseDto | null> {
     await this.categoryHelper.checkCategory(id);
     return this.categoryRepository.deleteCategory(id);
   }
 
-  async deleteListCategories(
+  async deleteList(
     listCategory: Delete_list_categoryDto,
   ): Promise<{ count: number }> {
     const category =

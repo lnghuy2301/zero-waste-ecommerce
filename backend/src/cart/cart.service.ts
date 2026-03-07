@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { CartRepository } from './cart.repository';
 import { CartHelper } from './cart.helper';
 import { CartRequestDto } from './dto/cart.request.dto';
@@ -12,20 +16,28 @@ export class CartService {
     private cartHelper: CartHelper,
   ) {}
 
-  async addToCart(dto: CartRequestDto): Promise<CartResponseDto> {
-    // Có thể thêm check variant tồn tại, stock đủ ở đây nếu cần sau
+  async create(dto: CartRequestDto, userId: number): Promise<CartResponseDto> {
+    if (dto.accountId !== userId) {
+      throw new ForbiddenException(
+        'Không được thêm vào giỏ hàng của người khác',
+      );
+    }
     return this.cartRepository.addToCart(dto);
   }
 
-  async updateCartItem(
+  async update(
     id: number,
     dto: CartRequestDto,
+    userId: number,
   ): Promise<CartResponseDto> {
-    await this.cartHelper.checkCartItem(id);
+    const item = await this.cartHelper.checkCartItem(id);
+    if (item.accountId !== userId) {
+      throw new ForbiddenException('Không được sửa giỏ hàng của người khác');
+    }
     return this.cartRepository.updateCartItem(id, dto);
   }
 
-  async getCartByUser(accountId: number): Promise<CartResponseDto[]> {
+  async getByUser(accountId: number): Promise<CartResponseDto[]> {
     const items = await this.cartRepository.getCartByUser(accountId);
     if (items.length === 0) {
       throw new NotFoundException('Giỏ hàng trống');
@@ -33,20 +45,29 @@ export class CartService {
     return items;
   }
 
-  async getCartItemById(id: number): Promise<CartResponseDto | null> {
+  async getById(id: number, userId: number): Promise<CartResponseDto | null> {
     const item = await this.cartRepository.getCartItemById(id);
     if (!item) {
       throw new NotFoundException('Mặt hàng không tồn tại trong giỏ');
     }
+    if (item.accountId !== userId) {
+      throw new ForbiddenException('Không được xem mặt hàng của người khác');
+    }
     return item;
   }
 
-  async removeCartItem(id: number): Promise<CartResponseDto | null> {
-    await this.cartHelper.checkCartItem(id);
+  async delete(id: number, userId: number): Promise<CartResponseDto | null> {
+    const item = await this.cartHelper.checkCartItem(id);
+    if (item.accountId !== userId) {
+      throw new ForbiddenException('Không được xóa giỏ hàng của người khác');
+    }
     return this.cartRepository.removeCartItem(id);
   }
 
-  async clearCartItems(dto: DeleteListCartDto): Promise<{ count: number }> {
+  async deleteList(
+    dto: DeleteListCartDto,
+    userId: number,
+  ): Promise<{ count: number }> {
     const result = await this.cartRepository.clearCartItems(dto);
     if (result.count === 0) {
       throw new NotFoundException('Không có mặt hàng nào để xóa');

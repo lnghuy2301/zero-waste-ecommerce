@@ -22,7 +22,7 @@ import {
 import { fileFilter, multerStorage } from './config/multer.config';
 import { MediaService } from './media.service';
 import { Express } from 'express';
-import type { Multer } from 'multer'; // dùng import type để fix TS1272
+import type { Multer } from 'multer';
 
 @ApiTags('Media')
 @Controller()

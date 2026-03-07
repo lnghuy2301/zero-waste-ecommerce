@@ -14,12 +14,16 @@ import { BundleItemRequestDto } from './dto/bundle-item.request.dto';
 import { BundleItemResponseDto } from './dto/bundle-item.response.dto';
 import { DeleteListBundleItemDto } from './dto/delete-list-bundle-item.dto';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
+import { RolesGuard } from '../auth/auth.role.guard';
+import { Roles } from '../auth/auth.role.decorator';
+import { Role } from '@prisma/client';
 
 @Controller('bundle-item')
 export class BundleItemController {
   constructor(private readonly bundleItemService: BundleItemService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Post()
   async createBundleItem(
     @Body() dto: BundleItemRequestDto,
@@ -27,7 +31,8 @@ export class BundleItemController {
     return this.bundleItemService.createBundleItem(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Put(':id')
   async updateBundleItem(
     @Param('id', ParseIntPipe) id: number,
@@ -48,7 +53,8 @@ export class BundleItemController {
     return this.bundleItemService.getAllBundleItems();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete(':id')
   async deleteBundleItem(
     @Param('id', ParseIntPipe) id: number,
@@ -56,7 +62,8 @@ export class BundleItemController {
     return this.bundleItemService.deleteBundleItem(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete()
   async deleteListBundleItems(
     @Body() dto: DeleteListBundleItemDto,

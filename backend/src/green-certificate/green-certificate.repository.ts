@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GreenCertificateRequestDto } from './dto/green-certificate.request.dto';
 import { GreenCertificateResponseDto } from './dto/green-certificate.response.dto';
-import { DeleteListGreenCertificateDto } from './dto/list-green-certificate-delete.dto';
+import { DeleteListGreenCertificateDto } from './dto/delete-list-green-certificate.dto';
 import { plainToInstance } from 'class-transformer';
 
 @Injectable()

@@ -7,7 +7,7 @@ import { GreenCertificateRepository } from './green-certificate.repository';
 import { GreenCertificateHelper } from './green-certificate.helper';
 import { GreenCertificateRequestDto } from './dto/green-certificate.request.dto';
 import { GreenCertificateResponseDto } from './dto/green-certificate.response.dto';
-import { DeleteListGreenCertificateDto } from './dto/list-green-certificate-delete.dto';
+import { DeleteListGreenCertificateDto } from './dto/delete-list-green-certificate.dto';
 
 @Injectable()
 export class GreenCertificateService {
@@ -16,13 +16,13 @@ export class GreenCertificateService {
     private greenCertificateHelper: GreenCertificateHelper,
   ) {}
 
-  async createGreenCertificate(
+  async create(
     dto: GreenCertificateRequestDto,
   ): Promise<GreenCertificateResponseDto> {
     return this.greenCertificateRepository.createGreenCertificate(dto);
   }
 
-  async updateGreenCertificate(
+  async update(
     id: number,
     dto: GreenCertificateRequestDto,
   ): Promise<GreenCertificateResponseDto> {
@@ -30,9 +30,7 @@ export class GreenCertificateService {
     return this.greenCertificateRepository.updateGreenCertificate(id, dto);
   }
 
-  async getGreenCertificateById(
-    id: number,
-  ): Promise<GreenCertificateResponseDto | null> {
+  async getById(id: number): Promise<GreenCertificateResponseDto | null> {
     const cert =
       await this.greenCertificateRepository.getGreenCertificateById(id);
     if (!cert) {
@@ -41,7 +39,7 @@ export class GreenCertificateService {
     return cert;
   }
 
-  async getAllGreenCertificates(): Promise<GreenCertificateResponseDto[]> {
+  async getAll(): Promise<GreenCertificateResponseDto[]> {
     const certs =
       await this.greenCertificateRepository.getAllGreenCertificates();
     if (certs.length === 0) {
@@ -50,14 +48,12 @@ export class GreenCertificateService {
     return certs;
   }
 
-  async deleteGreenCertificate(
-    id: number,
-  ): Promise<GreenCertificateResponseDto | null> {
+  async delete(id: number): Promise<GreenCertificateResponseDto | null> {
     await this.greenCertificateHelper.checkGreenCertificate(id);
     return this.greenCertificateRepository.deleteGreenCertificate(id);
   }
 
-  async deleteListGreenCertificates(
+  async deleteList(
     dto: DeleteListGreenCertificateDto,
   ): Promise<{ count: number }> {
     const result =

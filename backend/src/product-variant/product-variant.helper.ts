@@ -10,7 +10,6 @@ export class ProductVariantHelper {
   async checkVariant(id: number): Promise<ProductVariantResponseDto> {
     const variant = await this.prismaService.productVariant.findUnique({
       where: { id },
-      //   include: { product: true },
     });
 
     if (!variant) {

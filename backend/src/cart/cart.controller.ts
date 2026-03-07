@@ -8,6 +8,8 @@ import {
   Post,
   Put,
   UseGuards,
+  Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CartRequestDto } from './dto/cart.request.dto';
@@ -21,48 +23,65 @@ export class CartController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  async addToCart(@Body() dto: CartRequestDto): Promise<CartResponseDto> {
-    return this.cartService.addToCart(dto);
+  async create(
+    @Body() dto: CartRequestDto,
+    @Req() req: any,
+  ): Promise<CartResponseDto> {
+    const userId = req.user.id;
+    return this.cartService.create(dto, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Put(':id')
-  async updateCartItem(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CartRequestDto,
+    @Req() req: any,
   ): Promise<CartResponseDto> {
-    return this.cartService.updateCartItem(id, dto);
+    const userId = req.user.id;
+    return this.cartService.update(id, dto, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('user/:accountId')
-  async getCartByUser(
+  async getByUser(
     @Param('accountId', ParseIntPipe) accountId: number,
+    @Req() req: any,
   ): Promise<CartResponseDto[]> {
-    return this.cartService.getCartByUser(accountId);
+    const userId = req.user.id;
+    if (userId !== accountId) {
+      throw new ForbiddenException('Không được xem giỏ hàng của người khác');
+    }
+    return this.cartService.getByUser(accountId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async getCartItemById(
+  async getById(
     @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
   ): Promise<CartResponseDto | null> {
-    return this.cartService.getCartItemById(id);
+    const userId = req.user.id;
+    return this.cartService.getById(id, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  async removeCartItem(
+  async delete(
     @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
   ): Promise<CartResponseDto | null> {
-    return this.cartService.removeCartItem(id);
+    const userId = req.user.id;
+    return this.cartService.delete(id, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete()
-  async clearCartItems(
+  async deleteList(
     @Body() dto: DeleteListCartDto,
+    @Req() req: any,
   ): Promise<{ count: number }> {
-    return this.cartService.clearCartItems(dto);
+    const userId = req.user.id;
+    return this.cartService.deleteList(dto, userId);
   }
 }
