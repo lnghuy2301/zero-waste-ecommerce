@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OrderDetailRequestDto } from './dto/order-detail.request.dto';
 import { OrderDetailResponseDto } from './dto/order-detail.response.dto';
@@ -15,12 +15,12 @@ export class OrderDetailRepository {
     const order = await this.prismaService.order.findUnique({
       where: { id: dto.orderId },
     });
-    if (!order) throw new Error('Đơn hàng không tồn tại');
+    if (!order) throw new NotFoundException('Đơn hàng không tồn tại');
 
     const variant = await this.prismaService.productVariant.findUnique({
       where: { id: dto.variantId },
     });
-    if (!variant) throw new Error('Variant không tồn tại');
+    if (!variant) throw new NotFoundException('Biến thể không tồn tại');
 
     const created = await this.prismaService.orderDetail.create({
       data: {
@@ -44,6 +44,7 @@ export class OrderDetailRepository {
         : undefined,
     });
   }
+
   async updateOrderDetail(
     id: number,
     dto: OrderDetailRequestDto,
@@ -51,7 +52,7 @@ export class OrderDetailRepository {
     const variant = await this.prismaService.productVariant.findUnique({
       where: { id: dto.variantId },
     });
-    if (!variant) throw new Error('Variant không tồn tại');
+    if (!variant) throw new NotFoundException('Biến thể không tồn tại');
 
     const updated = await this.prismaService.orderDetail.update({
       where: { id },

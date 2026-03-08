@@ -17,6 +17,17 @@ export class CartHelper {
       throw new NotFoundException('Mặt hàng trong giỏ không tồn tại');
     }
 
-    return plainToInstance(CartResponseDto, item);
+    // Fix DecimalError: convert price thủ công trước khi plainToInstance
+    const safeItem = {
+      ...item,
+      variant: item.variant
+        ? {
+            ...item.variant,
+            price: item.variant.price ? Number(item.variant.price) : 0,
+          }
+        : undefined,
+    };
+
+    return plainToInstance(CartResponseDto, safeItem);
   }
 }

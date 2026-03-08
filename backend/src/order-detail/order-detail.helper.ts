@@ -17,9 +17,17 @@ export class OrderDetailHelper {
       throw new NotFoundException('Chi tiết đơn hàng không tồn tại');
     }
 
-    return plainToInstance(OrderDetailResponseDto, {
+    const safeDetail = {
       ...detail,
-      price: Number(detail.price),
-    });
+      price: detail.price ? Number(detail.price) : 0,
+      variant: detail.variant
+        ? {
+            ...detail.variant,
+            price: detail.variant.price ? Number(detail.variant.price) : 0,
+          }
+        : undefined,
+    };
+
+    return plainToInstance(OrderDetailResponseDto, safeDetail);
   }
 }

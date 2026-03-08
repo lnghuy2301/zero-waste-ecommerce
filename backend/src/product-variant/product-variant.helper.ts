@@ -10,12 +10,19 @@ export class ProductVariantHelper {
   async checkVariant(id: number): Promise<ProductVariantResponseDto> {
     const variant = await this.prismaService.productVariant.findUnique({
       where: { id },
+      include: { product: true },
     });
 
     if (!variant) {
       throw new NotFoundException('Biến thể sản phẩm không tồn tại');
     }
 
-    return plainToInstance(ProductVariantResponseDto, variant);
+    // Fix: check price trước khi transform
+    const safeVariant = {
+      ...variant,
+      price: variant.price ? Number(variant.price) : 0, // fallback nếu undefined
+    };
+
+    return plainToInstance(ProductVariantResponseDto, safeVariant);
   }
 }
