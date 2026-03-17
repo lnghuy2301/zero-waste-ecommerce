@@ -43,9 +43,6 @@ export class AccountRepository {
     const updated = await this.prismaService.account.update({
       where: {
         id: id,
-        role: {
-          not: 'ADMIN',
-        },
       },
       data: {
         password: hashPassword,
@@ -61,9 +58,6 @@ export class AccountRepository {
     const updated = await this.prismaService.account.update({
       where: {
         id: id,
-        role: {
-          not: 'ADMIN',
-        },
       },
       data: {
         isActive: account.isActive,
@@ -79,9 +73,6 @@ export class AccountRepository {
     const updated = await this.prismaService.account.update({
       where: {
         id: id,
-        role: {
-          not: 'ADMIN',
-        },
       },
       data: {
         role: account.role,
@@ -104,9 +95,6 @@ export class AccountRepository {
     const account = await this.prismaService.account.findUnique({
       where: {
         id: id,
-        role: {
-          not: 'ADMIN',
-        },
       },
     });
     return account ? plainToInstance(AccountResponseDto, account) : null;

@@ -11,11 +11,13 @@ import { JwtService } from '@nestjs/jwt';
 import { AccountService } from '../account/account.service';
 import { AccountRequestDto } from '../account/dto/account.request.dto';
 import { plainToInstance } from 'class-transformer';
+import {AccountHelper} from "../account/account.helper";
 
 @Injectable()
 export class AuthService {
   constructor(
     private prismaService: PrismaService,
+    private accountHelper: AccountHelper,
     private jwtService: JwtService,
     private accountService: AccountService,
   ) {}
@@ -31,6 +33,9 @@ export class AuthService {
     if (!pass) {
       throw new BadRequestException('Mật khẩu không chính xác');
     }
+
+    await this.accountHelper.checkActive(user.id);
+
     const { password, ...result } = user;
     return plainToInstance(AccountResponseDto, result); // dùng plainToInstance để loại password đúng type
   }

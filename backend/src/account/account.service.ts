@@ -41,11 +41,14 @@ export class AccountService {
     return plainToInstance(AccountResponseDto, created);
   }
 
-  async resetPassword(id: number, resetPassword: ResetPasswordRequestDto) {
+  async resetPassword(id: number, resetPassword: ResetPasswordRequestDto, currentUser: any) {
+    // Kiểm tra quyền: Chỉ mình mới được đổi pass của mình (hoặc Admin reset hộ)
+    await this.accountHelper.checkSelfOrAdmin(currentUser.id, id, currentUser.role);
+
     const account = await this.accountHelper.check_account(id);
     const check_password = await bcrypt.compare(
-      resetPassword.old_password,
-      account.password,
+        resetPassword.old_password,
+        account.password,
     );
     if (!check_password) {
       throw new BadRequestException('Mật khẩu cũ sai');
@@ -58,11 +61,9 @@ export class AccountService {
     return this.accountRepository.updatePassword(id, hash_password);
   }
 
-  async updateActive(
-    id: number,
-    updateisActive: UpdateActiveRequestDto,
-  ): Promise<AccountResponseDto> {
+  async updateActive(id: number, updateisActive: UpdateActiveRequestDto): Promise<AccountResponseDto> {
     await this.accountHelper.check_account(id);
+    await this.accountHelper.checkAdmin(id); // Hàm này đã đảm bảo chỉ Admin mới vào được
     return this.accountRepository.updateActive(id, updateisActive);
   }
 
@@ -71,6 +72,7 @@ export class AccountService {
     updateRole: UpdateRoleRequesrDto,
   ): Promise<AccountResponseDto> {
     await this.accountHelper.check_account(id);
+    await this.accountHelper.checkAdmin(id);
     return this.accountRepository.updateRole(id, updateRole);
   }
 
@@ -82,24 +84,18 @@ export class AccountService {
     return result;
   }
 
-  async checkActive(id: number) {
-    const account = await this.accountHelper.check_account(id);
-    if (!account.isActive) {
-      throw new BadRequestException('Tài khoản của bạn đã bị khóa');
-    }
+  async getAccountById(id: number, currentUser: any): Promise<AccountResponseDto | null> {
+    await this.accountHelper.checkSelfOrAdmin(currentUser.id, id, currentUser.role);
 
-    return account;
-  }
-
-  async getAccountById(id: number): Promise<AccountResponseDto | null> {
     const account = await this.accountRepository.getAccountById(id);
     if (!account) {
-      throw new UnauthorizedException('Tài khoản không tồn tại');
+      throw new NotFoundException('Tài khoản không tồn tại');
     }
     return account;
   }
 
-  async getAllAccounts(): Promise<AccountResponseDto[]> {
+  async getAllAccounts(currentUser: any): Promise<AccountResponseDto[]> {
+    await this.accountHelper.checkAdmin(currentUser.id); // Chỉ Admin mới được xem list
     const account = await this.accountRepository.getAllAccount();
     if (account.length == 0) {
       throw new BadRequestException('Không có tài khoản nào tồn tại');
@@ -107,8 +103,9 @@ export class AccountService {
     return account;
   }
 
-  async deleteAccountById(id: number): Promise<AccountResponseDto | null> {
+  async deleteAccountById(id: number, currentUser: any): Promise<AccountResponseDto | null> {
     await this.accountHelper.check_account(id);
+    await this.accountHelper.checkSelfOrAdmin(currentUser.id, id, currentUser.role);
     return this.accountRepository.deleteAccountById(id);
   }
 

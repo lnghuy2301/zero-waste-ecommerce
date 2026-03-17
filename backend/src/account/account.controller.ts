@@ -20,42 +20,47 @@ import { JwtAuthGuard } from '../auth/auth.jwt.guard';
 import { RolesGuard } from '../auth/auth.role.guard';
 import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
+import { GetUser } from '../auth/get-user.decorator';
 
 @Controller('account')
 export class AccountController {
   constructor(private accountService: AccountService) {}
 
-  @Post() // public (register)
+  @Post() // Public (Đăng ký)
   async createAccount(
-    @Body() account: AccountRequestDto,
+      @Body() account: AccountRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.createAccount(account);
   }
 
-  @UseGuards(JwtAuthGuard)
+  // Chỉnh sửa: Đổi mật khẩu (Cần chính chủ hoặc Admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CUSTOMER)
   @Put(':id/password')
-  async updateAccount(
-    @Body() resetPassword: ResetPasswordRequestDto,
-    @Param('id', ParseIntPipe) id: number,
+  async updatePassword(
+      @Param('id', ParseIntPipe) id: number,
+      @Body() resetPassword: ResetPasswordRequestDto,
+      @GetUser() currentUser: any, // Lấy user từ Token
   ) {
-    return this.accountService.resetPassword(id, resetPassword);
+    return this.accountService.resetPassword(id, resetPassword, currentUser);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Put(':id/active')
   async updateActive(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() account: UpdateActiveRequestDto,
+      @Param('id', ParseIntPipe) id: number,
+      @Body() account: UpdateActiveRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.updateActive(id, account);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN) // chỉ admin sửa role
+  @Roles(Role.ADMIN)
   @Put(':id/role')
   async updateRole(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() account: UpdateRoleRequesrDto,
+      @Param('id', ParseIntPipe) id: number,
+      @Body() account: UpdateRoleRequesrDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.updateRole(id, account);
   }
@@ -67,34 +72,33 @@ export class AccountController {
     return this.accountService.statsAccount();
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get(':id/status')
-  async isActive(@Param('id', ParseIntPipe) id: number) {
-    return this.accountService.checkActive(id);
-  }
-
-  @UseGuards(JwtAuthGuard)
+  // Chỉnh sửa: Xem tài khoản (Chỉ xem chính mình hoặc Admin xem hết)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CUSTOMER)
   @Get(':id')
   async getAccount(
-    @Param('id', ParseIntPipe) id: number,
+      @Param('id', ParseIntPipe) id: number,
+      @GetUser() currentUser: any,
   ): Promise<AccountResponseDto | null> {
-    return this.accountService.getAccountById(id);
+    return this.accountService.getAccountById(id, currentUser);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Get()
-  async getAllAccounts(): Promise<AccountResponseDto[]> {
-    return this.accountService.getAllAccounts();
+  async getAllAccounts(@GetUser() currentUser: any): Promise<AccountResponseDto[]> {
+    return this.accountService.getAllAccounts(currentUser);
   }
 
+  // Chỉnh sửa: Xóa tài khoản (Chỉ mình xóa mình hoặc Admin xóa người khác)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.CUSTOMER)
   @Delete(':id')
   async deleteAccountById(
-    @Param('id', ParseIntPipe) id: number,
+      @Param('id', ParseIntPipe) id: number,
+      @GetUser() currentUser: any,
   ): Promise<AccountResponseDto | null> {
-    return this.accountService.deleteAccountById(id);
+    return this.accountService.deleteAccountById(id, currentUser);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
