@@ -20,7 +20,7 @@ export class ProductRepository {
         material: data.material,
         ecoFriendliness: data.ecoFriendliness,
         reusability: data.reusability,
-        mainImage: data.mainImage,
+        mainImage: data.mainImage ?? null,
       },
       include: { category: true },
     });
@@ -76,5 +76,18 @@ export class ProductRepository {
         id: { in: dto.Ids },
       },
     });
+  }
+
+  // THÊM HÀM UPLOAD MAIN IMAGE
+  async uploadMainImage(id: number, file: Express.Multer.File) {
+    const updated = await this.prismaService.product.update({
+      where: { id },
+      data: {
+        mainImage: `/uploads/${file.filename}`,
+      },
+      include: { category: true },
+    });
+
+    return updated;
   }
 }

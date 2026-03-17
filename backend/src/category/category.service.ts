@@ -9,6 +9,7 @@ import { CategoryRequestDto } from './dto/category.request.dto';
 import { CategoryResponseDto } from './dto/category.response.dto';
 import { Delete_list_categoryDto } from './dto/delete_list_category.dto';
 import { AccountHelper } from '../account/account.helper';
+// import { Express } from 'express';
 
 @Injectable()
 export class CategoryService {
@@ -55,5 +56,11 @@ export class CategoryService {
       );
     }
     return category;
+  }
+
+  // THÊM HÀM UPLOAD HÌNH ẢNH
+  async uploadImage(id: number, file: Express.Multer.File) {
+    await this.categoryHelper.checkCategory(id);
+    return this.categoryRepository.uploadImage(id, file);
   }
 }

@@ -8,9 +8,6 @@ import {
   Post,
   Put,
   UseGuards,
-  UploadedFile,
-  UseInterceptors,
-  // Req,
 } from '@nestjs/common';
 import { ProductVariantService } from './product-variant.service';
 import { ProductVariantRequestDto } from './dto/product-variant.request.dto';
@@ -20,10 +17,6 @@ import { JwtAuthGuard } from '../auth/auth.jwt.guard';
 import { RolesGuard } from '../auth/auth.role.guard';
 import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { fileFilter, multerStorage } from '../media/config/multer.config'; // import từ media
-import { Express } from 'express';
-import type { Multer } from 'multer';
 
 @Controller('product-variant')
 export class ProductVariantController {
@@ -76,19 +69,5 @@ export class ProductVariantController {
     @Body() dto: DeleteListProductVariantDto,
   ): Promise<{ count: number }> {
     return this.productVariantService.deleteListVariants(dto);
-  }
-
-  // ===== THÊM UPLOAD HÌNH ẢNH (giống media) =====
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  @Post(':id/image')
-  @UseInterceptors(
-    FileInterceptor('image', { storage: multerStorage, fileFilter }),
-  )
-  async uploadImage(
-    @Param('id', ParseIntPipe) id: number,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    return this.productVariantService.uploadImage(id, file);
   }
 }

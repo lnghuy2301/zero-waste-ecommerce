@@ -8,7 +8,6 @@ import { ProductVariantHelper } from './product-variant.helper';
 import { ProductVariantRequestDto } from './dto/product-variant.request.dto';
 import { ProductVariantResponseDto } from './dto/product-variant.response.dto';
 import { DeleteListProductVariantDto } from './dto/delete-list-product-variant.dto';
-import { Express } from 'express';
 
 @Injectable()
 export class ProductVariantService {
@@ -66,11 +65,5 @@ export class ProductVariantService {
       throw new NotFoundException('Không tìm thấy biến thể nào để xóa');
     }
     return result;
-  }
-
-  // ===== THÊM UPLOAD HÌNH ẢNH =====
-  async uploadImage(id: number, file: Express.Multer.File) {
-    await this.productVariantHelper.checkVariant(id);
-    return this.productVariantRepository.uploadImage(id, file);
   }
 }

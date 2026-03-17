@@ -109,20 +109,4 @@ export class ProductVariantRepository {
     });
     return { count: result.count };
   }
-
-  // ===== THÊM UPLOAD HÌNH ẢNH =====
-  async uploadImage(id: number, file: Express.Multer.File) {
-    const updated = await this.prismaService.productVariant.update({
-      where: { id },
-      data: {
-        image: `/uploads/${file.filename}`, // lưu đường dẫn
-      },
-      include: { product: true },
-    });
-
-    return plainToInstance(ProductVariantResponseDto, {
-      ...updated,
-      price: Number(updated.price),
-    });
-  }
 }
