@@ -8,6 +8,8 @@ import {
   Post,
   Put,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CategoryRequestDto } from './dto/category.request.dto';
@@ -17,6 +19,10 @@ import { JwtAuthGuard } from '../auth/auth.jwt.guard';
 import { RolesGuard } from '../auth/auth.role.guard';
 import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { fileFilter, multerStorage } from '../media/config/multer.config'; // import từ media
+import { Express } from 'express';
+// import type { Multer } from 'multer';
 
 @Controller('category')
 export class CategoryController {
@@ -62,5 +68,19 @@ export class CategoryController {
     @Body() listCategory: Delete_list_categoryDto,
   ): Promise<{ count: number }> {
     return this.categoryService.deleteList(listCategory);
+  }
+
+  // THÊM UPLOAD HÌNH ẢNH CHO DANH MỤC
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post(':id/image')
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multerStorage, fileFilter }),
+  )
+  async uploadImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.categoryService.uploadImage(id, file);
   }
 }

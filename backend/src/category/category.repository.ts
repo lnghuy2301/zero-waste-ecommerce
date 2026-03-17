@@ -57,4 +57,16 @@ export class CategoryRepository {
       },
     });
   }
+
+  // THÊM HÀM UPLOAD HÌNH ẢNH
+  async uploadImage(id: number, file: Express.Multer.File) {
+    const updated = await this.prismaService.category.update({
+      where: { id },
+      data: {
+        image: `/uploads/${file.filename}`,
+      },
+    });
+
+    return updated;
+  }
 }

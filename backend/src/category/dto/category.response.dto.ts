@@ -9,4 +9,7 @@ export class CategoryResponseDto {
 
   @Expose()
   description: string | null;
+
+  @Expose()
+  image: string | null; // THÊM NẾU MUỐN TRẢ VỀ KHI GET
 }

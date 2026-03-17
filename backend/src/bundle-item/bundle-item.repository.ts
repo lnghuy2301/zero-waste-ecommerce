@@ -17,6 +17,7 @@ export class BundleItemRepository {
         bundleProductId: data.bundleProductId,
         componentVariantId: data.componentVariantId,
         quantity: data.quantity,
+        image: null, // default null khi tạo
       },
       include: { bundleProduct: true, componentVariant: true },
     });
@@ -25,7 +26,7 @@ export class BundleItemRepository {
       ...created,
       bundleProduct: created.bundleProduct
         ? { ...created.bundleProduct }
-        : undefined, // không có price
+        : undefined,
       componentVariant: created.componentVariant
         ? {
             ...created.componentVariant,
@@ -47,6 +48,7 @@ export class BundleItemRepository {
         bundleProductId: data.bundleProductId,
         componentVariantId: data.componentVariantId,
         quantity: data.quantity,
+        // image không update ở đây, dùng endpoint riêng
       },
       include: { bundleProduct: true, componentVariant: true },
     });
@@ -140,5 +142,31 @@ export class BundleItemRepository {
       where: { id: { in: dto.Ids } },
     });
     return { count: result.count };
+  }
+
+  // THÊM HÀM UPLOAD HÌNH ẢNH
+  async uploadImage(id: number, file: Express.Multer.File) {
+    const updated = await this.prismaService.bundleItem.update({
+      where: { id },
+      data: {
+        image: `/uploads/${file.filename}`,
+      },
+      include: { bundleProduct: true, componentVariant: true },
+    });
+
+    const transformed = {
+      ...updated,
+      bundleProduct: updated.bundleProduct
+        ? { ...updated.bundleProduct }
+        : undefined,
+      componentVariant: updated.componentVariant
+        ? {
+            ...updated.componentVariant,
+            price: Number(updated.componentVariant.price),
+          }
+        : undefined,
+    };
+
+    return plainToInstance(BundleItemResponseDto, transformed);
   }
 }

@@ -8,6 +8,8 @@ import {
   Post,
   Put,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { BundleItemService } from './bundle-item.service';
 import { BundleItemRequestDto } from './dto/bundle-item.request.dto';
@@ -17,6 +19,10 @@ import { JwtAuthGuard } from '../auth/auth.jwt.guard';
 import { RolesGuard } from '../auth/auth.role.guard';
 import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { fileFilter, multerStorage } from '../media/config/multer.config'; // import từ media
+import { Express } from 'express';
+// import type { Multer } from 'multer';
 
 @Controller('bundle-item')
 export class BundleItemController {
@@ -69,5 +75,19 @@ export class BundleItemController {
     @Body() dto: DeleteListBundleItemDto,
   ): Promise<{ count: number }> {
     return this.bundleItemService.deleteListBundleItems(dto);
+  }
+
+  // THÊM UPLOAD HÌNH ẢNH CHO CHI TIẾT SET QUÀ TẶNG
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post(':id/image')
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multerStorage, fileFilter }),
+  )
+  async uploadImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.bundleItemService.uploadImage(id, file);
   }
 }

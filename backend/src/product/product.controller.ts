@@ -8,22 +8,28 @@ import {
   Post,
   Put,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { ProductRequestDto } from './dto/product.request.dto';
 import { ProductResponseDto } from './dto/product.response.dto';
 import { DeleteListProductDto } from './dto/list_product_delete.dto';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
-import { RolesGuard } from '../auth/auth.role.guard.js'; // import nếu có
-import { Roles } from '../auth/auth.role.decorator'; // import decorator @Roles
+import { RolesGuard } from '../auth/auth.role.guard';
+import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { fileFilter, multerStorage } from '../media/config/multer.config';
+import { Express } from 'express';
+import type { Multer } from 'multer';
 
 @Controller('product')
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN) // Chỉ admin mới tạo
+  @Roles(Role.ADMIN)
   @Post()
   async createProduct(
     @Body() dto: ProductRequestDto,
@@ -32,7 +38,7 @@ export class ProductController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN) // Chỉ admin sửa
+  @Roles(Role.ADMIN)
   @Put(':id')
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
@@ -54,7 +60,7 @@ export class ProductController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN) // Chỉ admin xóa
+  @Roles(Role.ADMIN)
   @Delete(':id')
   async deleteProduct(
     @Param('id', ParseIntPipe) id: number,
@@ -63,11 +69,25 @@ export class ProductController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN) // Chỉ admin xóa list
+  @Roles(Role.ADMIN)
   @Delete()
   async deleteListProducts(
     @Body() dto: DeleteListProductDto,
   ): Promise<{ count: number }> {
     return this.productService.deleteListProducts(dto);
+  }
+
+  // THÊM UPLOAD MAIN IMAGE CHO SẢN PHẨM
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post(':id/image')
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multerStorage, fileFilter }),
+  )
+  async uploadMainImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.productService.uploadMainImage(id, file);
   }
 }

@@ -16,6 +16,9 @@ export class BundleItemResponseDto {
   quantity: number;
 
   @Expose()
+  image: string | null;
+
+  @Expose()
   @Type(() => ProductResponseDto)
   bundleProduct?: ProductResponseDto;
 
