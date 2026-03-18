@@ -14,10 +14,9 @@ import { RouterLink } from 'vue-router'
 
         <!-- Nav Links -->
         <nav class="hidden md:flex items-center space-x-8">
-          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">Shop All</RouterLink>
-          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">Categories</RouterLink>
-          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">About Us</RouterLink>
-          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">Blog</RouterLink>
+          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">Sản phẩm</RouterLink>
+          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">Khuyến mãi</RouterLink>
+          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">Về Chúng tôi</RouterLink>
         </nav>
 
         <!-- Icons -->

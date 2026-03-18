@@ -4,7 +4,6 @@ import { RouterLink } from 'vue-router'
 </script>
 
 <template>
-  <div class="bg-background-light min-h-screen w-full pb-20">
     <main class="mx-auto max-w-[1200px] w-full px-4 py-8 sm:px-6 lg:px-8">
       <!-- Breadcrumbs -->
       <nav class="flex items-center gap-2 mb-8 text-sm font-medium text-slate-500">
@@ -166,5 +165,4 @@ import { RouterLink } from 'vue-router'
         </div>
       </section>
     </main>
-  </div>
 </template>

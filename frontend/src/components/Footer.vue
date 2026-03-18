@@ -12,24 +12,24 @@ import { RouterLink } from 'vue-router'
             <span class="text-xl font-extrabold tracking-tight text-white">EcoStore</span>
           </div>
           <p class="text-sm leading-relaxed">
-            Join the movement towards a zero-waste future. Small changes, big impact.
+            Hãy cùng tham gia phong trào hướng tới một tương lai không rác thải. Những thay đổi nhỏ, tác động lớn.
           </p>
         </div>
 
         <div>
-          <h4 class="text-white font-bold mb-6">Customer Care</h4>
+          <h4 class="text-white font-bold mb-6">Chăm Sóc Khách Hàng</h4>
           <ul class="space-y-4 text-sm">
-            <li><RouterLink to="/" class="hover:text-primary transition-colors">Contact Us</RouterLink></li>
+            <li><RouterLink to="/" class="hover:text-primary transition-colors">Liên hệ</RouterLink></li>
             <li><RouterLink to="/" class="hover:text-primary transition-colors">FAQ</RouterLink></li>
-            <li><RouterLink to="/" class="hover:text-primary transition-colors">Shipping & Returns</RouterLink></li>
+            <li><RouterLink to="/" class="hover:text-primary transition-colors">Giao hàng & Thu hồi</RouterLink></li>
           </ul>
         </div>
 
         <div>
-          <h4 class="text-white font-bold mb-6">Explore</h4>
+          <h4 class="text-white font-bold mb-6">Khám Phá</h4>
           <ul class="space-y-4 text-sm">
-            <li><RouterLink to="/" class="hover:text-primary transition-colors">Shop All</RouterLink></li>
-            <li><RouterLink to="/" class="hover:text-primary transition-colors">Our Story</RouterLink></li>
+            <li><RouterLink to="/" class="hover:text-primary transition-colors">Sản phẩm</RouterLink></li>
+            <li><RouterLink to="/" class="hover:text-primary transition-colors">Câu chuyện</RouterLink></li>
           </ul>
         </div>
 
