@@ -1,17 +1,13 @@
-import {
-  //   BadRequestException,
-  Injectable,
-  //   UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountRequestDto } from './dto/account.request.dto';
 import { AccountResponseDto } from './dto/account.response.dto';
-import { plainToInstance } from 'class-transformer';
-// import { ResetPasswordRequestDto } from './dto/reset_password.request.dto';
 import { Account_profileResponseDto } from './dto/account_profile.response.dto';
 import { List_accountRequestDto } from './dto/list_account.request.dto';
 import { UpdateActiveRequestDto } from './dto/update_active.request.dto';
 import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
+import { plainToInstance } from 'class-transformer';
+import {Role} from "@prisma/client";
 
 @Injectable()
 export class AccountRepository {
@@ -24,8 +20,8 @@ export class AccountRepository {
       data: {
         email: account.email,
         password: account.password,
-        role: account.role,
-        isActive: account.isActive,
+        role: Role.CUSTOMER,
+        isActive: account.isActive ?? true,
         profile: {
           create: {
             fullName: account.profile.fullName,
@@ -45,51 +41,45 @@ export class AccountRepository {
     id: number,
     hashPassword: string,
   ): Promise<AccountResponseDto> {
-    return this.prismaService.account.update({
+    const updated = await this.prismaService.account.update({
       where: {
         id: id,
-        role: {
-          not: 'ADMIN',
-        },
       },
       data: {
         password: hashPassword,
       },
     });
+    return plainToInstance(AccountResponseDto, updated);
   }
 
   async updateActive(
     id: number,
     account: UpdateActiveRequestDto,
   ): Promise<AccountResponseDto> {
-    return this.prismaService.account.update({
+    const updated = await this.prismaService.account.update({
       where: {
         id: id,
-        role: {
-          not: 'ADMIN',
-        },
       },
       data: {
         isActive: account.isActive,
       },
     });
+    return plainToInstance(AccountResponseDto, updated);
   }
 
   async updateRole(
     id: number,
     account: UpdateRoleRequesrDto,
   ): Promise<AccountResponseDto> {
-    return this.prismaService.account.update({
+    const updated = await this.prismaService.account.update({
       where: {
         id: id,
-        role: {
-          not: 'ADMIN',
-        },
       },
       data: {
         role: account.role,
       },
     });
+    return plainToInstance(AccountResponseDto, updated);
   }
 
   async statsAccount() {
@@ -103,24 +93,23 @@ export class AccountRepository {
   }
 
   async getAccountById(id: number): Promise<AccountResponseDto | null> {
-    return this.prismaService.account.findUnique({
+    const account = await this.prismaService.account.findUnique({
       where: {
         id: id,
-        role: {
-          not: 'ADMIN',
-        },
       },
     });
+    return account ? plainToInstance(Account_profileResponseDto, account) : null;
   }
 
   async getAllAccount(): Promise<AccountResponseDto[]> {
-    return this.prismaService.account.findMany({
+    const accounts = await this.prismaService.account.findMany({
       where: {
         role: {
           not: 'ADMIN',
         },
       },
     });
+    return accounts.map((a) => plainToInstance(AccountResponseDto, a));
   }
 
   async deleteAccountById(id: number) {
@@ -145,7 +134,7 @@ export class AccountRepository {
 
   async deleteListAccount(listAccount: List_accountRequestDto) {
     return this.prismaService.$transaction(async (tx) => {
-      const account = await tx.account.findMany({
+      const accounts = await tx.account.findMany({
         where: {
           id: {
             in: listAccount.Ids,
@@ -157,7 +146,7 @@ export class AccountRepository {
         select: { id: true },
       });
 
-      if (account.length === 0) return null;
+      if (accounts.length === 0) return null;
 
       await tx.customerProfile.deleteMany({
         where: {
@@ -174,6 +163,8 @@ export class AccountRepository {
           },
         },
       });
+
+      return { count: accounts.length };
     });
   }
 }

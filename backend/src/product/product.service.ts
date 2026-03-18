@@ -8,6 +8,7 @@ import { ProductHelper } from './product.helper';
 import { ProductRequestDto } from './dto/product.request.dto';
 import { ProductResponseDto } from './dto/product.response.dto';
 import { DeleteListProductDto } from './dto/list_product_delete.dto';
+import { Express } from 'express';
 
 @Injectable()
 export class ProductService {
@@ -57,5 +58,11 @@ export class ProductService {
       throw new NotFoundException('Không tìm thấy sản phẩm nào để xóa');
     }
     return result;
+  }
+
+  // THÊM HÀM UPLOAD MAIN IMAGE
+  async uploadMainImage(id: number, file: Express.Multer.File) {
+    await this.productHelper.checkProduct(id);
+    return this.productRepository.uploadMainImage(id, file);
   }
 }

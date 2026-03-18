@@ -3,7 +3,6 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-// import { CustomerProfileResponseDto } from '../customer_profile/dto/customer_profile.response.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { AuthLoginDto } from './dto/auth.login.dto';
@@ -11,11 +10,14 @@ import { AccountResponseDto } from '../account/dto/account.response.dto';
 import { JwtService } from '@nestjs/jwt';
 import { AccountService } from '../account/account.service';
 import { AccountRequestDto } from '../account/dto/account.request.dto';
+import { plainToInstance } from 'class-transformer';
+import {AccountHelper} from "../account/account.helper";
 
 @Injectable()
 export class AuthService {
   constructor(
     private prismaService: PrismaService,
+    private accountHelper: AccountHelper,
     private jwtService: JwtService,
     private accountService: AccountService,
   ) {}
@@ -31,8 +33,11 @@ export class AuthService {
     if (!pass) {
       throw new BadRequestException('Mật khẩu không chính xác');
     }
+
+    await this.accountHelper.checkActive(user.id);
+
     const { password, ...result } = user;
-    return user;
+    return plainToInstance(AccountResponseDto, result); // dùng plainToInstance để loại password đúng type
   }
 
   async register(account: AccountRequestDto): Promise<AccountResponseDto> {
@@ -41,17 +46,57 @@ export class AuthService {
 
   async login(user: any) {
     const payload = {
-      sub: user.id,
+      id: user.id,
       email: user.email,
       role: user.role,
       isActive: user.isActive,
     };
     return {
       token: this.jwtService.sign(payload),
-      id: payload.sub,
+      id: payload.id, // sửa thành payload.id
       email: payload.email,
       role: payload.role,
       isActive: payload.isActive,
+    };
+  }
+
+  async validateGoogleUser(googleUser: any) {
+    const { email, fullName } = googleUser;
+
+    let account = await this.prismaService.account.findUnique({
+      where: { email },
+      include: { profile: true } // Lấy kèm profile
+    });
+
+    if (!account) {
+      const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      account = await this.prismaService.account.create({
+        data: {
+          email,
+          password: hashedPassword,
+          profile: {
+            create: {
+              fullName: fullName || 'Google User',
+            }
+          }
+        },
+        include: { profile: true }
+      });
+    }
+
+    const payload = { sub: account.id, email: account.email, role: account.role };
+    const token = this.jwtService.sign(payload);
+
+    return {
+      user: {
+        id: account.id,
+        email: account.email,
+        fullName: account.profile?.fullName,
+        role: account.role
+      },
+      token
     };
   }
 }

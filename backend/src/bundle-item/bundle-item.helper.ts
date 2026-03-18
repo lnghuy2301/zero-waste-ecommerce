@@ -17,6 +17,19 @@ export class BundleItemHelper {
       throw new NotFoundException('Chi tiết set quà tặng không tồn tại');
     }
 
-    return plainToInstance(BundleItemResponseDto, item);
+    // Fix: convert Decimal fields thủ công
+    const safeItem = {
+      ...item,
+      componentVariant: item.componentVariant
+        ? {
+            ...item.componentVariant,
+            price: item.componentVariant.price
+              ? Number(item.componentVariant.price)
+              : 0,
+          }
+        : undefined,
+    };
+
+    return plainToInstance(BundleItemResponseDto, safeItem);
   }
 }

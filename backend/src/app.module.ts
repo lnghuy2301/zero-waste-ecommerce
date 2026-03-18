@@ -15,6 +15,11 @@ import { CustomerProfileModule } from './customer_profile/customer_profile.modul
 import { ProductVariantModule } from './product-variant/product-variant.module';
 import { CartModule } from './cart/cart.module';
 import { BundleItemModule } from './bundle-item/bundle-item.module';
+import { OrderModule } from './order/order.module';
+import { OrderDetailModule } from './order-detail/order-detail.module';
+import { CommentModule } from './comment/comment.module';
+import { PaymentMethodModule } from './payment_method/payment-method.module';
+import { MediaModule } from './media/media.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -29,6 +34,11 @@ import { BundleItemModule } from './bundle-item/bundle-item.module';
     ProductVariantModule,
     CartModule,
     BundleItemModule,
+    OrderModule,
+    OrderDetailModule,
+    CommentModule,
+    PaymentMethodModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

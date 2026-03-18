@@ -12,8 +12,11 @@ import {
 import { GreenCertificateService } from './green-certificate.service';
 import { GreenCertificateRequestDto } from './dto/green-certificate.request.dto';
 import { GreenCertificateResponseDto } from './dto/green-certificate.response.dto';
-import { DeleteListGreenCertificateDto } from './dto/list-green-certificate-delete.dto';
+import { DeleteListGreenCertificateDto } from './dto/delete-list-green-certificate.dto';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
+import { RolesGuard } from '../auth/auth.role.guard';
+import { Roles } from '../auth/auth.role.decorator';
+import { Role } from '@prisma/client';
 
 @Controller('green-certificate')
 export class GreenCertificateController {
@@ -21,48 +24,52 @@ export class GreenCertificateController {
     private readonly greenCertificateService: GreenCertificateService,
   ) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Post()
-  async createGreenCertificate(
+  async create(
     @Body() dto: GreenCertificateRequestDto,
   ): Promise<GreenCertificateResponseDto> {
-    return this.greenCertificateService.createGreenCertificate(dto);
+    return this.greenCertificateService.create(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Put(':id')
-  async updateGreenCertificate(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: GreenCertificateRequestDto,
   ): Promise<GreenCertificateResponseDto> {
-    return this.greenCertificateService.updateGreenCertificate(id, dto);
+    return this.greenCertificateService.update(id, dto);
   }
 
   @Get(':id')
-  async getGreenCertificateById(
+  async getById(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<GreenCertificateResponseDto | null> {
-    return this.greenCertificateService.getGreenCertificateById(id);
+    return this.greenCertificateService.getById(id);
   }
 
   @Get()
-  async getAllGreenCertificates(): Promise<GreenCertificateResponseDto[]> {
-    return this.greenCertificateService.getAllGreenCertificates();
+  async getAll(): Promise<GreenCertificateResponseDto[]> {
+    return this.greenCertificateService.getAll();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete(':id')
-  async deleteGreenCertificate(
+  async delete(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<GreenCertificateResponseDto | null> {
-    return this.greenCertificateService.deleteGreenCertificate(id);
+    return this.greenCertificateService.delete(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete()
-  async deleteListGreenCertificates(
+  async deleteList(
     @Body() dto: DeleteListGreenCertificateDto,
   ): Promise<{ count: number }> {
-    return this.greenCertificateService.deleteListGreenCertificates(dto);
+    return this.greenCertificateService.deleteList(dto);
   }
 }

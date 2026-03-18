@@ -8,18 +8,28 @@ import {
   Post,
   Put,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { BundleItemService } from './bundle-item.service';
 import { BundleItemRequestDto } from './dto/bundle-item.request.dto';
 import { BundleItemResponseDto } from './dto/bundle-item.response.dto';
 import { DeleteListBundleItemDto } from './dto/delete-list-bundle-item.dto';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
+import { RolesGuard } from '../auth/auth.role.guard';
+import { Roles } from '../auth/auth.role.decorator';
+import { Role } from '@prisma/client';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { fileFilter, multerStorage } from '../media/config/multer.config'; // import từ media
+import type { Express } from 'express';
+// import type { Multer } from 'multer';
 
 @Controller('bundle-item')
 export class BundleItemController {
   constructor(private readonly bundleItemService: BundleItemService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Post()
   async createBundleItem(
     @Body() dto: BundleItemRequestDto,
@@ -27,7 +37,8 @@ export class BundleItemController {
     return this.bundleItemService.createBundleItem(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Put(':id')
   async updateBundleItem(
     @Param('id', ParseIntPipe) id: number,
@@ -48,7 +59,8 @@ export class BundleItemController {
     return this.bundleItemService.getAllBundleItems();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete(':id')
   async deleteBundleItem(
     @Param('id', ParseIntPipe) id: number,
@@ -56,11 +68,26 @@ export class BundleItemController {
     return this.bundleItemService.deleteBundleItem(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete()
   async deleteListBundleItems(
     @Body() dto: DeleteListBundleItemDto,
   ): Promise<{ count: number }> {
     return this.bundleItemService.deleteListBundleItems(dto);
+  }
+
+  // THÊM UPLOAD HÌNH ẢNH CHO CHI TIẾT SET QUÀ TẶNG
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post(':id/image')
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multerStorage, fileFilter }),
+  )
+  async uploadImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.bundleItemService.uploadImage(id, file);
   }
 }

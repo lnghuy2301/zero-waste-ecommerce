@@ -4,6 +4,7 @@ import { BundleItemHelper } from './bundle-item.helper';
 import { BundleItemRequestDto } from './dto/bundle-item.request.dto';
 import { BundleItemResponseDto } from './dto/bundle-item.response.dto';
 import { DeleteListBundleItemDto } from './dto/delete-list-bundle-item.dto';
+import { Express } from 'express';
 
 @Injectable()
 export class BundleItemService {
@@ -53,5 +54,11 @@ export class BundleItemService {
       );
     }
     return result;
+  }
+
+  // THÊM HÀM UPLOAD HÌNH ẢNH
+  async uploadImage(id: number, file: Express.Multer.File) {
+    await this.bundleItemHelper.checkBundleItem(id);
+    return this.bundleItemRepository.uploadImage(id, file);
   }
 }

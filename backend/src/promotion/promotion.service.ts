@@ -7,7 +7,7 @@ import { PromotionRepository } from './promotion.repository';
 import { PromotionHelper } from './promotion.helper';
 import { PromotionRequestDto } from './dto/promotion.request.dto';
 import { PromotionResponseDto } from './dto/promotion.response.dto';
-import { DeleteListPromotionDto } from './dto/list_promotion_delete.dto';
+import { DeleteListPromotionDto } from './dto/delete-list-promotion.dto';
 
 @Injectable()
 export class PromotionService {
@@ -16,13 +16,11 @@ export class PromotionService {
     private promotionHelper: PromotionHelper,
   ) {}
 
-  async createPromotion(
-    dto: PromotionRequestDto,
-  ): Promise<PromotionResponseDto> {
+  async create(dto: PromotionRequestDto): Promise<PromotionResponseDto> {
     return this.promotionRepository.createPromotion(dto);
   }
 
-  async updatePromotion(
+  async update(
     id: number,
     dto: PromotionRequestDto,
   ): Promise<PromotionResponseDto> {
@@ -30,7 +28,7 @@ export class PromotionService {
     return this.promotionRepository.updatePromotion(id, dto);
   }
 
-  async getPromotionById(id: number): Promise<PromotionResponseDto | null> {
+  async getById(id: number): Promise<PromotionResponseDto | null> {
     const promotion = await this.promotionRepository.getPromotionById(id);
     if (!promotion) {
       throw new NotFoundException('Khuyến mãi không tồn tại');
@@ -38,7 +36,7 @@ export class PromotionService {
     return promotion;
   }
 
-  async getAllPromotions(): Promise<PromotionResponseDto[]> {
+  async getAll(): Promise<PromotionResponseDto[]> {
     const promotions = await this.promotionRepository.getAllPromotions();
     if (promotions.length === 0) {
       throw new BadRequestException('Không có khuyến mãi nào tồn tại');
@@ -46,14 +44,12 @@ export class PromotionService {
     return promotions;
   }
 
-  async deletePromotion(id: number): Promise<PromotionResponseDto | null> {
+  async delete(id: number): Promise<PromotionResponseDto | null> {
     await this.promotionHelper.checkPromotion(id);
     return this.promotionRepository.deletePromotion(id);
   }
 
-  async deleteListPromotions(
-    dto: DeleteListPromotionDto,
-  ): Promise<{ count: number }> {
+  async deleteList(dto: DeleteListPromotionDto): Promise<{ count: number }> {
     const result = await this.promotionRepository.deleteListPromotions(dto);
     if (result.count === 0) {
       throw new NotFoundException('Không tìm thấy khuyến mãi nào để xóa');

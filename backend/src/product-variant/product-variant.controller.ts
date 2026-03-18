@@ -14,12 +14,16 @@ import { ProductVariantRequestDto } from './dto/product-variant.request.dto';
 import { ProductVariantResponseDto } from './dto/product-variant.response.dto';
 import { DeleteListProductVariantDto } from './dto/delete-list-product-variant.dto';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
+import { RolesGuard } from '../auth/auth.role.guard';
+import { Roles } from '../auth/auth.role.decorator';
+import { Role } from '@prisma/client';
 
 @Controller('product-variant')
 export class ProductVariantController {
   constructor(private readonly productVariantService: ProductVariantService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Post()
   async createVariant(
     @Body() dto: ProductVariantRequestDto,
@@ -27,7 +31,8 @@ export class ProductVariantController {
     return this.productVariantService.createVariant(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Put(':id')
   async updateVariant(
     @Param('id', ParseIntPipe) id: number,
@@ -48,7 +53,8 @@ export class ProductVariantController {
     return this.productVariantService.getAllVariants();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete(':id')
   async deleteVariant(
     @Param('id', ParseIntPipe) id: number,
@@ -56,7 +62,8 @@ export class ProductVariantController {
     return this.productVariantService.deleteVariant(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete()
   async deleteListVariants(
     @Body() dto: DeleteListProductVariantDto,

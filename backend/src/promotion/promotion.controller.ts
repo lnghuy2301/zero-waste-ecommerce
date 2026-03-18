@@ -12,55 +12,62 @@ import {
 import { PromotionService } from './promotion.service';
 import { PromotionRequestDto } from './dto/promotion.request.dto';
 import { PromotionResponseDto } from './dto/promotion.response.dto';
-import { DeleteListPromotionDto } from './dto/list_promotion_delete.dto';
+import { DeleteListPromotionDto } from './dto/delete-list-promotion.dto.js';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
+import { RolesGuard } from '../auth/auth.role.guard';
+import { Roles } from '../auth/auth.role.decorator';
+import { Role } from '@prisma/client';
 
 @Controller('promotion')
 export class PromotionController {
   constructor(private readonly promotionService: PromotionService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Post()
-  async createPromotion(
+  async create(
     @Body() dto: PromotionRequestDto,
   ): Promise<PromotionResponseDto> {
-    return this.promotionService.createPromotion(dto);
+    return this.promotionService.create(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Put(':id')
-  async updatePromotion(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: PromotionRequestDto,
   ): Promise<PromotionResponseDto> {
-    return this.promotionService.updatePromotion(id, dto);
+    return this.promotionService.update(id, dto);
   }
 
   @Get(':id')
-  async getPromotionById(
+  async getById(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<PromotionResponseDto | null> {
-    return this.promotionService.getPromotionById(id);
+    return this.promotionService.getById(id);
   }
 
   @Get()
-  async getAllPromotions(): Promise<PromotionResponseDto[]> {
-    return this.promotionService.getAllPromotions();
+  async getAll(): Promise<PromotionResponseDto[]> {
+    return this.promotionService.getAll();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete(':id')
-  async deletePromotion(
+  async delete(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<PromotionResponseDto | null> {
-    return this.promotionService.deletePromotion(id);
+    return this.promotionService.delete(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Delete()
-  async deleteListPromotions(
+  async deleteList(
     @Body() dto: DeleteListPromotionDto,
   ): Promise<{ count: number }> {
-    return this.promotionService.deleteListPromotions(dto);
+    return this.promotionService.deleteList(dto);
   }
 }

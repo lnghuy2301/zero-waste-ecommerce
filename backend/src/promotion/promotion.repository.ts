@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PromotionRequestDto } from './dto/promotion.request.dto';
 import { PromotionResponseDto } from './dto/promotion.response.dto';
-import { DeleteListPromotionDto } from './dto/list_promotion_delete.dto';
+import { DeleteListPromotionDto } from './dto/delete-list-promotion.dto';
 import { plainToInstance } from 'class-transformer';
 import { Prisma } from '@prisma/client';
 
@@ -13,7 +13,7 @@ export class PromotionRepository {
   async createPromotion(
     data: PromotionRequestDto,
   ): Promise<PromotionResponseDto> {
-    const decimalValue = new Prisma.Decimal(String(data.discountValue));
+    const decimalValue = new Prisma.Decimal(data.discountValue);
 
     const created = await this.prismaService.promotion.create({
       data: {
@@ -29,7 +29,7 @@ export class PromotionRepository {
 
     return plainToInstance(PromotionResponseDto, {
       ...created,
-      discountValue: Number(created.discountValue), // convert trước khi instance
+      discountValue: Number(created.discountValue),
     });
   }
 
@@ -43,7 +43,7 @@ export class PromotionRepository {
         code: data.code,
         name: data.name,
         discountType: data.discountType,
-        discountValue: new Prisma.Decimal(String(data.discountValue)),
+        discountValue: new Prisma.Decimal(data.discountValue),
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
         isActive: data.isActive,

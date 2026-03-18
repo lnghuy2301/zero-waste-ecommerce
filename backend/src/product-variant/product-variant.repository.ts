@@ -19,7 +19,7 @@ export class ProductVariantRepository {
         promotionId: data.promotionId,
         sku: data.sku,
         name: data.name,
-        price: new Prisma.Decimal(data.price.toFixed(2)), // an toàn với number
+        price: new Prisma.Decimal(data.price.toFixed(2)),
         stock: data.stock,
         weight: data.weight,
         volume: data.volume,
@@ -29,7 +29,6 @@ export class ProductVariantRepository {
       include: { product: true },
     });
 
-    // Convert Decimal về number trước khi instance để tránh lỗi
     return plainToInstance(ProductVariantResponseDto, {
       ...created,
       price: Number(created.price),

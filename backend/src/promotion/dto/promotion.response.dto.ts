@@ -15,7 +15,7 @@ export class PromotionResponseDto {
   discountType: DiscountType;
 
   @Expose()
-  @Transform(({ value }) => Number(value)) // tự động convert Decimal về number
+  @Transform(({ value }) => Number(value))
   discountValue: number;
 
   @Expose()

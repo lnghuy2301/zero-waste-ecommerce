@@ -16,6 +16,14 @@ export class PromotionHelper {
       throw new NotFoundException('Khuyến mãi không tồn tại');
     }
 
-    return plainToInstance(PromotionResponseDto, promotion);
+    // Fix: check discountValue trước khi transform
+    const safePromotion = {
+      ...promotion,
+      discountValue: promotion.discountValue
+        ? Number(promotion.discountValue)
+        : 0, // fallback nếu undefined
+    };
+
+    return plainToInstance(PromotionResponseDto, safePromotion);
   }
 }
