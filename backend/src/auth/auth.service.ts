@@ -59,4 +59,44 @@ export class AuthService {
       isActive: payload.isActive,
     };
   }
+
+  async validateGoogleUser(googleUser: any) {
+    const { email, fullName } = googleUser;
+
+    let account = await this.prismaService.account.findUnique({
+      where: { email },
+      include: { profile: true } // Lấy kèm profile
+    });
+
+    if (!account) {
+      const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      account = await this.prismaService.account.create({
+        data: {
+          email,
+          password: hashedPassword,
+          profile: {
+            create: {
+              fullName: fullName || 'Google User',
+            }
+          }
+        },
+        include: { profile: true }
+      });
+    }
+
+    const payload = { sub: account.id, email: account.email, role: account.role };
+    const token = this.jwtService.sign(payload);
+
+    return {
+      user: {
+        id: account.id,
+        email: account.email,
+        fullName: account.profile?.fullName,
+        role: account.role
+      },
+      token
+    };
+  }
 }
