@@ -21,7 +21,7 @@ import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { fileFilter, multerStorage } from '../media/config/multer.config'; // import từ media
-import { Express } from 'express';
+import type { Express } from 'express';
 // import type { Multer } from 'multer';
 
 @Controller('bundle-item')

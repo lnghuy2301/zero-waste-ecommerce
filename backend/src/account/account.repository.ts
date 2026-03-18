@@ -7,6 +7,7 @@ import { List_accountRequestDto } from './dto/list_account.request.dto';
 import { UpdateActiveRequestDto } from './dto/update_active.request.dto';
 import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
 import { plainToInstance } from 'class-transformer';
+import {Role} from "@prisma/client";
 
 @Injectable()
 export class AccountRepository {
@@ -19,8 +20,8 @@ export class AccountRepository {
       data: {
         email: account.email,
         password: account.password,
-        role: account.role,
-        isActive: account.isActive,
+        role: Role.CUSTOMER,
+        isActive: account.isActive ?? true,
         profile: {
           create: {
             fullName: account.profile.fullName,
@@ -97,7 +98,7 @@ export class AccountRepository {
         id: id,
       },
     });
-    return account ? plainToInstance(AccountResponseDto, account) : null;
+    return account ? plainToInstance(Account_profileResponseDto, account) : null;
   }
 
   async getAllAccount(): Promise<AccountResponseDto[]> {

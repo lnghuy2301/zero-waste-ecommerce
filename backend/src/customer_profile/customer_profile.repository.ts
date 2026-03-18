@@ -7,10 +7,10 @@ import { CustomerProfileResponseDto } from './dto/customer_profile.response.dto'
 @Injectable()
 export class CustomerProfileRepository {
   constructor(private prismaService: PrismaService) {}
-
   async updateCustomerProfile(
-    id: number,
-    customerProfileRequestDto: CustomerProfileRequestDto,
+      id: number,
+      accountId: number,
+      customerProfileRequestDto: CustomerProfileRequestDto,
   ): Promise<CustomerProfileResponseDto> {
     return this.prismaService.customerProfile.update({
       where: {
@@ -29,7 +29,7 @@ export class CustomerProfileRepository {
   async getCustomerProfileById(
     id: number,
   ): Promise<CustomerProfileResponseDto | null> {
-    return this.prismaService.customerProfile.findUnique({ where: { id: id } });
+    return this.prismaService.customerProfile.findUnique({ where: { accountId: id } });
   }
 
   async getAllCustomerProfiles(): Promise<CustomerProfileResponseDto[]> {

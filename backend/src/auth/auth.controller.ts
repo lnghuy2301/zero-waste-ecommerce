@@ -28,11 +28,11 @@ export class AuthController {
     // Guard tự động chuyển hướng sang trang đăng nhập của Google
   }
 
-  // Google sẽ gọi lại API này sau khi user cấp quyền
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Request() req, @Res() res) {
     const result = await this.authService.validateGoogleUser(req.user);
-    return res.redirect(`http://localhost:5173/login?token=${result.token}`);
+    const frontendUrl = `http://localhost:5173/login?token=${result.token}&id=${result.user.id}&email=${result.user.email}&role=${result.user.role}`;
+    return res.redirect(frontendUrl);
   }
 }

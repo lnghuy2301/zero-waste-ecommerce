@@ -1,5 +1,78 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
+import { reactive, ref, onMounted } from "vue";
+import auth from '../service/auth.ts';
+import { notify } from "@/utils/notifier.ts";
+
+const router = useRouter();
+const route = useRoute();
+
+const form = reactive({
+  data: {
+    email: '',
+    password: '',
+  }
+});
+
+const error = ref('');
+const loading = ref(false);
+
+// --- 1. XỬ LÝ KHI GOOGLE REDIRECT VỀ (Dữ liệu trên URL) ---
+onMounted(() => {
+  const { token, id, email, role } = route.query;
+
+  if (token) {
+    // Lưu Token vào LocalStorage
+    auth.saveToken(token as string);
+
+    // Lưu User info
+    const userData = { id, email, role };
+    localStorage.setItem('user', JSON.stringify(userData));
+
+    notify.success(`Chào mừng ${email}! Đăng nhập thành công.`);
+
+    // Làm sạch URL và về trang chủ
+    router.replace({ query: {} });
+    setTimeout(() => router.push('/'), 500);
+  }
+});
+
+// --- 2. XỬ LÝ ĐĂNG NHẬP BẰNG FORM ---
+const handleSubmit = async () => {
+  loading.value = true;
+  error.value = '';
+
+  try {
+    const response = await auth.Login(form.data.email, form.data.password);
+
+    // Check nếu Backend trả về đúng cấu trúc { token, user: { ... } } hoặc phẳng
+    if (response && response.token) {
+      auth.saveToken(response.token);
+
+      // Lưu thông tin user (tùy vào cấu trúc result của bạn là response hay response.user)
+      const userData = response.user || response;
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      notify.success(`Chào mừng bạn quay trở lại, ${userData.email}!`);
+
+      setTimeout(() => {
+        router.push('/');
+      }, 1000);
+    }
+  } catch (err: any) {
+    let message = err.response?.data?.message || 'Email hoặc mật khẩu không chính xác';
+    if (Array.isArray(message)) message = message.join(', ');
+    notify.error(message);
+  } finally {
+    loading.value = false;
+  }
+}
+
+// --- 3. CÁC HÀM TIỆN ÍCH ---
+const handleGoogleLogin = () => {
+  auth.LoginGoogle();
+};
+
 </script>
 
 <template>
@@ -24,7 +97,7 @@ import { RouterLink } from 'vue-router'
       </div>
 
       <!-- Form nhập liệu -->
-      <form class="space-y-5" @submit.prevent>
+      <form class="space-y-5" @submit.prevent="handleSubmit">
         <!-- Email -->
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">Email</label>
@@ -33,6 +106,8 @@ import { RouterLink } from 'vue-router'
               <span class="material-symbols-outlined text-[20px]">mail</span>
             </div>
             <input
+              v-model="form.data.email"
+              required
               type="email"
               class="block w-full pl-11 pr-4 py-3 bg-[#f8f9fa] border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all sm:text-sm"
               placeholder="your@email.com"
@@ -51,6 +126,8 @@ import { RouterLink } from 'vue-router'
               <span class="material-symbols-outlined text-[20px]">lock</span>
             </div>
             <input
+              v-model="form.data.password"
+              required
               type="password"
               class="block w-full pl-11 pr-11 py-3 bg-[#f8f9fa] border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all sm:text-sm"
               placeholder="••••••••"
@@ -77,7 +154,7 @@ import { RouterLink } from 'vue-router'
         </div>
 
         <!-- Nút Google -->
-        <button type="button" class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors shadow-sm">
+        <button type="button" @click="handleGoogleLogin" class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors shadow-sm">
           <svg class="w-5 h-5" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg">
             <path d="M533.5 272.3c0-18.7-1.6-37.1-4.7-55H272.5v104.7h146.9c-6.1 33.7-25 61.9-52.5 81.3v68h87.9c51.5-47.5 81.1-117.4 81.1-200z" fill="#4285F4"/>
             <path d="M272.5 544.3c73.4 0 135.2-24.1 180.3-65.7l-87.9-68c-24.2 16.3-55.7 25.8-92.4 25.8-70.3 0-129.9-47.5-151.8-111.4H28.4v68.8C73.8 506.7 167.3 544.3 272.5 544.3z" fill="#34A853"/>

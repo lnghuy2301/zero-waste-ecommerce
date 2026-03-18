@@ -14,22 +14,22 @@ export class CustomerProfileService {
   ) {}
 
   async updateCustomerProfile(
-    id: number,
-    idAccount: number,
-    customerProfileRequestDto: CustomerProfileRequestDto,
+      id: number,
+      accountId: number,
+      customerProfileRequestDto: CustomerProfileRequestDto,
   ): Promise<CustomerProfileResponseDto> {
-    await this.customerProfileHelper.check_profile_account(id, idAccount);
+    await this.customerProfileHelper.check_profile_account(id, accountId);
+
     return this.customerProfileRepository.updateCustomerProfile(
-      id,
-      customerProfileRequestDto,
+        id,
+        accountId,
+        customerProfileRequestDto,
     );
   }
 
   async getCustomerProfileById(
     id: number,
-    idAccount: number,
   ): Promise<CustomerProfileResponseDto | null> {
-    await this.customerProfileHelper.check_profile_account(id, idAccount);
     return this.customerProfileRepository.getCustomerProfileById(id);
   }
 

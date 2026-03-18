@@ -31,14 +31,12 @@ export class CustomerProfileController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get(':id/profile/:idAccount')
+  @Get(':accountId/profile')
   async getCustomerProfileById(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('idAccount', ParseIntPipe) idAccount: number,
+    @Param('accountId', ParseIntPipe) accountId: number,
   ): Promise<CustomerProfileResponseDto | null> {
     return await this.customerProfileService.getCustomerProfileById(
-      id,
-      idAccount,
+        accountId,
     );
   }
 
