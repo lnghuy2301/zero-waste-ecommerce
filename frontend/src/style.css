@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #6b8f24;
+  --color-background-light: #f7f8f6;
+  --color-background-dark: #1b1f13;
+  --font-display: "Inter", sans-serif;
+}
+
+/* Ẩn thanh cuộn (scrollbar) */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
