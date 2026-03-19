@@ -1,11 +1,61 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Caterogy } from '../service/caterogy.ts' // Đường dẫn file api.ts của bạn
+import { Caterogy } from '../service/caterogy.ts'
 
 const categories = ref<any[]>([])
 const isLoading = ref(true)
 
+// --- LOGIC SLIDER ---
+const currentPage = ref(0)
+const itemsPerPage = 3
+
+const chunkedCategories = computed(() => {
+  const chunks = []
+  for (let i = 0; i < categories.value.length; i += itemsPerPage) {
+    chunks.push(categories.value.slice(i, i + itemsPerPage))
+  }
+  return chunks
+})
+
+const totalPages = computed(() => chunkedCategories.value.length)
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value - 1) {
+    currentPage.value++
+  } else {
+    currentPage.value = 0
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 0) {
+    currentPage.value--
+  } else {
+    currentPage.value = totalPages.value - 1
+  }
+}
+
+// --- LOGIC AUTO-PLAY ---
+const autoPlayInterval = ref<ReturnType<typeof setInterval> | null>(null)
+
+const startAutoPlay = () => {
+  if (autoPlayInterval.value) {
+    clearInterval(autoPlayInterval.value)
+  }
+  autoPlayInterval.value = setInterval(() => {
+    nextPage()
+  }, 3000)
+}
+
+const stopAutoPlay = () => {
+  if (autoPlayInterval.value) {
+    clearInterval(autoPlayInterval.value)
+    autoPlayInterval.value = null
+  }
+}
+
+// --- API ---
 const fetchCategories = async () => {
   try {
     isLoading.value = true
@@ -18,7 +68,6 @@ const fetchCategories = async () => {
   }
 }
 
-// Khai báo địa chỉ server backend của bạn (thường là 3000)
 const BACKEND_URL = 'http://localhost:3000'
 
 const getImageUrl = (imagePath: string | null) => {
@@ -30,6 +79,11 @@ const getImageUrl = (imagePath: string | null) => {
 
 onMounted(() => {
   fetchCategories()
+  startAutoPlay()
+})
+
+onUnmounted(() => {
+  stopAutoPlay()
 })
 </script>
 
@@ -67,27 +121,62 @@ onMounted(() => {
         <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <RouterLink
-          v-for="category in categories"
-          :key="category.id"
-          :to="`/category/${category.id}`"
-          class="group relative overflow-hidden rounded-xl aspect-[4/3] md:aspect-square cursor-pointer shadow-sm"
+      <div v-else-if="categories.length > 0" class="relative px-4 md:px-20">
+
+        <button
+          @click="prevPage"
+          class="absolute -left-2 md:left-0 top-1/2 -translate-y-1/2 z-30 size-14 bg-white/80 backdrop-blur-sm rounded-full border-primary/20 flex items-center justify-center text-primary hover:bg-primary/90 hover:text-white hover:border-transparent transition-all duration-300 ease-in-out hover:scale-125 hover:shadow-xl"
         >
-          <img
-            :alt="category.name"
-            class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            :src="getImageUrl(category.image)"
-          />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent group-hover:from-black/90 transition-colors"></div>
-          <div class="absolute bottom-8 left-8">
-            <h3 class="text-2xl font-bold text-white mb-2">{{ category.name }}</h3>
-            <span class="text-sm font-semibold text-white/90 uppercase tracking-widest border-b-2 border-primary pb-1">Xem Bộ Sưu Tập</span>
+          <span class="material-symbols-outlined text-2xl">chevron_left</span>
+        </button>
+
+        <div
+          class="overflow-hidden py-8"
+          @mouseenter="stopAutoPlay"
+          @mouseleave="startAutoPlay"
+        >
+          <div
+            class="flex transition-transform duration-700 ease-in-out"
+            :style="{ transform: `translateX(-${currentPage * 100}%)` }"
+          >
+            <div
+              v-for="(group, index) in chunkedCategories"
+              :key="index"
+              class="w-full shrink-0 px-2"
+            >
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                <RouterLink
+                  v-for="category in group"
+                  :key="category.id"
+                  :to="`/category/${category.id}`"
+                  class="group/card relative overflow-hidden rounded-2xl aspect-[4/5] cursor-pointer shadow-md hover:shadow-2xl transition-all"
+                >
+                  <img
+                    :alt="category.name"
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
+                    :src="getImageUrl(category.image)"
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent group-hover/card:from-black/80 transition-colors duration-500"></div>
+
+                  <div class="absolute bottom-8 left-8 right-8">
+                    <h3 class="text-3xl font-bold text-white mb-3">{{ category.name }}</h3>
+                    <span class="text-sm font-bold text-white/90 uppercase tracking-widest border-b-2 border-primary pb-1">Xem Bộ Sưu Tập</span>
+                  </div>
+                </RouterLink>
+              </div>
+            </div>
           </div>
-        </RouterLink>
+        </div>
+
+        <button
+          @click="nextPage"
+          class="absolute -right-2 md:right-0 top-1/2 -translate-y-1/2 z-30 size-14 bg-white/80 backdrop-blur-sm rounded-full border-primary/20 flex items-center justify-center text-primary hover:bg-primary/90 hover:text-white hover:border-transparent transition-all duration-300 ease-in-out hover:scale-125 hover:shadow-xl"
+        >
+          <span class="material-symbols-outlined text-2xl">chevron_right</span>
+        </button>
       </div>
 
-      <div v-if="!isLoading && categories.length === 0" class="text-center text-slate-500 py-10">
+      <div v-else class="text-center text-slate-500 py-10">
         Chưa có danh mục sản phẩm nào được tạo.
       </div>
     </section>
@@ -98,14 +187,6 @@ onMounted(() => {
           <div>
             <h2 class="text-3xl font-bold mb-2 text-slate-900">Sản Phẩm Mới</h2>
             <p class="text-slate-500">Những sự bổ sung mới nhất cho danh mục thân thiện với môi trường</p>
-          </div>
-          <div class="hidden md:flex gap-3">
-            <button class="size-10 flex items-center justify-center rounded-full border border-slate-200 hover:border-primary hover:text-primary transition-colors">
-              <span class="material-symbols-outlined">chevron_left</span>
-            </button>
-            <button class="size-10 flex items-center justify-center rounded-full border border-slate-200 hover:border-primary hover:text-primary transition-colors">
-              <span class="material-symbols-outlined">chevron_right</span>
-            </button>
           </div>
         </div>
 
