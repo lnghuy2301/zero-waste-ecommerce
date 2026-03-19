@@ -37,8 +37,8 @@ export class ProductService {
     return product;
   }
 
-  async getAllProducts(): Promise<ProductResponseDto[]> {
-    const products = await this.productRepository.getAllProducts();
+  async getAllProducts(categoryId?: number): Promise<ProductResponseDto[]> {
+    const products = await this.productRepository.getAllProducts(categoryId);
     if (products.length === 0) {
       throw new BadRequestException('Không có sản phẩm nào tồn tại');
     }
@@ -60,7 +60,6 @@ export class ProductService {
     return result;
   }
 
-  // THÊM HÀM UPLOAD MAIN IMAGE
   async uploadMainImage(id: number, file: Express.Multer.File) {
     await this.productHelper.checkProduct(id);
     return this.productRepository.uploadMainImage(id, file);

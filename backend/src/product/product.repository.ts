@@ -55,8 +55,10 @@ export class ProductRepository {
     });
   }
 
-  async getAllProducts(): Promise<ProductResponseDto[]> {
+  async getAllProducts(categoryId?: number): Promise<ProductResponseDto[]> {
+    const where = categoryId ? { categoryId } : {};
     return this.prismaService.product.findMany({
+      where,
       include: { category: true },
     });
   }
@@ -78,7 +80,6 @@ export class ProductRepository {
     });
   }
 
-  // THÊM HÀM UPLOAD MAIN IMAGE
   async uploadMainImage(id: number, file: Express.Multer.File) {
     const updated = await this.prismaService.product.update({
       where: { id },
