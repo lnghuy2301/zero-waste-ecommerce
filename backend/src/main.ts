@@ -10,42 +10,41 @@ async function bootstrap() {
   dotenv.config();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Cấu hình Prefix cho API (VD: http://localhost:3000/api/v1/products)
   app.setGlobalPrefix('api/v1');
 
-  // ấu hình CORS (Cho phép Frontend gọi vào)
   app.enableCors({
-    origin: true, // Trong môi trường Dev cho phép tất cả, Prod sẽ giới hạn domain
+    origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
 
-  // Cấu hình Validation Pipe (Kiểm soát dữ liệu đầu vào)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Tự động loại bỏ các field không được khai báo trong DTO
-      forbidNonWhitelisted: true, // Báo lỗi nếu gửi lên field thừa
-      transform: true, // Tự động chuyển đổi kiểu dữ liệu (VD: string '1' -> number 1)
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
-  // Cấu hình Swagger (Tài liệu API tự động)
   const config = new DocumentBuilder()
     .setTitle('Zero Waste E-commerce API')
     .setDescription('API documentation for Zero Waste Project')
     .setVersion('1.0')
-    .addBearerAuth() // Hỗ trợ xác thực JWT trong Swagger
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  // Cấu hình để serve file tĩnh từ thư mục 'uploads'
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  // Serve static files từ folder uploads (đặt ở root project)
+  // Đảm bảo folder uploads nằm cùng cấp với src (hoặc điều chỉnh path)
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 
-  // 5. Khởi chạy server
+  // Nếu folder uploads nằm trong src/uploads thì dùng:
+  // app.useStaticAssets(join(__dirname, 'uploads'), { prefix: '/uploads/' });
+
   await app.listen(3000);
   console.log(`Application is running on: ${await app.getUrl()}`);
   console.log(`Swagger Docs is running on: ${await app.getUrl()}/api/docs`);

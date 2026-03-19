@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
   UploadedFile,
   UseInterceptors,
@@ -55,8 +56,11 @@ export class ProductController {
   }
 
   @Get()
-  async getAllProducts(): Promise<ProductResponseDto[]> {
-    return this.productService.getAllProducts();
+  async getAllProducts(
+    @Query('categoryId', new ParseIntPipe({ optional: true }))
+    categoryId?: number,
+  ): Promise<ProductResponseDto[]> {
+    return this.productService.getAllProducts(categoryId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -77,7 +81,6 @@ export class ProductController {
     return this.productService.deleteListProducts(dto);
   }
 
-  // THÊM UPLOAD MAIN IMAGE CHO SẢN PHẨM
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Post(':id/image')
