@@ -36,10 +36,6 @@ export const Auth = {
     localStorage.setItem('token', token);
   },
 
-  getToken() {
-    return localStorage.getItem('token');
-  },
-
   async logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

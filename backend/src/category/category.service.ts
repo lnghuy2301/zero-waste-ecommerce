@@ -16,19 +16,22 @@ export class CategoryService {
   constructor(
     private categoryRepository: CategoryRepository,
     private categoryHelper: CategoryHelper,
-    private accountHelper: AccountHelper,
   ) {}
 
-  async create(category: CategoryRequestDto): Promise<CategoryResponseDto> {
-    return this.categoryRepository.createCategory(category);
+  async create(category: CategoryRequestDto, file?: Express.Multer.File): Promise<CategoryResponseDto> {
+    const imagePath = file ? `/uploads/${file.filename}` : undefined;
+    return this.categoryRepository.createCategory(category, imagePath);
   }
 
   async update(
-    id: number,
-    category: CategoryRequestDto,
+      id: number,
+      category: CategoryRequestDto,
+      file?: Express.Multer.File,
   ): Promise<CategoryResponseDto> {
     await this.categoryHelper.checkCategory(id);
-    return this.categoryRepository.updateCategory(id, category);
+    const imagePath = file ? `/uploads/${file.filename}` : undefined;
+
+    return this.categoryRepository.updateCategory(id, category, imagePath);
   }
 
   async getAllCategories(): Promise<CategoryResponseDto[]> {
@@ -56,11 +59,5 @@ export class CategoryService {
       );
     }
     return category;
-  }
-
-  // THÊM HÀM UPLOAD HÌNH ẢNH
-  async uploadImage(id: number, file: Express.Multer.File) {
-    await this.categoryHelper.checkCategory(id);
-    return this.categoryRepository.uploadImage(id, file);
   }
 }

@@ -9,28 +9,34 @@ export class CategoryRepository {
   constructor(private prismaService: PrismaService) {}
 
   async createCategory(
-    category: CategoryRequestDto,
+      category: CategoryRequestDto,
+      imagePath?: string,
   ): Promise<CategoryResponseDto> {
     return this.prismaService.category.create({
       data: {
         name: category.name,
         description: category.description,
+        ...(imagePath && { image: imagePath }), // Nếu có imagePath thì mới nhét cột image vào
       },
     });
   }
 
   async updateCategory(
-    id: number,
-    category: CategoryRequestDto,
+      id: number,
+      category: CategoryRequestDto,
+      imagePath?: string,
   ): Promise<CategoryResponseDto> {
+    const updateData: any = {
+      name: category.name,
+      description: category.description,
+    };
+    if (imagePath) {
+      updateData.image = imagePath;
+    }
+
     return this.prismaService.category.update({
-      where: {
-        id: id,
-      },
-      data: {
-        name: category.name,
-        description: category.description,
-      },
+      where: { id: id },
+      data: updateData,
     });
   }
 
@@ -56,17 +62,5 @@ export class CategoryRepository {
         },
       },
     });
-  }
-
-  // THÊM HÀM UPLOAD HÌNH ẢNH
-  async uploadImage(id: number, file: Express.Multer.File) {
-    const updated = await this.prismaService.category.update({
-      where: { id },
-      data: {
-        image: `/uploads/${file.filename}`,
-      },
-    });
-
-    return updated;
   }
 }

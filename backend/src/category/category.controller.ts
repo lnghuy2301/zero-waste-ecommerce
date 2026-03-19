@@ -26,29 +26,34 @@ import type { Express } from 'express';
 
 @Controller('category')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+  constructor(private readonly categoryService: CategoryService) {
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Post()
+  @UseInterceptors(FileInterceptor('image', {storage: multerStorage, fileFilter}))
   async create(
-    @Body() category: CategoryRequestDto,
+      @Body() category: CategoryRequestDto,
+      @UploadedFile() file?: Express.Multer.File, // Thêm dấu ? vì có thể danh mục không có ảnh
   ): Promise<CategoryResponseDto> {
-    return this.categoryService.create(category);
+    return this.categoryService.create(category, file);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Put(':id/category')
+  @UseInterceptors(FileInterceptor('image', {storage: multerStorage, fileFilter}))
   async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() category: CategoryRequestDto,
+      @Param('id', ParseIntPipe) id: number,
+      @Body() category: CategoryRequestDto,
+      @UploadedFile() file?: Express.Multer.File, // Thêm dấu ?
   ): Promise<CategoryResponseDto> {
-    return this.categoryService.update(id, category);
+    return this.categoryService.update(id, category, file);
   }
 
   @Get()
-  async getCategory(): Promise<CategoryResponseDto[]> {
+  async getAllCategory(): Promise<CategoryResponseDto[]> {
     return this.categoryService.getAllCategories();
   }
 
@@ -56,7 +61,7 @@ export class CategoryController {
   @Roles(Role.ADMIN)
   @Delete(':id/category')
   async delete(
-    @Param('id', ParseIntPipe) id: number,
+      @Param('id', ParseIntPipe) id: number,
   ): Promise<CategoryResponseDto | null> {
     return this.categoryService.delete(id);
   }
@@ -65,22 +70,8 @@ export class CategoryController {
   @Roles(Role.ADMIN)
   @Delete()
   async deleteListCategories(
-    @Body() listCategory: Delete_list_categoryDto,
+      @Body() listCategory: Delete_list_categoryDto,
   ): Promise<{ count: number }> {
     return this.categoryService.deleteList(listCategory);
-  }
-
-  // THÊM UPLOAD HÌNH ẢNH CHO DANH MỤC
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  @Post(':id/image')
-  @UseInterceptors(
-    FileInterceptor('image', { storage: multerStorage, fileFilter }),
-  )
-  async uploadImage(
-    @Param('id', ParseIntPipe) id: number,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    return this.categoryService.uploadImage(id, file);
   }
 }

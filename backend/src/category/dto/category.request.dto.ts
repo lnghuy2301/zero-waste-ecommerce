@@ -8,4 +8,8 @@ export class CategoryRequestDto {
   @IsOptional()
   @IsString()
   description: string | null;
+
+  @IsOptional()
+  @IsString()
+  image: string | null;
 }
