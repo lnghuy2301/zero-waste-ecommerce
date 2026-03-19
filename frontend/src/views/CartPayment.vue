@@ -12,7 +12,7 @@
     <div class="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
 
       <!-- Cột Trái: Giỏ Hàng (Sticky trên màn hình lớn) -->
-      <div class="lg:col-span-4 order-2 lg:order-1 lg:sticky lg:top-24">
+      <div class="lg:col-span-4 order-1 lg:order-1 lg:sticky lg:top-24">
         <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-bold text-slate-900">Giỏ Hàng Của Bạn</h3>
@@ -102,32 +102,36 @@
         </div>
       </div>
 
-      <!-- Cột Phải: Checkout Details -->
+      <!-- Cột Phải: Payment Form -->
       <div class="lg:col-span-8 order-1 lg:order-2">
-        <form class="space-y-10" @submit.prevent>
-          <!-- Step 1: Shipping Information -->
+        <form class="space-y-8" @submit.prevent>
+
+          <!-- Step 1: Info -->
           <section>
             <div class="flex items-center gap-3 mb-6">
               <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#658a22] text-white font-bold text-sm">1</span>
               <h3 class="text-xl font-bold text-slate-900">Thông Tin Giao Hàng</h3>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-6 bg-white p-6 md:p-8 rounded-2xl border border-slate-100 shadow-sm">
+            <!-- NỀN FORM TRẮNG SẠCH SẼ -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-6 bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm">
               <div class="md:col-span-1">
                 <label class="block text-sm font-semibold mb-2 text-slate-800">Họ và Tên</label>
-                <input type="text" class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none" placeholder="Nguyễn Văn A" />
+                <!-- Đã thêm: text-slate-900 placeholder:text-slate-400 -->
+                <input type="text" class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-[#658a22]/20 focus:border-[#658a22] focus:bg-white transition-all text-sm outline-none text-slate-900 placeholder:text-slate-400" placeholder="Nguyễn Văn A" />
               </div>
               <div class="md:col-span-1">
                 <label class="block text-sm font-semibold mb-2 text-slate-800">Số Điện Thoại</label>
-                <input type="tel" class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none" placeholder="0901 234 567" />
+                <input type="tel" class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-[#658a22]/20 focus:border-[#658a22] focus:bg-white transition-all text-sm outline-none text-slate-900 placeholder:text-slate-400" placeholder="0901 234 567" />
               </div>
               <div class="md:col-span-2">
                 <label class="block text-sm font-semibold mb-2 text-slate-800">Địa Chỉ Nhà / Số Nhà</label>
-                <input type="text" class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none" placeholder="123 Đường Số 1" />
+                <input type="text" class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-[#658a22]/20 focus:border-[#658a22] focus:bg-white transition-all text-sm outline-none text-slate-900 placeholder:text-slate-400" placeholder="123 Đường Số 1" />
               </div>
               <div>
                 <label class="block text-sm font-semibold mb-2 text-slate-800">Tỉnh / Thành Phố</label>
-                <select class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none cursor-pointer appearance-none">
-                  <option value="">Chọn Tỉnh/Thành</option>
+                <!-- Select cũng cần text-slate-900 -->
+                <select class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none cursor-pointer appearance-none text-slate-900">
+                  <option value="" class="text-slate-400">Chọn Tỉnh/Thành</option>
                   <option>Hồ Chí Minh</option>
                   <option>Hà Nội</option>
                   <option>Đà Nẵng</option>
@@ -135,8 +139,8 @@
               </div>
               <div>
                 <label class="block text-sm font-semibold mb-2 text-slate-800">Quận / Huyện</label>
-                <select class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none cursor-pointer appearance-none">
-                  <option value="">Chọn Quận/Huyện</option>
+                <select class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none cursor-pointer appearance-none text-slate-900">
+                  <option value="" class="text-slate-400">Chọn Quận/Huyện</option>
                   <option>Quận 1</option>
                   <option>Quận 7</option>
                   <option>Bình Thạnh</option>
@@ -144,20 +148,21 @@
               </div>
               <div class="md:col-span-2">
                 <label class="block text-sm font-semibold mb-2 text-slate-800">Phường / Xã</label>
-                <select class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none cursor-pointer appearance-none">
-                  <option value="">Chọn Phường/Xã</option>
+                <select class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none cursor-pointer appearance-none text-slate-900">
+                  <option value="" class="text-slate-400">Chọn Phường/Xã</option>
                   <option>Phường 5</option>
                   <option>Bến Nghé</option>
                 </select>
               </div>
               <div class="md:col-span-2">
                 <label class="block text-sm font-semibold mb-2 text-slate-800">Ghi Chú Đơn Hàng (Tùy chọn)</label>
-                <textarea rows="3" class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none resize-none" placeholder="Hướng dẫn giao hàng đặc biệt..."></textarea>
+                <!-- Textarea cũng thêm text-slate-900 placeholder:text-slate-400 -->
+                <textarea rows="3" class="w-full rounded-xl border-slate-200 bg-[#f8f9fa] py-3 px-4 focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition-all text-sm outline-none resize-none text-slate-900 placeholder:text-slate-400" placeholder="Hướng dẫn giao hàng đặc biệt..."></textarea>
               </div>
             </div>
           </section>
 
-          <!-- Step 2: Select Payment Method -->
+          <!-- Step 2: Payment -->
           <section>
             <div class="flex items-center gap-3 mb-6">
               <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#658a22] text-white font-bold text-sm">2</span>
@@ -165,16 +170,15 @@
             </div>
 
             <div class="space-y-4">
-              <!-- COD Option -->
-              <label class="flex items-center p-5 border border-slate-200 rounded-2xl bg-white cursor-pointer hover:border-primary/50 transition-all shadow-sm">
-                <input type="radio" name="payment_method" class="h-4 w-4 border-slate-300 text-primary focus:ring-primary accent-[#658a22]" />
+              <label class="flex items-center p-5 border border-slate-200 rounded-2xl bg-white cursor-pointer hover:border-[#658a22]/50 transition-all shadow-sm">
+                <input type="radio" name="payment_method" class="h-4 w-4 border-slate-300 text-[#658a22] focus:ring-[#658a22] accent-[#658a22]" />
                 <div class="ml-4 flex items-center gap-3">
                   <span class="material-symbols-outlined text-[#658a22]">local_shipping</span>
                   <span class="font-bold text-slate-800 text-[15px]">Thanh Toán Khi Nhận Hàng (COD)</span>
                 </div>
               </label>
 
-              <!-- Bank Transfer Option (Selected Style) -->
+              <!-- Khối chuyển khoản -->
               <label class="flex items-center p-5 border-2 border-[#658a22] rounded-2xl bg-white cursor-pointer transition-all shadow-sm">
                 <input type="radio" name="payment_method" checked class="h-4 w-4 border-slate-300 text-primary focus:ring-primary accent-[#658a22]" />
                 <div class="ml-4 flex items-center gap-3">
@@ -183,8 +187,8 @@
                 </div>
               </label>
 
-              <!-- Bank Transfer Info Box -->
               <div class="rounded-2xl border border-[#e5ebd8] bg-[#f8f9f5] p-6 md:p-8 space-y-8 mt-2">
+                <!-- Logos -->
                 <div class="flex flex-wrap items-center justify-center gap-6 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
                   <img alt="Momo" class="h-6 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZzjCYuPP1T9XHsRrfjGsrU7tbV7BXHN8P3OJh0RfGFzJbbcJiqFoq-JMox2NYh6w0XNzzK-3seg9j_bmFiP_DFU6gLC-npBq225JYStVXVZzbBXl7b-xX2JpsXyVxqFIfYPOAO7wDr8ax5FvL5XaTYUNaHmxyXghr5BBl-2311ItY4wt7R0VeQUkVPft_NNXEW-esG3pYsbOb4BaLYlxCFX4xISNrTGVR-e-MUb71tS6gifx938CaUi2WZHkYkNpe6c6-hIlNMYg"/>
                   <img alt="ZaloPay" class="h-5 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5C_zD5-CjIWyZBB3VHfC1grVaxEmLfo7vaAUFxK5gmi2C1VNy-xGI9lweL9ivvA39yOSzy_qYGK0wEJGzAXwwrQ1qB_z8zlALJEqxfJ_aeXNEzL8Ad3IXKmX4azW2oYaEqMVvdufmf9fsCWPcHbISSgx2dvHbyVXmD2m0VzJrmfDtTx8MjJil3II1ejRf0mNlfWAc6AlFJgIdWmyfCJuyMzmDmlznxKigJYQbRG_2Qq_4bcKZHoFF1cu79bSvf9J7T-3aYBWOVDU"/>
@@ -194,7 +198,7 @@
 
                 <div class="flex flex-col md:flex-row gap-8 items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                   <div class="w-40 h-40 flex-shrink-0 bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                    <!-- Mock VietQR Code -->
+                    <!-- QR Code -->
                     <div class="w-full h-full bg-slate-50 flex items-center justify-center relative overflow-hidden rounded-lg">
                       <div class="absolute inset-0 grid grid-cols-4 grid-rows-4 gap-1 p-2 opacity-80">
                         <div class="bg-slate-800"></div><div class="bg-slate-800"></div><div class="bg-white"></div><div class="bg-slate-800"></div>
@@ -240,12 +244,11 @@
             <label class="flex items-start gap-3 cursor-pointer group">
               <input type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary accent-[#658a22]" />
               <span class="text-sm text-slate-600 font-medium">
-                Tôi đồng ý với <a href="#" class="text-[#658a22] hover:underline">Điều Khoản Dịch Vụ</a> và <a href="#" class="text-[#658a22] hover:underline">Chính Sách Đổi Trả</a>.
-              </span>
+                  Tôi đồng ý với <a href="#" class="text-[#658a22] hover:underline">Điều Khoản Dịch Vụ</a> và <a href="#" class="text-[#658a22] hover:underline">Chính Sách Đổi Trả</a>.
+                </span>
             </label>
           </div>
 
-          <!-- Action Button -->
           <button type="submit" class="w-full rounded-2xl bg-[#658a22] hover:bg-[#58791d] py-4 text-center font-bold text-white shadow-lg shadow-primary/20 transition-all active:scale-[0.99] text-lg">
             Xác Nhận Đặt Hàng
           </button>

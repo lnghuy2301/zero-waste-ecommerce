@@ -56,7 +56,8 @@ const handleLogout = () => {
 
         <nav class="hidden md:flex items-center space-x-8">
           <RouterLink to="/" class="text-sm font-semibold hover:text-[#658a22] text-slate-700">Sản phẩm</RouterLink>
-          <RouterLink to="/" class="text-sm font-semibold hover:text-[#658a22] text-slate-700">Khuyến mãi</RouterLink>
+          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">Khuyến mãi</RouterLink>
+          <RouterLink to="/" class="text-sm font-semibold hover:text-primary transition-colors">Về Chúng tôi</RouterLink>
         </nav>
 
         <div class="flex items-center gap-2 sm:gap-4">
@@ -122,14 +123,3 @@ const handleLogout = () => {
     </div>
   </header>
 </template>
-
-<style scoped>
-/* Định nghĩa font Inter cụ thể cho component này */
-.font-inter {
-  font-family: 'Inter', sans-serif;
-}
-
-header {
-  -webkit-backdrop-filter: blur(12px);
-}
-</style>
