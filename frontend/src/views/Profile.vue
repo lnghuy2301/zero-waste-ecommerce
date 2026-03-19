@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue';
 import { Account } from "@/service/account.ts";
-import { profile as ProfileService } from "@/service/profile.ts"; // Đảm bảo import này đúng
+import { profile as ProfileService } from "@/service/profile.ts";
+import { notify } from "@/utils/notifier.ts";
+import {useRouter} from "vue-router"; // Import notify để dùng thông báo đẹp
 
+// --- STATE: PROFILE ---
 const isEditing = ref(false);
 const loading = ref(false);
-
+const router = useRouter();
 const accountInfo = reactive({
   id: null,
   email: '',
@@ -23,14 +26,25 @@ const profile = reactive({
   accountId: null as number | null
 });
 
+// --- STATE: ĐỔI MẬT KHẨU ---
+const isChangingPassword = ref(false);
+const showOldPassword = ref(false);
+const showNewPassword = ref(false);
+const showConfirmPassword = ref(false);
+
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+});
+
+// --- HÀM TẢI DỮ LIỆU ---
 const fetchProfile = async () => {
   const userStorage = localStorage.getItem("user");
   if (!userStorage) return;
 
   try {
     const userData = JSON.parse(userStorage);
-
-    // 1. Gọi API lấy thông tin Account cơ bản
     const accountRes = await Account.getAccount(userData.id);
 
     if (accountRes) {
@@ -38,12 +52,9 @@ const fetchProfile = async () => {
       accountInfo.email = accountRes.email;
       accountInfo.role = accountRes.role;
       accountInfo.isActive = accountRes.isActive;
-      console.log("Email đã lấy được:", accountInfo.email);
+
       try {
         const p = await ProfileService.getCustomerProfile(null, accountRes.id);
-
-        console.log("Dữ liệu profile tải từ API riêng:", p);
-
         if (p) {
           profile.id = p.id;
           profile.fullName = p.fullName || '';
@@ -65,9 +76,10 @@ const fetchProfile = async () => {
   }
 };
 
+// --- HÀM CẬP NHẬT HỒ SƠ ---
 const handleUpdate = async () => {
   if (!profile.accountId || !profile.id) {
-    alert("Không tìm thấy thông tin profile!");
+    notify.error("Không tìm thấy thông tin profile!");
     return;
   }
 
@@ -84,38 +96,105 @@ const handleUpdate = async () => {
     await ProfileService.updateProfile(profile.accountId, profile.id, payload);
 
     isEditing.value = false;
-    alert("Cập nhật thành công!");
+    notify.success("Cập nhật thông tin thành công!");
   } catch (error) {
-    alert("Có lỗi xảy ra khi cập nhật.");
+    notify.error("Có lỗi xảy ra khi cập nhật hồ sơ.");
     console.error(error);
   } finally {
     loading.value = false;
   }
 };
 
+// --- HÀM ĐỔI MẬT KHẨU ---
+const handleChangePassword = async () => {
+  if (passwordForm.newPassword.length < 8) {
+    notify.error("Mật khẩu mới phải có ít nhất 8 ký tự!");
+    return;
+  }
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    notify.error("Mật khẩu xác nhận không trùng khớp!");
+    return;
+  }
 
+  isChangingPassword.value = true;
+  try {
+    // Gọi API đổi mật khẩu thực tế của bạn ở đây:
+    // await Account.changePassword(accountInfo.id, passwordForm.oldPassword, passwordForm.newPassword);
+
+    // Tạm thời dùng timeout để giả lập API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    notify.success("Cập nhật mật khẩu thành công!");
+
+    // Reset form sau khi thành công
+    passwordForm.oldPassword = '';
+    passwordForm.newPassword = '';
+    passwordForm.confirmPassword = '';
+    showOldPassword.value = false;
+    showNewPassword.value = false;
+    showConfirmPassword.value = false;
+  } catch (error: any) {
+    let message = error.response?.data?.message || 'Mật khẩu hiện tại không đúng hoặc có lỗi xảy ra.';
+    notify.error(message);
+  } finally {
+    isChangingPassword.value = false;
+  }
+};
+
+// --- HÀM CUỘN XUỐNG FORM MẬT KHẨU ---
+const scrollToPassword = () => {
+  const el = document.getElementById('password-section');
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Focus vào ô input đầu tiên để tiện gõ luôn
+    setTimeout(() => {
+      document.getElementById('oldPasswordInput')?.focus();
+    }, 500);
+  }
+};
+
+const goToChangePassword = () => {
+  router.push('/change_password');
+};
 onMounted(fetchProfile);
 </script>
 
 <template>
   <div class="min-h-screen bg-[#f8f9fa] py-12 px-4 font-inter">
     <div class="max-w-5xl mx-auto">
+
       <div class="flex justify-between items-end mb-8">
         <div>
           <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Cài đặt tài khoản</h1>
-          <p class="text-slate-500 text-sm mt-1">Quản lý thông tin định danh và hồ sơ cá nhân của bạn.</p>
+          <p class="text-slate-500 text-sm mt-1">Quản lý thông tin định danh và bảo mật của bạn.</p>
         </div>
-        <button
-          @click="isEditing = !isEditing"
-          class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all"
-          :class="isEditing ? 'bg-slate-200 text-slate-700' : 'bg-[#658a22] text-white shadow-lg shadow-[#658a22]/20'"
-        >
-          <span class="material-symbols-outlined text-[20px]">{{ isEditing ? 'close' : 'edit' }}</span>
-          {{ isEditing ? 'Hủy bỏ' : 'Chỉnh sửa hồ sơ' }}
-        </button>
+
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            @click="goToChangePassword"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all bg-[#658a22] text-white shadow-lg shadow-[#658a22]/20 hover:bg-[#58791d] active:scale-[0.98]"
+          >
+            <span class="material-symbols-outlined text-[20px]">lock</span>
+            Đổi mật khẩu
+          </button>
+
+          <button
+            type="button"
+            @click="isEditing = !isEditing"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg active:scale-[0.98]"
+            :class="isEditing
+            ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 shadow-slate-200/50'
+            : 'bg-[#658a22] text-white shadow-[#658a22]/20 hover:bg-[#58791d]'"
+          >
+            <span class="material-symbols-outlined text-[20px]">{{ isEditing ? 'close' : 'edit' }}</span>
+            {{ isEditing ? 'Hủy bỏ' : 'Chỉnh sửa hồ sơ' }}
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
         <div class="space-y-6">
           <div class="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 relative overflow-hidden">
             <div class="absolute top-0 right-0 p-4">
@@ -142,6 +221,7 @@ onMounted(fetchProfile);
         </div>
 
         <div class="lg:col-span-2 space-y-6">
+
           <form @submit.prevent="handleUpdate" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="px-8 py-5 border-b border-slate-50 bg-slate-50/50">
               <h3 class="font-bold text-slate-800 flex items-center gap-2">
@@ -192,4 +272,10 @@ onMounted(fetchProfile);
 
 <style scoped>
 .font-inter { font-family: 'Inter', sans-serif; }
+
+/* Ẩn icon con mắt mặc định trên Edge/IE để fix lỗi 2 con mắt đè nhau */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
 </style>

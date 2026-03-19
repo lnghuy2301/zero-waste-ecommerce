@@ -5,6 +5,8 @@ import auth from '../service/auth.ts';
 import {notify} from "@/utils/notifier.ts";
 
   const router = useRouter();
+  const showPassword = ref(false);
+  const showConfirmPassword = ref(false);
   const data = {
     email: '',
     password: '',
@@ -108,27 +110,43 @@ import {notify} from "@/utils/notifier.ts";
             <div class="relative flex items-center">
               <input
                 v-model="form.data.password"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
                 required
                 class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-[#f8f9fa] focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all pr-12 sm:text-sm"
                 placeholder="Tạo mật khẩu"
               />
-
-              <button type="button" class="absolute right-3 text-slate-400 hover:text-primary transition-colors">
-                <span class="material-symbols-outlined text-[20px]">visibility</span>
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                class="absolute right-3 text-slate-400 hover:text-[#658a22] transition-colors flex items-center"
+              >
+              <span class="material-symbols-outlined text-[20px]">
+                {{ showPassword ? 'visibility_off' : 'visibility' }}
+              </span>
               </button>
             </div>
           </div>
 
           <div>
             <label class="block text-sm font-medium mb-1.5 text-slate-700">Xác nhận Mật khẩu</label>
-            <input
-              v-model="form.data.confirmPassword"
-              required
-              type="password"
-              class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-[#f8f9fa] focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all sm:text-sm"
-              placeholder="Nhập lại mật khẩu"
-            />
+            <div class="relative flex items-center">
+              <input
+                v-model="form.data.confirmPassword"
+                :type="showConfirmPassword ? 'text' : 'password'"
+                required
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-[#f8f9fa] focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all pr-12 sm:text-sm"
+                placeholder="Nhập lại mật khẩu"
+              />
+              <button
+                type="button"
+                @click="showConfirmPassword = !showConfirmPassword"
+                class="absolute right-3 text-slate-400 hover:text-[#658a22] transition-colors flex items-center"
+              >
+              <span class="material-symbols-outlined text-[20px]">
+                {{ showConfirmPassword ? 'visibility_off' : 'visibility' }}
+              </span>
+              </button>
+            </div>
           </div>
 
           <!-- Primary Button -->
@@ -169,5 +187,17 @@ import {notify} from "@/utils/notifier.ts";
 .nature-pattern {
   background-image: radial-gradient(circle at 2px 2px, #e5ebd8 1px, transparent 0);
   background-size: 32px 32px;
+}
+
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
 }
 </style>

@@ -95,10 +95,10 @@ const handleLogout = () => {
                 Hồ sơ cá nhân
               </RouterLink>
 
-              <RouterLink to="/orders" @click="isMenuOpen = false" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
-                <span class="material-symbols-outlined text-[20px]">package_2</span>
-                Đơn hàng của tôi
-              </RouterLink>
+<!--              <RouterLink to="/orders" @click="isMenuOpen = false" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">-->
+<!--                <span class="material-symbols-outlined text-[20px]">package_2</span>-->
+<!--                Đơn hàng của tôi-->
+<!--              </RouterLink>-->
 
               <div class="h-px bg-slate-100 my-1"></div>
 

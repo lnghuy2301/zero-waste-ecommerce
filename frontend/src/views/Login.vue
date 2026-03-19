@@ -6,7 +6,7 @@ import { notify } from "@/utils/notifier.ts";
 
 const router = useRouter();
 const route = useRoute();
-
+const showPassword = ref(false);
 const form = reactive({
   data: {
     email: '',
@@ -121,19 +121,27 @@ const handleGoogleLogin = () => {
             <label class="block text-sm font-medium text-slate-700">Mật khẩu</label>
             <a href="#" class="text-xs text-primary hover:underline font-medium">Quên mật khẩu?</a>
           </div>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <span class="material-symbols-outlined text-[20px]">lock</span>
-            </div>
+
+          <div class="relative flex items-center"> <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <span class="material-symbols-outlined text-[20px]">lock</span>
+          </div>
+
             <input
               v-model="form.data.password"
+              :type="showPassword ? 'text' : 'password'"
               required
-              type="password"
               class="block w-full pl-11 pr-11 py-3 bg-[#f8f9fa] border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all sm:text-sm"
               placeholder="••••••••"
             />
-            <button type="button" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
-              <span class="material-symbols-outlined text-[20px]">visibility</span>
+
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-[#658a22] transition-colors z-10"
+            >
+            <span class="material-symbols-outlined text-[20px]">
+              {{ showPassword ? 'visibility_off' : 'visibility' }}
+            </span>
             </button>
           </div>
         </div>
