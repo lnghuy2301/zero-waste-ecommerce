@@ -86,15 +86,6 @@ const getLowestPrice = (productId: number) => {
       <div class="w-64 hidden lg:block">
         <h3 class="font-bold text-lg mb-4 text-[#658a22]">Danh mục</h3>
         <ul class="space-y-2">
-          <li v-for="cat in categories" :key="cat.id">
-            <RouterLink
-              :to="`/products?category=${cat.id}`"
-              class="block py-2 px-3 text-[#658a22] hover:bg-[#658a22]/10 hover:text-[#58791d] rounded-xl transition-colors font-medium"
-              :class="{ 'bg-[#658a22]/10 font-semibold': route.query.category == cat.id }"
-            >
-              {{ cat.name }}
-            </RouterLink>
-          </li>
           <li>
             <RouterLink
               to="/products"
@@ -102,6 +93,15 @@ const getLowestPrice = (productId: number) => {
               :class="{ 'bg-[#658a22]/10 font-semibold': !route.query.category }"
             >
               Tất cả sản phẩm
+            </RouterLink>
+          </li>
+          <li v-for="cat in categories" :key="cat.id">
+            <RouterLink
+              :to="`/products?category=${cat.id}`"
+              class="block py-2 px-3 text-[#658a22] hover:bg-[#658a22]/10 hover:text-[#58791d] rounded-xl transition-colors font-medium"
+              :class="{ 'bg-[#658a22]/10 font-semibold': route.query.category == cat.id }"
+            >
+              {{ cat.name }}
             </RouterLink>
           </li>
         </ul>
