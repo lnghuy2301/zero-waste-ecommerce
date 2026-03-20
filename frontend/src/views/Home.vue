@@ -148,7 +148,7 @@ onUnmounted(() => {
                 <RouterLink
                   v-for="category in group"
                   :key="category.id"
-                  :to="`/category/${category.id}`"
+                  :to="`/products?category=${category.id}`"
                   class="group/card relative overflow-hidden rounded-2xl aspect-[4/5] cursor-pointer shadow-md hover:shadow-2xl transition-all"
                 >
                   <img
