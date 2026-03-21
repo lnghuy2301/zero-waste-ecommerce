@@ -5,13 +5,16 @@ import { CategoryResponseDto } from './dto/category.response.dto';
 @Injectable()
 export class CategoryHelper {
   constructor(private prismaService: PrismaService) {}
+
   async checkCategory(id: number): Promise<CategoryResponseDto> {
-    const caterogy = await this.prismaService.category.findUnique({
-      where: { id: id },
+    const category = await this.prismaService.category.findUnique({
+      where: { id },
     });
-    if (!caterogy) {
-      throw new NotFoundException(`Danh mục không tìm thấy`);
+
+    if (!category) {
+      throw new NotFoundException('Danh mục không tồn tại');
     }
-    return caterogy;
+
+    return category;
   }
 }

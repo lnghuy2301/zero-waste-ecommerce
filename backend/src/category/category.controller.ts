@@ -20,22 +20,22 @@ import { RolesGuard } from '../auth/auth.role.guard';
 import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { fileFilter, multerStorage } from '../media/config/multer.config'; // import từ media
-import type { Express } from 'express';
-// import type { Multer } from 'multer';
+import { fileFilter, multerStorage } from '../media/config/multer.config';
+import { Express } from 'express';
 
 @Controller('category')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {
-  }
+  constructor(private readonly categoryService: CategoryService) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Post()
-  @UseInterceptors(FileInterceptor('image', {storage: multerStorage, fileFilter}))
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multerStorage, fileFilter }),
+  )
   async create(
-      @Body() category: CategoryRequestDto,
-      @UploadedFile() file?: Express.Multer.File, // Thêm dấu ? vì có thể danh mục không có ảnh
+    @Body() category: CategoryRequestDto,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<CategoryResponseDto> {
     return this.categoryService.create(category, file);
   }
@@ -43,11 +43,13 @@ export class CategoryController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Put(':id/category')
-  @UseInterceptors(FileInterceptor('image', {storage: multerStorage, fileFilter}))
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multerStorage, fileFilter }),
+  )
   async update(
-      @Param('id', ParseIntPipe) id: number,
-      @Body() category: CategoryRequestDto,
-      @UploadedFile() file?: Express.Multer.File, // Thêm dấu ?
+    @Param('id', ParseIntPipe) id: number,
+    @Body() category: CategoryRequestDto,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<CategoryResponseDto> {
     return this.categoryService.update(id, category, file);
   }
@@ -61,7 +63,7 @@ export class CategoryController {
   @Roles(Role.ADMIN)
   @Delete(':id/category')
   async delete(
-      @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<CategoryResponseDto | null> {
     return this.categoryService.delete(id);
   }
@@ -70,8 +72,22 @@ export class CategoryController {
   @Roles(Role.ADMIN)
   @Delete()
   async deleteListCategories(
-      @Body() listCategory: Delete_list_categoryDto,
+    @Body() listCategory: Delete_list_categoryDto,
   ): Promise<{ count: number }> {
     return this.categoryService.deleteList(listCategory);
+  }
+
+  // ENDPOINT UPLOAD ẢNH DANH MỤC RIÊNG
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post(':id/image')
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multerStorage, fileFilter }),
+  )
+  async uploadImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<CategoryResponseDto> {
+    return this.categoryService.uploadImage(id, file);
   }
 }
