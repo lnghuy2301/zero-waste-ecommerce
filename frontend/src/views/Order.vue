@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { notify } from "@/utils/notifier.ts";
 import OrderService from '../service/order.ts';
 import OrderDetailService from '../service/order_detail.ts';
 
@@ -68,43 +69,40 @@ const fetchOrders = async () => {
   loading.value = true;
   try {
     orders.value = await OrderService.getOrdersByUser(userId.value);
-  } catch (error) {
-    console.error("Lỗi tải đơn hàng:", error);
+  } catch (error: any) {
+    // Sửa lại cho rõ lỗi
+    notify.error(error?.message || "Lỗi tải danh sách đơn hàng!");
   } finally {
     loading.value = false;
   }
 };
 
-// ĐÃ CẬP NHẬT: GỌI THÊM API ORDER_DETAIL Ở ĐÂY
 const viewDetail = async (id: number) => {
   loading.value = true;
   try {
-    // 1. Lấy thông tin vỏ đơn hàng
     const orderData = await OrderService.getOrderById(id);
-
-    // 2. Gọi API OrderDetail để lấy ruột đơn hàng
     const orderDetails = await OrderDetailService.getOrderDetailsByOrder(id);
 
-    // 3. Gắn chi tiết vào đơn hàng để hiển thị
     if (orderData) {
       orderData.orderItems = orderDetails || [];
       selectedOrder.value = orderData;
     }
-  } catch (error) {
-    console.error("Lỗi tải chi tiết đơn hàng:", error);
+  } catch (error: any) {
+    notify.error(error?.message || "Lỗi tải chi tiết đơn hàng!");
   } finally {
     loading.value = false;
   }
 };
 
 const handleCancelOrder = async (id: number) => {
+  // Hàm confirm của trình duyệt vẫn giữ nguyên vì nó là dạng popup xác nhận đồng bộ (synchronous)
   const confirmCancel = confirm("Bạn có chắc chắn muốn hủy đơn hàng này không?");
   if (!confirmCancel) return;
 
   isCanceling.value = true;
   try {
     await OrderService.cancelOrder(id);
-    alert("Đã hủy đơn hàng thành công!");
+    notify.success("Đã hủy đơn hàng thành công!");
 
     if (selectedOrder.value && selectedOrder.value.id === id) {
       selectedOrder.value.status = 'CANCELLED';
@@ -114,8 +112,8 @@ const handleCancelOrder = async (id: number) => {
       orders.value[index].status = 'CANCELLED';
     }
   } catch (error) {
-    console.error("Lỗi hủy đơn hàng:", error);
-    alert("Không thể hủy đơn hàng lúc này.");
+    // Gom chung 2 dòng error lại
+    notify.error("Không thể hủy đơn hàng lúc này. Vui lòng thử lại sau!");
   } finally {
     isCanceling.value = false;
   }
@@ -123,9 +121,8 @@ const handleCancelOrder = async (id: number) => {
 
 // --- CÁC HÀM XỬ LÝ ĐIỀU HƯỚNG MỚI ---
 const handleReorder = (order: any) => {
-  // Tránh lỗi nếu orderItems trống
   if (!order.orderItems || order.orderItems.length === 0) {
-    alert("Đơn hàng này không có sản phẩm để mua lại.");
+    notify.error("Đơn hàng này không có sản phẩm để mua lại.");
     return;
   }
 
@@ -135,7 +132,9 @@ const handleReorder = (order: any) => {
   }));
 
   console.log("Đang thêm vào giỏ hàng các sản phẩm:", itemsToReorder);
-  alert("Đã thêm các sản phẩm này vào giỏ hàng của bạn!");
+
+  // Đổi alert thành notify.success
+  notify.success("Đã thêm các sản phẩm này vào giỏ hàng!");
   router.push('/cart');
 };
 
@@ -159,12 +158,15 @@ const closeReviewModal = () => {
 
 const submitReview = async () => {
   if (!reviewContent.value.trim()) {
-    alert("Vui lòng nhập nội dung đánh giá!");
+    // Đổi alert thành notify.warning (nếu notifier của bạn có warning, không thì dùng notify.error)
+    notify.warning ? notify.warning("Vui lòng nhập nội dung đánh giá!") : notify.error("Vui lòng nhập nội dung đánh giá!");
     return;
   }
 
   console.log("Đang gửi đánh giá cho đơn:", orderToReview.value.id);
-  alert("Cảm ơn bạn đã đánh giá đơn hàng!");
+
+  // Đổi alert thành notify.success
+  notify.success("Cảm ơn bạn đã đánh giá đơn hàng!");
   closeReviewModal();
 };
 
