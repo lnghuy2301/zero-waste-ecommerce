@@ -2,16 +2,39 @@
 import { ref, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '@/service/api.ts'
+import CommentService from '@/service/comment.ts'
 
 const route = useRoute()
 const product = ref<any>(null)
 const variants = ref<any[]>([])
 const loading = ref(true)
 
+// --- STATE CHO ĐÁNH GIÁ ---
+const comments = ref<any[]>([])
+const commentTotal = ref(0)
+const isCommentsLoading = ref(false)
+
 const getImageUrl = (path: string | null) => {
   if (!path) return 'https://via.placeholder.com/400x400?text=Không+có+ảnh'
   if (path.startsWith('http://') || path.startsWith('https://')) return path
   return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
+}
+
+const fetchComments = async (id: number) => {
+  isCommentsLoading.value = true
+  try {
+    const response = await CommentService.getComments({ productId: id })
+    const responseData = response.data || response;
+
+    // Gán dữ liệu bình luận
+    comments.value = responseData.data || responseData.items || responseData || [];
+    commentTotal.value = responseData.meta?.total || comments.value.length;
+
+  } catch (error) {
+    console.error("Lỗi khi tải đánh giá:", error)
+  } finally {
+    isCommentsLoading.value = false
+  }
 }
 
 onMounted(async () => {
@@ -26,6 +49,10 @@ onMounted(async () => {
     // Lấy biến thể của sản phẩm này
     const variantRes = await api.get('/product-variant')
     variants.value = variantRes.data.filter((v: any) => v.productId === id)
+
+    // Gọi API Đánh giá
+    fetchComments(id)
+
   } catch (e) {
     console.error(e)
   } finally {
@@ -46,7 +73,6 @@ const lowestPrice = () => {
     <div v-if="loading" class="text-center py-20 text-slate-600">Đang tải...</div>
     <div v-else-if="!product" class="text-center py-20 text-slate-500">Không tìm thấy sản phẩm</div>
     <div v-else>
-      <!-- Breadcrumbs -->
       <nav class="flex items-center gap-2 mb-8 text-sm font-medium text-slate-500">
         <RouterLink to="/" class="hover:text-[#658a22] transition-colors">Trang Chủ</RouterLink>
         <span class="material-symbols-outlined text-sm">chevron_right</span>
@@ -60,14 +86,9 @@ const lowestPrice = () => {
         <span class="text-slate-900 font-semibold">{{ product.name }}</span>
       </nav>
 
-      <div
-        class="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100"
-      >
-        <!-- Cột Trái: Ảnh Sản Phẩm -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100">
         <div class="flex flex-col gap-4">
-          <div
-            class="aspect-square w-full bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center p-8 border border-slate-100"
-          >
+          <div class="aspect-square w-full bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center p-8 border border-slate-100">
             <img
               :src="getImageUrl(product.mainImage)"
               :alt="product.name"
@@ -75,7 +96,6 @@ const lowestPrice = () => {
             />
           </div>
 
-          <!-- Ảnh thumbnail (demo 4 ảnh, nếu có thêm logic lấy từ media sau) -->
           <div class="grid grid-cols-4 gap-4">
             <div
               v-for="i in 4"
@@ -91,7 +111,6 @@ const lowestPrice = () => {
           </div>
         </div>
 
-        <!-- Cột Phải: Thông tin Sản Phẩm -->
         <div class="flex flex-col gap-6 pt-2">
           <div>
             <h1 class="text-4xl font-black tracking-tight text-slate-900">{{ product.name }}</h1>
@@ -111,23 +130,15 @@ const lowestPrice = () => {
 
           <div class="flex flex-col gap-5 py-6 border-y border-slate-100">
             <div class="flex items-center gap-4">
-              <!-- Số lượng -->
-              <div
-                class="flex items-center border border-slate-200 rounded-xl bg-background-light h-12"
-              >
-                <button
-                  class="px-4 h-full text-slate-500 hover:text-[#658a22] transition-colors flex items-center justify-center"
-                >
+              <div class="flex items-center border border-slate-200 rounded-xl bg-background-light h-12">
+                <button class="px-4 h-full text-slate-500 hover:text-[#658a22] transition-colors flex items-center justify-center">
                   <span class="material-symbols-outlined text-[20px]">remove</span>
                 </button>
                 <span class="px-2 w-8 text-center font-semibold text-slate-900">1</span>
-                <button
-                  class="px-4 h-full text-slate-500 hover:text-[#658a22] transition-colors flex items-center justify-center"
-                >
+                <button class="px-4 h-full text-slate-500 hover:text-[#658a22] transition-colors flex items-center justify-center">
                   <span class="material-symbols-outlined text-[20px]">add</span>
                 </button>
               </div>
-              <!-- Nút Thêm Giỏ Hàng -->
               <RouterLink
                 to="/cartpayment"
                 class="flex-1 bg-[#658a22] hover:bg-[#58791d] text-white font-semibold h-12 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98]"
@@ -137,95 +148,111 @@ const lowestPrice = () => {
               </RouterLink>
             </div>
 
-            <button
-              class="flex items-center justify-center gap-2 text-[#658a22] font-semibold text-sm hover:underline transition-all"
-            >
+            <button class="flex items-center justify-center gap-2 text-[#658a22] font-semibold text-sm hover:underline transition-all">
               <span class="material-symbols-outlined text-lg">favorite</span>
               Thêm Vào Danh Sách Yêu Thích
             </button>
           </div>
 
-          <!-- Tabs Thông Tin -->
           <div class="flex flex-col">
             <details class="group border-b border-slate-100" open>
-              <summary
-                class="flex justify-between items-center py-4 cursor-pointer list-none font-semibold text-slate-800 hover:text-[#658a22] transition-colors"
-              >
+              <summary class="flex justify-between items-center py-4 cursor-pointer list-none font-semibold text-slate-800 hover:text-[#658a22] transition-colors">
                 Mô Tả Chi Tiết
-                <span
-                  class="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform"
-                  >expand_more</span
-                >
+                <span class="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform">expand_more</span>
               </summary>
               <div class="pb-5 text-sm text-slate-600 leading-relaxed">
-                {{
-                  product.description ||
-                  'Sản phẩm được làm từ chất liệu thân thiện môi trường, bền bỉ và có thể tái sử dụng lâu dài.'
-                }}
+                {{ product.description || 'Sản phẩm được làm từ chất liệu thân thiện môi trường, bền bỉ và có thể tái sử dụng lâu dài.' }}
               </div>
             </details>
 
             <details class="group border-b border-slate-100">
-              <summary
-                class="flex justify-between items-center py-4 cursor-pointer list-none font-semibold text-slate-800 hover:text-[#658a22] transition-colors"
-              >
+              <summary class="flex justify-between items-center py-4 cursor-pointer list-none font-semibold text-slate-800 hover:text-[#658a22] transition-colors">
                 Thành Phần / Chất Liệu
-                <span
-                  class="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform"
-                  >expand_more</span
-                >
+                <span class="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform">expand_more</span>
               </summary>
               <div class="pb-5 text-sm text-slate-600">
                 <ul class="list-disc pl-5 space-y-1.5">
-                  <li>
-                    Chất liệu chính:
-                    {{ product.material || 'Chất liệu tái chế, thân thiện môi trường' }}
-                  </li>
+                  <li>Chất liệu chính: {{ product.material || 'Chất liệu tái chế, thân thiện môi trường' }}</li>
                   <li>Mức độ thân thiện môi trường: {{ product.ecoFriendliness || 'Cao' }}</li>
-                  <li>
-                    Khả năng tái sử dụng: {{ product.reusability || 'Dùng lâu dài, dễ vệ sinh' }}
-                  </li>
+                  <li>Khả năng tái sử dụng: {{ product.reusability || 'Dùng lâu dài, dễ vệ sinh' }}</li>
                 </ul>
               </div>
             </details>
 
             <details class="group border-b border-slate-100">
-              <summary
-                class="flex justify-between items-center py-4 cursor-pointer list-none font-semibold text-slate-800 hover:text-[#658a22] transition-colors"
-              >
+              <summary class="flex justify-between items-center py-4 cursor-pointer list-none font-semibold text-slate-800 hover:text-[#658a22] transition-colors">
                 Hướng Dẫn Sử Dụng
-                <span
-                  class="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform"
-                  >expand_more</span
-                >
+                <span class="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform">expand_more</span>
               </summary>
               <div class="pb-5 text-sm text-slate-600 leading-relaxed">
-                Sử dụng theo hướng dẫn thông thường. Bảo quản nơi khô ráo, tránh tiếp xúc trực tiếp
-                với nhiệt độ cao để duy trì độ bền.
+                Sử dụng theo hướng dẫn thông thường. Bảo quản nơi khô ráo, tránh tiếp xúc trực tiếp với nhiệt độ cao để duy trì độ bền.
               </div>
             </details>
 
             <details class="group border-b border-slate-100">
-              <summary
-                class="flex justify-between items-center py-4 cursor-pointer list-none font-semibold text-slate-800 hover:text-[#658a22] transition-colors"
-              >
+              <summary class="flex justify-between items-center py-4 cursor-pointer list-none font-semibold text-slate-800 hover:text-[#658a22] transition-colors">
                 Hướng Dẫn Tái Chế
-                <span
-                  class="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform"
-                  >expand_more</span
-                >
+                <span class="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform">expand_more</span>
               </summary>
               <div class="pb-5 text-sm text-slate-600 leading-relaxed">
-                Phân loại rác tái chế theo chất liệu. Có thể tái sử dụng nhiều lần trước khi đưa vào
-                quy trình tái chế.
+                Phân loại rác tái chế theo chất liệu. Có thể tái sử dụng nhiều lần trước khi đưa vào quy trình tái chế.
               </div>
             </details>
           </div>
         </div>
       </div>
 
-      <!-- Sản phẩm liên quan (demo giữ nguyên, sau này lấy thật từ API) -->
-      <section class="mt-20 mb-10">
+      <section class="mt-12 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100">
+        <h3 class="text-2xl font-bold mb-6 text-slate-900">
+          Đánh Giá Sản Phẩm ({{ commentTotal }})
+        </h3>
+
+        <div v-if="isCommentsLoading" class="text-center py-10 text-slate-500">
+          Đang tải đánh giá...
+        </div>
+
+        <div v-else-if="comments.length === 0" class="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+          <p class="text-slate-500">Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá sản phẩm này sau khi mua hàng!</p>
+        </div>
+
+        <div v-else class="space-y-6">
+          <div
+            v-for="comment in comments"
+            :key="comment.id"
+            class="border-b border-slate-100 pb-6 last:border-0 last:pb-0"
+          >
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-500 flex-shrink-0 overflow-hidden border border-slate-200">
+                <img v-if="comment.account?.profile?.avatar" :src="getImageUrl(comment.account.profile.avatar)" alt="avatar" class="w-full h-full object-cover">
+                <span v-else>{{ (comment.account?.profile?.fullName || comment.account?.email || 'K').charAt(0).toUpperCase() }}</span>
+              </div>
+
+              <div class="flex-1">
+                <div class="flex justify-between items-center mb-1">
+                  <h4 class="font-bold text-slate-800">
+                    {{ comment.account?.profile?.fullName || comment.account?.email || 'Khách hàng' }}
+                  </h4>
+                  <span class="text-xs text-slate-400">
+                    {{ new Date(comment.createdAt).toLocaleDateString('vi-VN') }}
+                  </span>
+                </div>
+
+                <div class="flex gap-1 text-[#658a22] text-sm mb-3">
+                  <span v-for="star in 5" :key="star" :class="star <= comment.rating ? 'text-[#658a22]' : 'text-slate-200'">
+                    ★
+                  </span>
+                </div>
+
+                <p class="text-slate-600 text-[15px] leading-relaxed">
+                  {{ comment.content }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-12 mb-10">
         <h3 class="text-2xl font-bold mb-8 text-slate-900">Sản Phẩm Mua Kèm</h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
           <RouterLink
@@ -240,11 +267,7 @@ const lowestPrice = () => {
               />
             </div>
             <div>
-              <p
-                class="font-bold text-slate-900 text-sm mb-1 group-hover:text-[#658a22] transition-colors"
-              >
-                Hộp Thủy Tinh
-              </p>
+              <p class="font-bold text-slate-900 text-sm mb-1 group-hover:text-[#658a22] transition-colors">Hộp Thủy Tinh</p>
               <p class="text-[#658a22] font-semibold">120.000đ</p>
             </div>
           </RouterLink>
@@ -261,11 +284,7 @@ const lowestPrice = () => {
               />
             </div>
             <div>
-              <p
-                class="font-bold text-slate-900 text-sm mb-1 group-hover:text-[#658a22] transition-colors"
-              >
-                Xà Phòng Sả Chanh
-              </p>
+              <p class="font-bold text-slate-900 text-sm mb-1 group-hover:text-[#658a22] transition-colors">Xà Phòng Sả Chanh</p>
               <p class="text-[#658a22] font-semibold">85.000đ</p>
             </div>
           </RouterLink>
@@ -282,11 +301,7 @@ const lowestPrice = () => {
               />
             </div>
             <div>
-              <p
-                class="font-bold text-slate-900 text-sm mb-1 group-hover:text-[#658a22] transition-colors"
-              >
-                Khăn Mặt Bông Hữu Cơ
-              </p>
+              <p class="font-bold text-slate-900 text-sm mb-1 group-hover:text-[#658a22] transition-colors">Khăn Mặt Bông Hữu Cơ</p>
               <p class="text-[#658a22] font-semibold">50.000đ</p>
             </div>
           </RouterLink>
@@ -303,11 +318,7 @@ const lowestPrice = () => {
               />
             </div>
             <div>
-              <p
-                class="font-bold text-slate-900 text-sm mb-1 group-hover:text-[#658a22] transition-colors"
-              >
-                Ống Hút Thép Không Gỉ
-              </p>
+              <p class="font-bold text-slate-900 text-sm mb-1 group-hover:text-[#658a22] transition-colors">Ống Hút Thép Không Gỉ</p>
               <p class="text-[#658a22] font-semibold">140.000đ</p>
             </div>
           </RouterLink>

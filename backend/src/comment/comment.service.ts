@@ -76,19 +76,24 @@ export class CommentService {
 
     return this.prisma.comment.findMany({
       where: {
-        productId,
-        accountId,
+        productId: productId ? Number(productId) : undefined,
+        accountId: accountId ? Number(accountId) : undefined,
       },
       include: {
         account: {
-          select: { id: true, email: true },
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+              }
+            }
+          },
         },
         product: {
           select: { id: true, name: true, slug: true },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
       },
     });
   }

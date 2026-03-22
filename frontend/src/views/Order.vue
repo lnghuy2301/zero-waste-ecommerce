@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { notify } from "@/utils/notifier.ts";
 import OrderService from '../service/order.ts';
 import OrderDetailService from '../service/order_detail.ts';
+import CommentService from '../service/comment.ts';
 
 const router = useRouter();
 const userId = ref<number | null>(null);
@@ -18,6 +19,9 @@ const isReviewModalOpen = ref(false);
 const orderToReview = ref<any>(null);
 const reviewContent = ref('');
 const reviewRating = ref(5);
+const selectedItemToReview = ref<any>(null);
+const selectedProductToReview = ref<number | null>(null);
+const isSubmittingReview = ref(false);
 
 // --- CẤU HÌNH CÁC TABS ---
 const activeTab = ref<string>('ALL');
@@ -70,7 +74,6 @@ const fetchOrders = async () => {
   try {
     orders.value = await OrderService.getOrdersByUser(userId.value);
   } catch (error: any) {
-    // Sửa lại cho rõ lỗi
     notify.error(error?.message || "Lỗi tải danh sách đơn hàng!");
   } finally {
     loading.value = false;
@@ -95,7 +98,6 @@ const viewDetail = async (id: number) => {
 };
 
 const handleCancelOrder = async (id: number) => {
-  // Hàm confirm của trình duyệt vẫn giữ nguyên vì nó là dạng popup xác nhận đồng bộ (synchronous)
   const confirmCancel = confirm("Bạn có chắc chắn muốn hủy đơn hàng này không?");
   if (!confirmCancel) return;
 
@@ -112,14 +114,12 @@ const handleCancelOrder = async (id: number) => {
       orders.value[index].status = 'CANCELLED';
     }
   } catch (error) {
-    // Gom chung 2 dòng error lại
     notify.error("Không thể hủy đơn hàng lúc này. Vui lòng thử lại sau!");
   } finally {
     isCanceling.value = false;
   }
 };
 
-// --- CÁC HÀM XỬ LÝ ĐIỀU HƯỚNG MỚI ---
 const handleReorder = (order: any) => {
   if (!order.orderItems || order.orderItems.length === 0) {
     notify.error("Đơn hàng này không có sản phẩm để mua lại.");
@@ -131,9 +131,6 @@ const handleReorder = (order: any) => {
     quantity: item.quantity
   }));
 
-  console.log("Đang thêm vào giỏ hàng các sản phẩm:", itemsToReorder);
-
-  // Đổi alert thành notify.success
   notify.success("Đã thêm các sản phẩm này vào giỏ hàng!");
   router.push('/cart');
 };
@@ -143,9 +140,11 @@ const goToProduct = (productId: number | undefined) => {
   router.push(`/product/${productId}`);
 };
 
-// --- CÁC HÀM XỬ LÝ ĐÁNH GIÁ ---
-const openReviewModal = (order: any) => {
+const openReviewModalForProduct = (order: any, item: any) => {
   orderToReview.value = order;
+  selectedItemToReview.value = item;
+  selectedProductToReview.value = item.variant?.product?.id || item.variant?.productId;
+
   reviewContent.value = '';
   reviewRating.value = 5;
   isReviewModalOpen.value = true;
@@ -154,27 +153,42 @@ const openReviewModal = (order: any) => {
 const closeReviewModal = () => {
   isReviewModalOpen.value = false;
   orderToReview.value = null;
+  selectedProductToReview.value = null;
+  selectedItemToReview.value = null;
 };
 
 const submitReview = async () => {
   if (!reviewContent.value.trim()) {
-    // Đổi alert thành notify.warning (nếu notifier của bạn có warning, không thì dùng notify.error)
-    notify.warning ? notify.warning("Vui lòng nhập nội dung đánh giá!") : notify.error("Vui lòng nhập nội dung đánh giá!");
+    notify.error("Vui lòng nhập nội dung đánh giá!");
     return;
   }
 
-  console.log("Đang gửi đánh giá cho đơn:", orderToReview.value.id);
+  if (!selectedProductToReview.value) {
+    notify.error("Không xác định được sản phẩm cần đánh giá!");
+    return;
+  }
 
-  // Đổi alert thành notify.success
-  notify.success("Cảm ơn bạn đã đánh giá đơn hàng!");
-  closeReviewModal();
+  isSubmittingReview.value = true;
+  try {
+    await CommentService.createComment(selectedProductToReview.value, {
+      content: reviewContent.value,
+      rating: reviewRating.value,
+    });
+
+    notify.success("Cảm ơn bạn đã đánh giá sản phẩm!");
+    closeReviewModal();
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.message || "Có lỗi xảy ra khi gửi đánh giá!";
+    notify.error(errorMsg);
+  } finally {
+    isSubmittingReview.value = false;
+  }
 };
 
 const backToList = () => {
   selectedOrder.value = null;
 };
 
-// --- LIFECYCLE HOOKS ---
 onMounted(() => {
   const userStr = localStorage.getItem('user');
   if (userStr) {
@@ -255,14 +269,6 @@ onMounted(() => {
               </button>
 
               <button
-                v-if="selectedOrder.status === 'COMPLETED'"
-                @click="openReviewModal(selectedOrder)"
-                class="px-4 py-1.5 bg-green-500 text-white hover:bg-green-600 rounded-md text-sm font-semibold transition-colors shadow-sm"
-              >
-                Đánh giá đơn hàng
-              </button>
-
-              <button
                 v-if="['COMPLETED', 'CANCELLED'].includes(selectedOrder.status)"
                 @click="handleReorder(selectedOrder)"
                 class="px-4 py-1.5 border border-green-500 text-green-600 hover:bg-green-50 rounded-md text-sm font-semibold transition-colors"
@@ -276,36 +282,50 @@ onMounted(() => {
             <div
               v-for="step in [0, 1, 2, 3]"
               :key="step"
-              :class="['w-8 h-8 rounded-full flex items-center justify-center z-10 font-bold', getStatusInfo(selectedOrder.status).step >= step ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500']"
+              :class="['w-8 h-8 rounded-full flex items-center justify-center z-10 font-bold transition-colors duration-300', getStatusInfo(selectedOrder.status).step >= step ? 'bg-green-500 text-white shadow-md' : 'bg-gray-200 text-gray-500']"
             >
               {{ step + 1 }}
             </div>
-            <div class="absolute h-1 bg-gray-200 left-8 right-8 top-3.5 z-0"></div>
-            <div
-              class="absolute h-1 bg-green-500 left-8 top-3.5 z-0 transition-all duration-500"
-              :style="{ width: `${(getStatusInfo(selectedOrder.status).step / 3) * 85}%` }"
-            ></div>
+
+            <div class="absolute h-1 bg-gray-200 left-8 right-8 top-3.5 z-0 overflow-hidden rounded-full">
+              <div
+                class="h-full bg-green-500 transition-all duration-500 ease-in-out"
+                :style="{ width: `${(getStatusInfo(selectedOrder.status).step / 3) * 100}%` }"
+              ></div>
+            </div>
           </div>
         </div>
 
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             <h3 class="font-bold mb-4 text-gray-800">Sản phẩm đã đặt</h3>
-            <div class="space-y-2">
+            <div class="space-y-4">
               <div
                 v-for="item in selectedOrder.orderItems"
                 :key="item.id"
                 @click="goToProduct(item.variant?.product?.id || item.variant?.productId)"
-                class="flex gap-4 items-center border-b border-gray-100 pb-3 last:border-0 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors group"
+                class="flex gap-4 items-start border-b border-gray-100 pb-4 last:border-0 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors group"
               >
                 <div class="w-16 h-16 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 border group-hover:border-green-300 transition-colors">
                   <img :src="item.variant?.product?.mainImage || '/placeholder.jpg'" alt="product" class="w-full h-full object-cover" />
                 </div>
+
                 <div class="flex-1">
                   <p class="font-medium text-sm text-gray-800 group-hover:text-green-600 transition-colors">{{ item.variant?.name }}</p>
-                  <p class="text-xs text-gray-500 mt-1">SL: x{{ item.quantity }}</p>
+                  <p class="font-semibold text-sm mt-1">{{ formatCurrency(item.price) }}</p>
+
+                  <div class="flex items-center justify-between mt-2">
+                    <p class="text-xs text-gray-500">SL: x{{ item.quantity }}</p>
+
+                    <button
+                      v-if="selectedOrder.status === 'COMPLETED'"
+                      @click.stop="openReviewModalForProduct(selectedOrder, item)"
+                      class="px-3 py-1 bg-white border border-green-500 text-green-600 hover:bg-green-50 rounded shadow-sm text-xs font-semibold transition-colors"
+                    >
+                      Đánh giá
+                    </button>
+                  </div>
                 </div>
-                <p class="font-semibold text-sm">{{ formatCurrency(item.price) }}</p>
               </div>
               <div v-if="!selectedOrder.orderItems || selectedOrder.orderItems.length === 0" class="text-gray-400 text-sm italic">
                 Chưa có sản phẩm nào trong đơn hàng này.
@@ -365,14 +385,6 @@ onMounted(() => {
               </button>
 
               <button
-                v-if="order.status === 'COMPLETED'"
-                @click="openReviewModal(order)"
-                class="px-4 py-1.5 bg-green-500 text-white hover:bg-green-600 rounded-md text-sm font-medium transition-colors shadow-sm"
-              >
-                Đánh giá
-              </button>
-
-              <button
                 v-if="['COMPLETED', 'CANCELLED'].includes(order.status)"
                 @click="handleReorder(order)"
                 class="px-4 py-1.5 border border-green-500 text-green-600 hover:bg-green-50 rounded-md text-sm font-medium transition-colors"
@@ -391,9 +403,19 @@ onMounted(() => {
 
     <div v-if="isReviewModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fadeIn px-4">
       <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden p-6 relative">
-        <h2 class="text-xl font-bold mb-4 text-gray-800">Đánh giá đơn hàng #{{ orderToReview?.code }}</h2>
+        <h2 class="text-xl font-bold mb-5 text-gray-800">Đánh giá sản phẩm</h2>
 
-        <div class="mb-4">
+        <div class="mb-5 p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-4">
+          <div class="w-14 h-14 bg-white rounded-lg border border-gray-100 overflow-hidden flex-shrink-0">
+            <img :src="selectedItemToReview?.variant?.product?.mainImage || '/placeholder.jpg'" alt="img" class="w-full h-full object-cover">
+          </div>
+          <div>
+            <p class="text-sm font-bold text-gray-800 line-clamp-2">{{ selectedItemToReview?.variant?.name }}</p>
+            <p class="text-xs text-gray-500 mt-1">Thuộc đơn: {{ orderToReview?.code }}</p>
+          </div>
+        </div>
+
+        <div class="mb-5">
           <label class="block text-sm font-medium text-gray-700 mb-2">Chất lượng sản phẩm</label>
           <div class="flex gap-2">
             <button
@@ -420,15 +442,17 @@ onMounted(() => {
         <div class="flex justify-end gap-3">
           <button
             @click="closeReviewModal"
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            :disabled="isSubmittingReview"
+            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
           >
             Trở lại
           </button>
           <button
             @click="submitReview"
-            class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition shadow"
+            :disabled="isSubmittingReview"
+            class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition shadow disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Gửi đánh giá
+            {{ isSubmittingReview ? 'Đang gửi...' : 'Gửi đánh giá' }}
           </button>
         </div>
       </div>
