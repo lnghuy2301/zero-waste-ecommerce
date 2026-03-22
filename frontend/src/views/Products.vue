@@ -6,6 +6,7 @@ import api from '@/service/api.ts'
 const products = ref<any[]>([])
 const categories = ref<any[]>([])
 const variantMap = ref<Map<number, any[]>>(new Map())
+const promotions = ref<any[]>([]) // Lấy tất cả promotion để tính giảm
 const loading = ref(true)
 const route = useRoute()
 const searchQuery = ref('')
@@ -35,10 +36,15 @@ const fetchProducts = async () => {
     let url = '/product'
     if (categoryId) url += `?categoryId=${categoryId}`
 
-    const [prodRes, variantRes] = await Promise.all([api.get(url), api.get('/product-variant')])
+    const [prodRes, variantRes, promoRes] = await Promise.all([
+      api.get(url),
+      api.get('/product-variant'),
+      api.get('/promotion'),
+    ])
 
     products.value = prodRes.data
     const allVariants = variantRes.data
+    promotions.value = promoRes.data
 
     const map = new Map<number, any[]>()
     const initialSelected = new Map<number, any>()
@@ -78,6 +84,22 @@ const handleVariantChange = (productId: number, variant: any) => {
   selectedVariants.value.set(productId, variant)
 }
 
+const getDiscountedPrice = (variant: any) => {
+  if (!variant.promotionId) return variant.price
+
+  const promo = promotions.value.find((p) => p.id === variant.promotionId)
+  if (!promo || !promo.isActive) return variant.price
+
+  let finalPrice = Number(variant.price)
+  if (promo.discountType === 'PERCENT') {
+    finalPrice *= 1 - Number(promo.discountValue) / 100
+  } else if (promo.discountType === 'FIXED_AMOUNT') {
+    finalPrice -= Number(promo.discountValue)
+  }
+
+  return Math.max(0, finalPrice)
+}
+
 watch(
   () => route.query.category,
   () => {
@@ -92,7 +114,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- Nhúng font Inter để giao diện mượt mà hơn -->
   <main class="max-w-7xl mx-auto px-4 py-10 font-sans selection:bg-red-100 selection:text-red-600">
     <div class="flex flex-col lg:flex-row gap-10">
       <!-- Sidebar Danh mục -->
@@ -222,18 +243,33 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Giá và Nút bấm -->
+              <!-- Giá (gạch ngang giá gốc nếu có giảm) -->
               <div class="mt-auto pt-5 border-t border-slate-50 flex items-center justify-between">
                 <div class="flex flex-col">
                   <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest"
                     >Giá bán</span
                   >
-                  <span class="text-2xl font-black text-red-600">
-                    <template v-if="selectedVariants.has(product.id)">
+                  <div class="flex items-baseline gap-2">
+                    <span
+                      v-if="
+                        selectedVariants.has(product.id) &&
+                        selectedVariants.get(product.id).promotionId
+                      "
+                      class="text-sm text-slate-400 line-through"
+                    >
                       {{ Number(selectedVariants.get(product.id).price).toLocaleString('vi-VN') }}đ
-                    </template>
-                    <template v-else>Liên hệ</template>
-                  </span>
+                    </span>
+                    <span class="text-2xl font-black text-red-600">
+                      <template v-if="selectedVariants.has(product.id)">
+                        {{
+                          Number(
+                            getDiscountedPrice(selectedVariants.get(product.id)),
+                          ).toLocaleString('vi-VN')
+                        }}đ
+                      </template>
+                      <template v-else>Liên hệ</template>
+                    </span>
+                  </div>
                 </div>
 
                 <RouterLink

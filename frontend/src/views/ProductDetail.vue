@@ -7,6 +7,7 @@ const route = useRoute()
 const product = ref<any>(null)
 const variants = ref<any[]>([])
 const selectedVariant = ref<any>(null)
+const promotions = ref<any[]>([]) // Lấy tất cả promotion để tính giảm
 const giftProducts = ref<any[]>([])
 const loading = ref(true)
 const quantity = ref(1)
@@ -23,22 +24,22 @@ const fetchData = async () => {
 
   loading.value = true
   try {
-    // 1. Lấy sản phẩm chính
-    const prodRes = await api.get(`/product/${id}`)
-    product.value = prodRes.data
+    const [prodRes, variantRes, promoRes, bundleRes] = await Promise.all([
+      api.get(`/product/${id}`),
+      api.get('/product-variant'),
+      api.get('/promotion'),
+      api.get(`/bundle-item?bundleProductId=${id}`),
+    ])
 
-    // 2. Lấy biến thể
-    const variantRes = await api.get('/product-variant')
+    product.value = prodRes.data
     variants.value = variantRes.data.filter((v: any) => v.productId === id)
+    promotions.value = promoRes.data
 
     if (variants.value.length > 0) {
       selectedVariant.value = variants.value[0]
     }
 
-    // 3. Lấy quà tặng từ CHI_TIET_SET_QUA_TANG (bundleItem)
-    const bundleRes = await api.get(`/bundle-item?bundleProductId=${id}`)
     giftProducts.value = []
-
     for (const b of bundleRes.data) {
       const variantRes = await api.get(`/product-variant/${b.componentVariantId}`)
       const variant = variantRes.data
@@ -54,13 +55,27 @@ const fetchData = async () => {
         bundleImage: b.image || giftProduct.mainImage,
       })
     }
-
-    // KHÔNG fallback lấy từ danh mục 6 nữa → nếu không có bundle thì giftProducts rỗng, không hiện section
   } catch (e) {
     console.error('Lỗi tải dữ liệu:', e)
   } finally {
     loading.value = false
   }
+}
+
+const getDiscountedPrice = (variant: any) => {
+  if (!variant.promotionId) return variant.price
+
+  const promo = promotions.value.find((p) => p.id === variant.promotionId)
+  if (!promo || !promo.isActive) return variant.price
+
+  let finalPrice = Number(variant.price)
+  if (promo.discountType === 'PERCENT') {
+    finalPrice *= 1 - Number(promo.discountValue) / 100
+  } else if (promo.discountType === 'FIXED_AMOUNT') {
+    finalPrice -= Number(promo.discountValue)
+  }
+
+  return Math.max(0, finalPrice)
 }
 
 const updateQuantity = (val: number) => {
@@ -108,13 +123,38 @@ watch(() => route.params.id, fetchData)
             {{ product.name }}
           </h1>
 
+          <!-- GIÁ (gạch ngang gốc + giá sau giảm) -->
           <div class="flex items-center gap-4">
-            <p class="text-4xl font-extrabold text-red-600">
-              {{ selectedVariant ? Number(selectedVariant.price).toLocaleString('vi-VN') : '---' }}đ
-            </p>
-            <span class="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded"
-              >HOT SALE</span
+            <div class="flex items-baseline gap-3">
+              <p
+                v-if="selectedVariant && selectedVariant.promotionId"
+                class="text-2xl text-slate-400 line-through"
+              >
+                {{ Number(selectedVariant.price).toLocaleString('vi-VN') }}đ
+              </p>
+              <p class="text-4xl font-extrabold text-red-600">
+                {{
+                  selectedVariant
+                    ? Number(getDiscountedPrice(selectedVariant)).toLocaleString('vi-VN')
+                    : '---'
+                }}đ
+              </p>
+            </div>
+            <span
+              v-if="selectedVariant && selectedVariant.promotionId"
+              class="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded"
             >
+              GIẢM {{ promotions.find((p) => p.id === selectedVariant.promotionId)?.discountValue
+              }}{{
+                promotions.find((p) => p.id === selectedVariant.promotionId)?.discountType ===
+                'PERCENT'
+                  ? '%'
+                  : 'đ'
+              }}
+            </span>
+            <span v-else class="px-2 py-1 bg-green-100 text-green-600 text-xs font-bold rounded">
+              HOT SALE
+            </span>
           </div>
 
           <div v-if="variants.length > 0" class="space-y-3">

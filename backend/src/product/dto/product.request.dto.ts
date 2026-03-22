@@ -1,3 +1,4 @@
+// dto/product.request.dto.ts
 import {
   IsEnum,
   IsInt,
@@ -55,4 +56,9 @@ export class ProductRequestDto {
   @IsString()
   @MaxLength(500)
   mainImage?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  soLuongDaBan?: number;
 }
