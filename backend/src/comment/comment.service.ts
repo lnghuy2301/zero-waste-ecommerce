@@ -94,6 +94,7 @@ export class CommentService {
         product: {
           select: { id: true, name: true, slug: true },
         },
+        media: true,
       },
     });
   }
