@@ -17,7 +17,7 @@ export class BundleItemRepository {
         bundleProductId: data.bundleProductId,
         componentVariantId: data.componentVariantId,
         quantity: data.quantity,
-        image: null, // default null khi tạo
+        image: null,
       },
       include: { bundleProduct: true, componentVariant: true },
     });
@@ -48,7 +48,6 @@ export class BundleItemRepository {
         bundleProductId: data.bundleProductId,
         componentVariantId: data.componentVariantId,
         quantity: data.quantity,
-        // image không update ở đây, dùng endpoint riêng
       },
       include: { bundleProduct: true, componentVariant: true },
     });
@@ -92,7 +91,17 @@ export class BundleItemRepository {
   }
 
   async getAllBundleItems(): Promise<BundleItemResponseDto[]> {
+    return this.getBundleItems(); // dùng chung hàm
+  }
+
+  // Hàm mới: lọc theo bundleProductId nếu có
+  async getBundleItems(
+    bundleProductId?: number,
+  ): Promise<BundleItemResponseDto[]> {
+    const where = bundleProductId ? { bundleProductId } : {};
+
     const items = await this.prismaService.bundleItem.findMany({
+      where,
       include: { bundleProduct: true, componentVariant: true },
     });
 
@@ -144,7 +153,6 @@ export class BundleItemRepository {
     return { count: result.count };
   }
 
-  // THÊM HÀM UPLOAD HÌNH ẢNH
   async uploadImage(id: number, file: Express.Multer.File) {
     const updated = await this.prismaService.bundleItem.update({
       where: { id },

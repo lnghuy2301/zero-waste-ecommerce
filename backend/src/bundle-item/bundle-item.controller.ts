@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
   UploadedFile,
   UseInterceptors,
@@ -20,9 +21,8 @@ import { RolesGuard } from '../auth/auth.role.guard';
 import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { fileFilter, multerStorage } from '../media/config/multer.config'; // import từ media
+import { fileFilter, multerStorage } from '../media/config/multer.config';
 import type { Express } from 'express';
-// import type { Multer } from 'multer';
 
 @Controller('bundle-item')
 export class BundleItemController {
@@ -55,8 +55,11 @@ export class BundleItemController {
   }
 
   @Get()
-  async getAllBundleItems(): Promise<BundleItemResponseDto[]> {
-    return this.bundleItemService.getAllBundleItems();
+  async getAllBundleItems(
+    @Query('bundleProductId', new ParseIntPipe({ optional: true }))
+    bundleProductId?: number,
+  ): Promise<BundleItemResponseDto[]> {
+    return this.bundleItemService.getBundleItems(bundleProductId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -77,7 +80,6 @@ export class BundleItemController {
     return this.bundleItemService.deleteListBundleItems(dto);
   }
 
-  // THÊM UPLOAD HÌNH ẢNH CHO CHI TIẾT SET QUÀ TẶNG
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Post(':id/image')
