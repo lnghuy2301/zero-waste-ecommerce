@@ -7,7 +7,7 @@ const route = useRoute()
 const product = ref<any>(null)
 const variants = ref<any[]>([])
 const selectedVariant = ref<any>(null)
-const giftProducts = ref<any[]>([]) // Danh sách sản phẩm tặng kèm (Category 6)
+const giftProducts = ref<any[]>([])
 const loading = ref(true)
 const quantity = ref(1)
 
@@ -23,32 +23,44 @@ const fetchData = async () => {
 
   loading.value = true
   try {
-    // 1. Lấy chi tiết sản phẩm
+    // 1. Lấy sản phẩm chính
     const prodRes = await api.get(`/product/${id}`)
     product.value = prodRes.data
 
-    // 2. Lấy biến thể của sản phẩm
+    // 2. Lấy biến thể
     const variantRes = await api.get('/product-variant')
-    const allVariants = variantRes.data.filter((v: any) => v.productId === id)
-    variants.value = allVariants
+    variants.value = variantRes.data.filter((v: any) => v.productId === id)
 
-    // Mặc định chọn biến thể đầu tiên
-    if (allVariants.length > 0) {
-      selectedVariant.value = allVariants[0]
+    if (variants.value.length > 0) {
+      selectedVariant.value = variants.value[0]
     }
 
-    // 3. Lấy sản phẩm tặng kèm (Danh mục id = 6 - Set Quà Tặng)
-    const allProdRes = await api.get('/product?categoryId=6')
-    giftProducts.value = allProdRes.data.slice(0, 4) // Lấy 4 cái đầu làm quà tặng demo
+    // 3. Lấy quà tặng từ CHI_TIET_SET_QUA_TANG (bundleItem)
+    const bundleRes = await api.get(`/bundle-item?bundleProductId=${id}`)
+    giftProducts.value = []
+
+    for (const b of bundleRes.data) {
+      const variantRes = await api.get(`/product-variant/${b.componentVariantId}`)
+      const variant = variantRes.data
+
+      const giftProdRes = await api.get(`/product/${variant.productId}`)
+      const giftProduct = giftProdRes.data
+
+      giftProducts.value.push({
+        ...giftProduct,
+        variantName: variant.name,
+        variantPrice: Number(variant.price),
+        quantity: b.quantity,
+        bundleImage: b.image || giftProduct.mainImage,
+      })
+    }
+
+    // KHÔNG fallback lấy từ danh mục 6 nữa → nếu không có bundle thì giftProducts rỗng, không hiện section
   } catch (e) {
-    console.error('Lỗi khi tải dữ liệu:', e)
+    console.error('Lỗi tải dữ liệu:', e)
   } finally {
     loading.value = false
   }
-}
-
-const selectVariant = (v: any) => {
-  selectedVariant.value = v
 }
 
 const updateQuantity = (val: number) => {
@@ -57,178 +69,145 @@ const updateQuantity = (val: number) => {
 }
 
 onMounted(fetchData)
-
-// Theo dõi sự thay đổi ID trên URL để tải lại dữ liệu nếu người dùng nhấn vào sản phẩm khác
 watch(() => route.params.id, fetchData)
 </script>
 
 <template>
-  <main class="mx-auto max-w-[1200px] w-full px-4 py-8 sm:px-6 lg:px-8">
+  <main class="mx-auto max-w-[1200px] w-full px-4 py-8 font-sans">
     <div v-if="loading" class="text-center py-20 text-slate-600">
-      <div
-        class="animate-spin inline-block w-8 h-8 border-4 border-[#658a22] border-t-transparent rounded-full mb-4"
-      ></div>
-      <p>Đang tải thông tin sản phẩm...</p>
+      <p class="text-lg">Đang tải thông tin...</p>
     </div>
 
-    <div v-else-if="!product" class="text-center py-20 text-slate-500">Không tìm thấy sản phẩm</div>
+    <div v-else-if="!product" class="text-center py-20 text-slate-500 text-xl">
+      Không tìm thấy sản phẩm
+    </div>
 
     <div v-else>
       <!-- Breadcrumbs -->
-      <nav class="flex items-center gap-2 mb-8 text-sm font-medium text-slate-500">
-        <RouterLink to="/" class="hover:text-[#658a22] transition-colors">Trang Chủ</RouterLink>
+      <nav class="flex items-center gap-2 mb-6 text-[15px] font-medium text-slate-500">
+        <RouterLink to="/" class="hover:text-red-600">Trang Chủ</RouterLink>
         <span class="material-symbols-outlined text-sm">chevron_right</span>
-        <RouterLink
-          :to="`/products?category=${product.categoryId}`"
-          class="hover:text-[#658a22] transition-colors"
-        >
-          {{ product.category?.name || 'Danh mục' }}
-        </RouterLink>
-        <span class="material-symbols-outlined text-sm">chevron_right</span>
-        <span class="text-slate-900 font-semibold">{{ product.name }}</span>
+        <span class="text-slate-900 font-bold">{{ product.name }}</span>
       </nav>
 
       <div
-        class="grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100"
+        class="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white p-6 md:p-10 rounded-3xl shadow-xl border border-slate-100"
       >
-        <!-- Cột Trái: Ảnh Sản Phẩm -->
-        <div class="flex flex-col gap-4">
+        <!-- Cột Trái: Ảnh -->
+        <div class="space-y-4">
           <div
-            class="aspect-square w-full bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center p-4 border border-slate-100"
+            class="aspect-square w-full bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-200"
           >
-            <img
-              :src="getImageUrl(product.mainImage)"
-              :alt="product.name"
-              class="w-full h-full object-contain transition-transform duration-500 hover:scale-110"
-            />
+            <img :src="getImageUrl(product.mainImage)" class="w-[85%] h-[85%] object-contain" />
           </div>
         </div>
 
-        <!-- Cột Phải: Thông tin Sản Phẩm -->
+        <!-- Cột Phải: Nội dung -->
         <div class="flex flex-col gap-6">
-          <div>
-            <h1 class="text-3xl font-black tracking-tight text-slate-900 mb-2">
-              {{ product.name }}
-            </h1>
+          <h1 class="text-3xl md:text-4xl font-black text-slate-900 leading-tight">
+            {{ product.name }}
+          </h1>
 
-            <!-- Giá thay đổi theo biến thể -->
-            <div class="flex items-baseline gap-3 mt-4">
-              <p class="text-4xl font-black text-[#658a22]">
-                <template v-if="selectedVariant">
-                  {{ Number(selectedVariant.price).toLocaleString('vi-VN') }}đ
-                </template>
-                <template v-else>Liên hệ</template>
-              </p>
-              <span v-if="selectedVariant?.sku" class="text-xs text-slate-400 font-mono"
-                >SKU: {{ selectedVariant.sku }}</span
-              >
-            </div>
+          <div class="flex items-center gap-4">
+            <p class="text-4xl font-extrabold text-red-600">
+              {{ selectedVariant ? Number(selectedVariant.price).toLocaleString('vi-VN') : '---' }}đ
+            </p>
+            <span class="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded"
+              >HOT SALE</span
+            >
           </div>
 
-          <!-- Lựa chọn biến thể -->
-          <div v-if="variants.length > 0" class="space-y-4 py-4 border-t border-slate-100">
-            <p class="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              Chọn loại sản phẩm:
-            </p>
-            <div class="flex flex-wrap gap-3">
+          <div v-if="variants.length > 0" class="space-y-3">
+            <p class="text-sm font-bold text-slate-700 uppercase">Phân loại sản phẩm:</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <button
                 v-for="v in variants"
                 :key="v.id"
-                @click="selectVariant(v)"
+                @click="selectedVariant = v"
                 :class="[
-                  'px-5 py-2.5 rounded-xl border-2 font-semibold transition-all text-sm',
+                  'px-3 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center text-center leading-tight',
                   selectedVariant?.id === v.id
-                    ? 'border-[#658a22] bg-[#658a22]/5 text-[#658a22]'
-                    : 'border-slate-100 text-slate-600 hover:border-slate-300',
+                    ? 'border-red-600 bg-red-50 text-red-600'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-400',
                 ]"
               >
                 {{ v.name }}
-                <span class="block text-[10px] opacity-60 font-normal">
-                  {{ v.color }} {{ v.size ? `- ${v.size}` : '' }}
-                </span>
+                <span class="text-[11px] font-normal opacity-70 mt-1">{{ v.color }}</span>
               </button>
             </div>
           </div>
 
-          <div class="text-slate-600 leading-relaxed">
-            {{ product.description || 'Sản phẩm thân thiện với môi trường, chất liệu bền vững.' }}
-          </div>
+          <p
+            class="text-slate-600 text-base leading-relaxed italic border-l-4 border-slate-200 pl-4"
+          >
+            {{ product.description }}
+          </p>
 
-          <!-- Hành động -->
-          <div class="flex flex-col gap-5 py-6 border-y border-slate-100 mt-auto">
-            <div class="flex items-center gap-4">
-              <!-- Số lượng -->
-              <div class="flex items-center border-2 border-slate-100 rounded-2xl bg-slate-50 h-14">
-                <button @click="updateQuantity(-1)" class="px-4 hover:text-[#658a22]">
-                  <span class="material-symbols-outlined">remove</span>
-                </button>
-                <span class="w-8 text-center font-bold text-lg">{{ quantity }}</span>
-                <button @click="updateQuantity(1)" class="px-4 hover:text-[#658a22]">
-                  <span class="material-symbols-outlined">add</span>
-                </button>
-              </div>
-
+          <div class="flex flex-col sm:flex-row items-center gap-4 py-6 border-t border-slate-100">
+            <div
+              class="flex items-center border-2 border-slate-200 rounded-xl bg-slate-100 h-14 overflow-hidden"
+            >
               <button
-                class="flex-1 bg-[#658a22] hover:bg-[#58791d] text-white font-bold h-14 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-[#658a22]/20 active:scale-95"
+                @click="updateQuantity(-1)"
+                class="px-5 h-full hover:bg-slate-200 text-slate-700 active:bg-slate-300"
               >
-                <span class="material-symbols-outlined">shopping_cart</span>
-                THÊM VÀO GIỎ HÀNG
+                <span class="material-symbols-outlined font-bold">remove</span>
+              </button>
+              <input
+                type="text"
+                readonly
+                :value="quantity"
+                class="w-12 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-xl"
+              />
+              <button
+                @click="updateQuantity(1)"
+                class="px-5 h-full hover:bg-slate-200 text-slate-700 active:bg-slate-300"
+              >
+                <span class="material-symbols-outlined font-bold">add</span>
               </button>
             </div>
-          </div>
 
-          <!-- Thông số nhanh -->
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-slate-50 p-3 rounded-xl flex items-center gap-3">
-              <span class="material-symbols-outlined text-[#658a22]">eco</span>
-              <span class="text-xs font-medium text-slate-600"
-                >Eco-friendly {{ product.ecoFriendliness }}/10</span
-              >
-            </div>
-            <div class="bg-slate-50 p-3 rounded-xl flex items-center gap-3">
-              <span class="material-symbols-outlined text-[#658a22]">reusable_roll</span>
-              <span class="text-xs font-medium text-slate-600">{{
-                product.reusability || 'Tái sử dụng'
-              }}</span>
-            </div>
+            <button
+              class="w-full flex-1 bg-slate-900 hover:bg-black text-white font-black h-14 rounded-xl flex items-center justify-center gap-3 transition-all"
+            >
+              <span class="material-symbols-outlined">shopping_cart</span>
+              THÊM VÀO GIỎ HÀNG
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Sản phẩm tặng kèm (Danh mục 6) -->
-      <section v-if="giftProducts.length > 0" class="mt-20 mb-10">
-        <div class="flex items-center justify-between mb-8">
-          <h3 class="text-2xl font-black text-slate-900 flex items-center gap-2">
-            <span class="material-symbols-outlined text-red-500">featured_seasonal</span>
-            Sản Phẩm Tặng Kèm
-          </h3>
-          <span class="text-sm font-medium text-slate-400"
-            >(Áp dụng cho đơn hàng từ 2.000.000đ)</span
-          >
+      <!-- SẢN PHẨM TẶNG KÈM - CHỈ HIỆN NẾU CÓ bundleItem -->
+      <section v-if="giftProducts.length > 0" class="mt-16">
+        <div class="flex items-center gap-3 mb-8 border-b-2 border-red-600 pb-2 w-fit">
+          <span class="material-symbols-outlined text-red-600 scale-125">redeem</span>
+          <h3 class="text-2xl font-black text-slate-900">Sản Phẩm Tặng Kèm</h3>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <RouterLink
             v-for="gift in giftProducts"
             :key="gift.id"
             :to="`/product/${gift.id}`"
-            class="group bg-white p-4 rounded-3xl border border-slate-100 hover:border-[#658a22] transition-all"
+            class="group bg-white p-5 rounded-3xl border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all"
           >
-            <div class="aspect-square rounded-2xl bg-slate-50 overflow-hidden mb-4 relative">
+            <div class="aspect-square rounded-2xl bg-slate-50 overflow-hidden mb-4 relative p-4">
               <img
-                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                :src="getImageUrl(gift.mainImage)"
-                alt="Gift Image"
+                :src="getImageUrl(gift.mainImage || gift.bundleImage)"
+                class="w-full h-full object-contain group-hover:scale-110 transition-duration-500"
               />
               <div
-                class="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg"
+                class="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl"
               >
                 QUÀ TẶNG
               </div>
             </div>
-            <p class="font-bold text-slate-900 text-sm mb-1 truncate">{{ gift.name }}</p>
-            <p class="text-[#658a22] font-semibold text-xs">
-              Giá trị: {{ Number(650000).toLocaleString('vi-VN') }}đ
+            <p class="font-black text-slate-900 text-base mb-1 truncate">{{ gift.name }}</p>
+            <p class="text-red-600 font-bold text-sm">
+              {{ gift.variantName }} - {{ gift.quantity }} cái
+            </p>
+            <p class="text-slate-600 text-sm">
+              Trị giá: {{ Number(gift.variantPrice || 650000).toLocaleString('vi-VN') }}đ
             </p>
           </RouterLink>
         </div>
@@ -238,5 +217,14 @@ watch(() => route.params.id, fetchData)
 </template>
 
 <style scoped>
-/* Bạn có thể thêm các hiệu ứng CSS tại đây nếu cần */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+
+.font-sans {
+  font-family: 'Inter', sans-serif;
+}
+
+input {
+  color: #0f172a !important;
+  opacity: 1 !important;
+}
 </style>

@@ -39,6 +39,13 @@ export class BundleItemService {
     return this.bundleItemRepository.getAllBundleItems();
   }
 
+  // Hàm mới: lấy bundle items theo bundleProductId (hoặc tất cả nếu không truyền)
+  async getBundleItems(
+    bundleProductId?: number,
+  ): Promise<BundleItemResponseDto[]> {
+    return this.bundleItemRepository.getBundleItems(bundleProductId);
+  }
+
   async deleteBundleItem(id: number): Promise<BundleItemResponseDto | null> {
     await this.bundleItemHelper.checkBundleItem(id);
     return this.bundleItemRepository.deleteBundleItem(id);
@@ -56,7 +63,6 @@ export class BundleItemService {
     return result;
   }
 
-  // THÊM HÀM UPLOAD HÌNH ẢNH
   async uploadImage(id: number, file: Express.Multer.File) {
     await this.bundleItemHelper.checkBundleItem(id);
     return this.bundleItemRepository.uploadImage(id, file);
