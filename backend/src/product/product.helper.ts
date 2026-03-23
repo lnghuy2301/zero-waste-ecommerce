@@ -16,6 +16,7 @@ export class ProductHelper {
       throw new NotFoundException('Sản phẩm không tồn tại');
     }
 
-    return product;
+    // Prisma trả danhGiaTrungBinh là number | null → khớp với DTO đã sửa
+    return product as ProductResponseDto;
   }
 }

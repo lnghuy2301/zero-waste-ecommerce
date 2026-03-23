@@ -1,4 +1,3 @@
-// dto/product.request.dto.ts
 import {
   IsEnum,
   IsInt,
@@ -61,4 +60,14 @@ export class ProductRequestDto {
   @IsInt()
   @Min(0)
   soLuongDaBan?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  danhGiaTrungBinh?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  soLuongDanhGia?: number;
 }

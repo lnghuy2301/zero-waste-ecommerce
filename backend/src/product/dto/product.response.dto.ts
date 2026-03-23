@@ -1,4 +1,3 @@
-// dto/product.response.dto.ts
 import { Expose, Type } from 'class-transformer';
 import { ProductStatus, ProductType } from '@prisma/client';
 import { CategoryResponseDto } from '../../category/dto/category.response.dto';
@@ -45,6 +44,12 @@ export class ProductResponseDto {
 
   @Expose()
   soLuongDaBan: number;
+
+  @Expose()
+  danhGiaTrungBinh: number | null;
+
+  @Expose()
+  soLuongDanhGia: number;
 
   @Expose()
   @Type(() => CategoryResponseDto)

@@ -11,6 +11,7 @@ import {
   UseGuards,
   UploadedFile,
   UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { ProductRequestDto } from './dto/product.request.dto';
@@ -23,7 +24,6 @@ import { Role } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { fileFilter, multerStorage } from '../media/config/multer.config';
 import { Express } from 'express';
-import type { Multer } from 'multer';
 
 @Controller('product')
 export class ProductController {
@@ -89,8 +89,11 @@ export class ProductController {
   )
   async uploadMainImage(
     @Param('id', ParseIntPipe) id: number,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File, // xóa ? để bắt buộc có file
   ) {
+    if (!file) {
+      throw new BadRequestException('Không có file ảnh được upload');
+    }
     return this.productService.uploadMainImage(id, file);
   }
 }

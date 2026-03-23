@@ -1,4 +1,3 @@
-// product.repository.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductRequestDto } from './dto/product.request.dto';
@@ -22,7 +21,9 @@ export class ProductRepository {
         ecoFriendliness: data.ecoFriendliness,
         reusability: data.reusability,
         mainImage: data.mainImage ?? null,
-        soLuongDaBan: data.soLuongDaBan ?? 0, // Thêm trường
+        soLuongDaBan: data.soLuongDaBan ?? 0,
+        danhGiaTrungBinh: data.danhGiaTrungBinh ?? 0,
+        soLuongDanhGia: data.soLuongDanhGia ?? 0,
       },
       include: { category: true },
     });
@@ -45,7 +46,9 @@ export class ProductRepository {
         ecoFriendliness: data.ecoFriendliness,
         reusability: data.reusability,
         mainImage: data.mainImage,
-        soLuongDaBan: data.soLuongDaBan, // Thêm trường (có thể update)
+        soLuongDaBan: data.soLuongDaBan,
+        danhGiaTrungBinh: data.danhGiaTrungBinh,
+        soLuongDanhGia: data.soLuongDanhGia,
       },
       include: { category: true },
     });

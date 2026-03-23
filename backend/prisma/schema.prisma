@@ -45,27 +45,30 @@ enum OrderStatus {
 
 // SAN_PHAM
 model Product {
-  id Int @id @default(autoincrement()) @map("id")
-  categoryId Int @map("id_danh_muc")
-  name String @map("ten_san_pham") @db.VarChar(255)
-  slug String @unique @map("slug") @db.VarChar(255)
-  type ProductType @default(RETAIL) @map("loai_san_pham")
-  status ProductStatus @default(ACTIVE) @map("trang_thai")
-  description String? @map("mo_ta") @db.Text
-  material String? @map("chat_lieu") @db.VarChar(255)
-  ecoFriendliness Int? @map("muc_do_than_thien")
-  reusability String? @map("kha_nang_tai_su_dung") @db.VarChar(255)
-  mainImage String? @map("hinh_anh_chinh") @db.VarChar(500)
-  createdAt DateTime @default(now()) @map("ngay_tao")
-  updatedAt DateTime @updatedAt @map("ngay_cap_nhat")
-  soLuongDaBan Int @default(0) @map("so_luong_da_ban")
-  // QUAN_HE
-  category Category @relation(fields: [categoryId], references: [id], onDelete: NoAction)
-  variants ProductVariant[]
-  greenCerts GreenCertificate[] @relation("ProductGreenCert")
-  comments Comment[]
-  bundleItems BundleItem[] @relation("BundleParent")
-  carts Cart[]
+  id                Int           @id @default(autoincrement()) @map("id")
+  categoryId        Int           @map("id_danh_muc")
+  name              String        @map("ten_san_pham") @db.VarChar(255)
+  slug              String        @unique @map("slug") @db.VarChar(255)
+  type              ProductType   @default(RETAIL) @map("loai_san_pham")
+  status            ProductStatus @default(ACTIVE) @map("trang_thai")
+  description       String?       @map("mo_ta") @db.Text
+  material          String?       @map("chat_lieu") @db.VarChar(255)
+  ecoFriendliness   Int?          @map("muc_do_than_thien")
+  reusability       String?       @map("kha_nang_tai_su_dung") @db.VarChar(255)
+  mainImage         String?       @map("hinh_anh_chinh") @db.VarChar(500)
+  createdAt         DateTime      @default(now()) @map("ngay_tao")
+  updatedAt         DateTime      @updatedAt @map("ngay_cap_nhat")
+  soLuongDaBan      Int           @default(0) @map("so_luong_da_ban")
+  danhGiaTrungBinh  Float?        @default(0) @map("danh_gia_trung_binh")
+  soLuongDanhGia    Int           @default(0) @map("so_luong_danh_gia")
+
+  category          Category      @relation(fields: [categoryId], references: [id], onDelete: NoAction)
+  variants          ProductVariant[]
+  greenCerts        GreenCertificate[] @relation("ProductGreenCert")
+  comments          Comment[]
+  bundleItems       BundleItem[]  @relation("BundleParent")
+  carts             Cart[]
+
   @@map("SAN_PHAM")
 }
 
