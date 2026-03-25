@@ -11,10 +11,11 @@ const loading = ref(false)
 const selectedProductIds = ref<number[]>([])
 const selectedVariantIds = ref<number[]>([])
 
-// Modal
 const showProductModal = ref(false)
+const showImageModal = ref(false)
 const showVariantModal = ref(false)
 const currentProductId = ref<number | null>(null)
+const currentProductIdForImage = ref<number | null>(null)
 
 const newProduct = ref({
   name: '',
@@ -22,7 +23,6 @@ const newProduct = ref({
   categoryId: 1,
   description: '',
   material: '',
-  mainImage: null as File | null,
 })
 
 const newVariant = ref({
@@ -33,26 +33,6 @@ const newVariant = ref({
   color: '',
   size: '',
 })
-
-// Logic chọn sản phẩm (Toggle)
-const toggleProductSelect = (id: number) => {
-  const index = selectedProductIds.value.indexOf(id)
-  if (index > -1) {
-    selectedProductIds.value.splice(index, 1)
-  } else {
-    selectedProductIds.value.push(id)
-  }
-}
-
-// Logic chọn biến thể (Toggle)
-const toggleVariantSelect = (id: number) => {
-  const index = selectedVariantIds.value.indexOf(id)
-  if (index > -1) {
-    selectedVariantIds.value.splice(index, 1)
-  } else {
-    selectedVariantIds.value.push(id)
-  }
-}
 
 // Load dữ liệu
 const loadData = async () => {
@@ -71,40 +51,80 @@ const loadData = async () => {
   }
 }
 
-// Tạo sản phẩm
+const toggleProductSelect = (id: number) => {
+  const index = selectedProductIds.value.indexOf(id)
+  if (index > -1) selectedProductIds.value.splice(index, 1)
+  else selectedProductIds.value.push(id)
+}
+
+const toggleVariantSelect = (id: number) => {
+  const index = selectedVariantIds.value.indexOf(id)
+  if (index > -1) selectedVariantIds.value.splice(index, 1)
+  else selectedVariantIds.value.push(id)
+}
+
+// Tạo sản phẩm (JSON)
 const createProduct = async () => {
-  if (!newProduct.value.name) return notify.error('Vui lòng nhập tên sản phẩm')
-  const formData = new FormData()
-  formData.append('name', newProduct.value.name)
-  formData.append(
-    'slug',
-    newProduct.value.slug || newProduct.value.name.toLowerCase().replace(/\s+/g, '-'),
-  )
-  formData.append('categoryId', String(newProduct.value.categoryId))
-  if (newProduct.value.description) formData.append('description', newProduct.value.description)
-  if (newProduct.value.material) formData.append('material', newProduct.value.material)
-  if (newProduct.value.mainImage) formData.append('image', newProduct.value.mainImage)
+  if (!newProduct.value.name?.trim()) return notify.error('Tên sản phẩm không được bỏ trống')
+  if (!newProduct.value.slug?.trim()) return notify.error('Slug không được bỏ trống')
+  if (!newProduct.value.categoryId || newProduct.value.categoryId < 1) {
+    return notify.error('Vui lòng chọn danh mục')
+  }
 
   try {
-    await ProductService.createProduct(formData)
+    const created = await ProductService.createProduct({
+      name: newProduct.value.name.trim(),
+      slug: newProduct.value.slug.trim().toLowerCase(),
+      categoryId: Number(newProduct.value.categoryId),
+      description: newProduct.value.description?.trim() || undefined,
+      material: newProduct.value.material?.trim() || undefined,
+    })
+
     notify.success('Tạo sản phẩm thành công!')
     showProductModal.value = false
     resetProductForm()
+
+    currentProductIdForImage.value = created.id
+    showImageModal.value = true
+
+    loadData()
+  } catch (e: any) {
+    const msg = e.response?.data?.message || 'Tạo sản phẩm thất bại'
+    notify.error(Array.isArray(msg) ? msg.join(' • ') : msg)
+  }
+}
+
+// Upload ảnh riêng
+const uploadProductImage = async () => {
+  if (!currentProductIdForImage.value) return
+
+  const fileInput = document.getElementById('imageUpload') as HTMLInputElement
+  const file = fileInput?.files?.[0]
+  if (!file) return notify.error('Vui lòng chọn file ảnh')
+
+  try {
+    await ProductService.uploadMainImage(currentProductIdForImage.value, file)
+    notify.success('Upload hình ảnh thành công!')
+    showImageModal.value = false
     loadData()
   } catch (e) {
-    notify.error('Tạo thất bại')
+    notify.error('Upload hình ảnh thất bại')
   }
 }
 
 const createVariant = async () => {
   if (!currentProductId.value || !newVariant.value.name || newVariant.value.price <= 0) {
-    return notify.error('Vui lòng nhập đầy đủ thông tin')
+    return notify.error('Vui lòng nhập đầy đủ thông tin biến thể')
   }
   try {
     await ProductVariantService.createVariant({
       productId: currentProductId.value,
-      ...newVariant.value,
+      name: newVariant.value.name,
+      price: newVariant.value.price,
+      stock: newVariant.value.stock,
       sku: newVariant.value.sku || `SKU-${Date.now()}`,
+      color: newVariant.value.color,
+      size: newVariant.value.size,
     })
     notify.success('Tạo biến thể thành công!')
     showVariantModal.value = false
@@ -117,10 +137,10 @@ const createVariant = async () => {
 
 const deleteSelectedProducts = async () => {
   if (selectedProductIds.value.length === 0) return
-  if (!confirm(`Xóa ${selectedProductIds.value.length} sản phẩm đã chọn?`)) return
+  if (!confirm(`Xóa ${selectedProductIds.value.length} sản phẩm?`)) return
   try {
     await ProductService.deleteListProducts({ Ids: selectedProductIds.value })
-    notify.success('Xóa sản phẩm thành công')
+    notify.success('Xóa thành công')
     selectedProductIds.value = []
     loadData()
   } catch (e) {
@@ -128,6 +148,7 @@ const deleteSelectedProducts = async () => {
   }
 }
 
+// HÀM MỚI: Xóa biến thể
 const deleteSelectedVariants = async () => {
   if (selectedVariantIds.value.length === 0) return
   if (!confirm(`Xóa ${selectedVariantIds.value.length} biến thể đã chọn?`)) return
@@ -142,18 +163,13 @@ const deleteSelectedVariants = async () => {
 }
 
 const resetProductForm = () => {
-  newProduct.value = {
-    name: '',
-    slug: '',
-    categoryId: 1,
-    description: '',
-    material: '',
-    mainImage: null,
-  }
+  newProduct.value = { name: '', slug: '', categoryId: 1, description: '', material: '' }
 }
+
 const resetVariantForm = () => {
   newVariant.value = { name: '', price: 0, stock: 100, sku: '', color: '', size: '' }
 }
+
 const openVariantModal = (productId: number) => {
   currentProductId.value = productId
   showVariantModal.value = true
@@ -163,46 +179,44 @@ onMounted(loadData)
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto p-6 bg-[#f8fafc] min-h-screen">
+  <div class="max-w-7xl mx-auto p-6 bg-slate-50 min-h-screen">
     <div class="flex justify-between items-center mb-10">
       <div>
-        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Quản lý Kho hàng</h1>
-        <p class="text-slate-500 font-medium mt-1">
-          Chọn vào thẻ sản phẩm để quản lý danh sách xóa.
-        </p>
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Quản lý Sản phẩm</h1>
+        <p class="text-slate-500 font-medium">Nhấn vào thẻ để chọn sản phẩm cần thao tác.</p>
       </div>
       <div class="flex gap-3">
         <button
           v-if="selectedProductIds.length > 0"
           @click="deleteSelectedProducts"
-          class="bg-red-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-red-200 transition-all hover:bg-red-700"
+          class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-red-100 transition-all"
         >
           Xóa {{ selectedProductIds.length }} sản phẩm
         </button>
+
         <button
           v-if="selectedVariantIds.length > 0"
           @click="deleteSelectedVariants"
-          class="bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-orange-200 transition-all hover:bg-orange-700"
+          class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-orange-100 transition-all flex items-center gap-2"
         >
+          <span class="material-symbols-outlined">delete_sweep</span>
           Xóa {{ selectedVariantIds.length }} biến thể
         </button>
+
         <button
           @click="showProductModal = true"
-          class="bg-[#658a22] hover:bg-[#58791d] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-[#658a22]/20 transition-all"
+          class="bg-[#658a22] hover:bg-[#58791d] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-100 transition-all"
         >
-          <span class="material-symbols-outlined">add_box</span> Tạo sản phẩm
+          <span class="material-symbols-outlined">add_circle</span> Tạo sản phẩm mới
         </button>
       </div>
     </div>
 
     <div
       v-if="loading"
-      class="flex flex-col items-center justify-center py-20 uppercase tracking-widest text-slate-400 font-black"
+      class="text-center py-20 font-bold text-slate-400 uppercase tracking-widest animate-pulse"
     >
-      <div
-        class="animate-spin rounded-full h-10 w-10 border-4 border-[#658a22] border-t-transparent mb-4"
-      ></div>
-      Đang đồng bộ dữ liệu...
+      Đang tải dữ liệu...
     </div>
 
     <div v-else class="space-y-8">
@@ -210,33 +224,31 @@ onMounted(loadData)
         v-for="product in products"
         :key="product.id"
         @click="toggleProductSelect(product.id)"
-        class="group relative bg-white rounded-[32px] p-8 border-2 transition-all cursor-pointer select-none active:scale-[0.99]"
+        class="bg-white rounded-[32px] p-8 border-2 transition-all cursor-pointer relative active:scale-[0.995] select-none"
         :class="
           selectedProductIds.includes(product.id)
-            ? 'border-[#658a22] bg-[#fdfef9] shadow-xl shadow-[#658a22]/10'
-            : 'border-slate-100 shadow-sm hover:border-slate-300'
+            ? 'border-[#658a22] shadow-xl bg-[#fcfdf9]'
+            : 'border-slate-100 shadow-sm hover:border-slate-200'
         "
       >
         <div
           v-if="selectedProductIds.includes(product.id)"
-          class="absolute -top-3 -right-3 bg-[#658a22] text-white rounded-full p-1 shadow-lg"
+          class="absolute -top-3 -right-3 bg-[#658a22] text-white rounded-full p-1 shadow-lg border-4 border-white"
         >
-          <span class="material-symbols-outlined text-xl">check_circle</span>
+          <span class="material-symbols-outlined text-xl">check</span>
         </div>
 
-        <div class="flex items-center gap-8 mb-8">
-          <div class="relative">
-            <img
-              v-if="product.mainImage"
-              :src="`http://localhost:3000${product.mainImage}`"
-              class="w-24 h-24 object-cover rounded-[24px] border-2 border-slate-50 shadow-inner"
-            />
-            <div
-              v-else
-              class="w-24 h-24 bg-slate-50 rounded-[24px] flex items-center justify-center border-2 border-dashed border-slate-200 text-slate-300"
-            >
-              <span class="material-symbols-outlined text-4xl">inventory</span>
-            </div>
+        <div class="flex items-center gap-6">
+          <img
+            v-if="product.mainImage"
+            :src="`http://localhost:3000${product.mainImage}`"
+            class="w-24 h-24 object-cover rounded-3xl border-2 border-slate-50 shadow-sm"
+          />
+          <div
+            v-else
+            class="w-24 h-24 bg-slate-50 rounded-3xl flex items-center justify-center border-2 border-dashed border-slate-200 text-slate-300"
+          >
+            <span class="material-symbols-outlined text-4xl">inventory</span>
           </div>
 
           <div class="flex-1">
@@ -246,50 +258,42 @@ onMounted(loadData)
             >
               {{ product.name }}
             </h3>
-            <div class="flex items-center gap-3 mt-2">
-              <span
-                class="text-[10px] font-black uppercase text-slate-400 bg-slate-100 px-2 py-1 rounded"
-                >Slug</span
-              >
-              <span class="text-sm text-slate-600 font-bold italic">{{ product.slug }}</span>
-            </div>
+            <p class="text-slate-400 font-bold text-sm mt-1 uppercase tracking-tighter">
+              Mã: {{ product.slug }}
+            </p>
           </div>
 
           <button
             @click.stop="openVariantModal(product.id)"
-            class="px-6 py-3.5 bg-slate-900 hover:bg-black text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
+            class="px-6 py-3 bg-slate-900 hover:bg-black text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
           >
             <span class="material-symbols-outlined text-lg text-emerald-400">add</span> Biến thể
           </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pl-4">
           <div
             v-for="variant in variants.filter((v) => v.productId === product.id)"
             :key="variant.id"
             @click.stop="toggleVariantSelect(variant.id)"
-            class="relative border-2 rounded-[20px] p-5 transition-all cursor-pointer active:scale-95"
-            :class="[
+            class="group relative border-2 rounded-2xl p-5 transition-all active:scale-95 shadow-sm"
+            :class="
               selectedVariantIds.includes(variant.id)
-                ? 'border-red-500 bg-red-50 shadow-inner'
-                : 'border-slate-100 bg-white hover:border-slate-300',
-            ]"
+                ? 'border-red-400 bg-red-50'
+                : 'border-slate-50 bg-slate-50/50 hover:border-slate-200'
+            "
           >
-            <div class="font-bold text-slate-800">{{ variant.name }}</div>
-            <div class="text-emerald-700 font-black text-lg mt-1">
+            <div class="font-black text-slate-800">{{ variant.name }}</div>
+            <div class="text-[#658a22] font-black text-lg mt-1">
               {{ Number(variant.price).toLocaleString('vi-VN') }}đ
             </div>
-
-            <div class="mt-4 flex items-center justify-between">
-              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                Kho: {{ variant.stock }}
-              </div>
-              <div class="text-[10px] font-mono font-bold text-slate-500">{{ variant.sku }}</div>
+            <div class="text-[10px] font-bold text-slate-400 mt-3 uppercase">
+              Kho: {{ variant.stock }} | SKU: {{ variant.sku }}
             </div>
 
             <div
               v-if="selectedVariantIds.includes(variant.id)"
-              class="absolute top-2 right-2 text-red-500 animate-pulse"
+              class="absolute top-2 right-2 text-red-500"
             >
               <span class="material-symbols-outlined text-sm">remove_circle</span>
             </div>
@@ -300,43 +304,200 @@ onMounted(loadData)
 
     <div
       v-if="showProductModal"
-      class="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-6"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      @click.self="showProductModal = false"
     >
-      <div class="bg-white rounded-[40px] w-full max-w-xl p-10 shadow-2xl border border-slate-100">
-        <div class="flex justify-between items-center mb-8">
-          <h2 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Tạo sản phẩm</h2>
-          <button
-            @click="showProductModal = false"
-            class="text-slate-400 hover:text-red-500 transition-colors"
-          >
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
+      <div class="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl" @click.stop>
+        <h2 class="text-2xl font-black mb-8 text-slate-900 flex items-center gap-2">
+          <span class="w-2 h-8 bg-[#658a22] rounded-full"></span> Tạo sản phẩm mới
+        </h2>
         <div class="space-y-6">
-          <div class="group">
+          <div>
             <label
-              class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 group-focus-within:text-[#658a22] transition-colors"
-              >Tên sản phẩm</label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Tên sản phẩm *</label
             >
             <input
               v-model="newProduct.name"
-              class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 outline-none focus:border-[#658a22] focus:bg-white transition-all text-slate-800 font-bold"
-              placeholder="VD: Ống hút tre cao cấp..."
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              placeholder="Nhập tên sản phẩm..."
+            />
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Slug *</label
+            >
+            <input
+              v-model="newProduct.slug"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              placeholder="slug-san-pham"
+            />
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Danh mục *</label
+            >
+            <select
+              v-model="newProduct.categoryId"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+            >
+              <option value="1">Danh mục 1</option>
+              <option value="2">Danh mục 2</option>
+            </select>
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Mô tả</label
+            >
+            <textarea
+              v-model="newProduct.description"
+              rows="3"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all resize-y"
+            ></textarea>
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Chất liệu</label
+            >
+            <input
+              v-model="newProduct.material"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
             />
           </div>
         </div>
         <div class="flex gap-4 mt-10">
           <button
             @click="showProductModal = false"
-            class="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all"
+            class="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-all"
           >
             Đóng
           </button>
           <button
             @click="createProduct"
-            class="flex-1 py-4 bg-[#658a22] text-white font-bold rounded-2xl shadow-lg shadow-[#658a22]/30 hover:bg-[#58791d] transition-all"
+            class="flex-1 py-4 bg-[#658a22] text-white rounded-2xl font-black shadow-lg shadow-emerald-100 hover:shadow-emerald-200 transition-all"
           >
-            Xác nhận tạo
+            Tạo sản phẩm
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showImageModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      @click.self="showImageModal = false"
+    >
+      <div class="bg-white rounded-[40px] w-full max-w-md p-10 shadow-2xl" @click.stop>
+        <h2 class="text-2xl font-black mb-8 text-slate-900">Thêm hình ảnh cho sản phẩm</h2>
+        <div class="space-y-6">
+          <input
+            id="imageUpload"
+            type="file"
+            accept="image/*"
+            class="block w-full text-sm text-slate-500"
+          />
+        </div>
+        <div class="flex gap-4 mt-10">
+          <button
+            @click="showImageModal = false"
+            class="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-all"
+          >
+            Hủy
+          </button>
+          <button
+            @click="uploadProductImage"
+            class="flex-1 py-4 bg-[#658a22] text-white rounded-2xl font-black"
+          >
+            Upload hình ảnh
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showVariantModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      @click.self="showVariantModal = false"
+    >
+      <div class="bg-white rounded-[40px] w-full max-w-md p-10 shadow-2xl" @click.stop>
+        <h2 class="text-2xl font-black mb-8 text-slate-900 flex items-center gap-2">
+          <span class="w-2 h-8 bg-blue-500 rounded-full"></span> Thêm biến thể
+        </h2>
+        <div class="space-y-6">
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Tên biến thể *</label
+            >
+            <input
+              v-model="newVariant.name"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              placeholder="Màu Đỏ - Size L"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Giá bán (VNĐ) *</label
+              >
+              <input
+                v-model="newVariant.price"
+                type="number"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Tồn kho</label
+              >
+              <input
+                v-model="newVariant.stock"
+                type="number"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Màu sắc</label
+              >
+              <input
+                v-model="newVariant.color"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Kích thước</label
+              >
+              <input
+                v-model="newVariant.size"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-4 mt-10">
+          <button
+            @click="showVariantModal = false"
+            class="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-all"
+          >
+            Hủy
+          </button>
+          <button
+            @click="createVariant"
+            class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
+          >
+            Lưu biến thể
           </button>
         </div>
       </div>
@@ -345,7 +506,6 @@ onMounted(loadData)
 </template>
 
 <style scoped>
-/* Ngăn việc bôi đen chữ khi click liên tục vào button sản phẩm */
 .select-none {
   user-select: none;
 }

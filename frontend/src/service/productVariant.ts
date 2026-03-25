@@ -6,11 +6,15 @@ export const ProductVariantService = {
     return response.data
   },
 
-  // Nếu sau này backend hỗ trợ query theo productId thì thêm hàm này
-  // async getByProductId(productId: number) {
-  //   const response = await api.get(`/product-variant?productId=${productId}`)
-  //   return response.data
-  // }
+  async createVariant(data: any) {
+    const response = await api.post('/product-variant', data)
+    return response.data
+  },
+
+  async deleteListVariants(data: { Ids: number[] }) {
+    const response = await api.delete('/product-variant', { data })
+    return response.data
+  },
 }
 
 export default ProductVariantService
