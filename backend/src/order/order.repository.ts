@@ -187,4 +187,29 @@ export class OrderRepository {
     });
     return { count: result.count };
   }
+  async getOrderCount(): Promise<number> {
+    const count = await this.prismaService.order.count();
+    return count;
+  }
+  async getRevenueByMonth() {
+    const result = await this.prismaService.order.groupBy({
+      by: ['createdAt'],
+      where: {
+        status: 'COMPLETED',
+      },
+      _sum: {
+        totalAmount: true,
+      },
+    });
+
+    // Nhóm theo tháng (1-12)
+    const monthlyRevenue = Array(12).fill(0);
+
+    result.forEach((item) => {
+      const month = new Date(item.createdAt).getMonth(); // 0-11
+      monthlyRevenue[month] = Number(item._sum.totalAmount || 0);
+    });
+
+    return monthlyRevenue; // trả về mảng 12 số [tháng 1, tháng 2, ..., tháng 12]
+  }
 }

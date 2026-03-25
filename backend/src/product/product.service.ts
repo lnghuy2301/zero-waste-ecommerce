@@ -64,4 +64,8 @@ export class ProductService {
     await this.productHelper.checkProduct(id);
     return this.productRepository.uploadMainImage(id, file);
   }
+  async getProductCount(): Promise<number> {
+    const products = await this.productRepository.getAllProducts();
+    return products.length;
+  }
 }

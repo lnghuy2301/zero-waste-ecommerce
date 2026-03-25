@@ -88,4 +88,17 @@ export class OrderController {
   ): Promise<{ count: number }> {
     return this.orderService.deleteListOrders(dto);
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats/count')
+  async getOrderCount() {
+    return this.orderService.getOrderCount();
+  }
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats/revenue-by-month')
+  async getRevenueByMonth() {
+    return this.orderService.getRevenueByMonth();
+  }
 }

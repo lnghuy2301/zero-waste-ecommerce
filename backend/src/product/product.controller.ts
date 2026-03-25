@@ -89,11 +89,17 @@ export class ProductController {
   )
   async uploadMainImage(
     @Param('id', ParseIntPipe) id: number,
-    @UploadedFile() file: Express.Multer.File, // xóa ? để bắt buộc có file
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!file) {
-      throw new BadRequestException('Không có file ảnh được upload');
-    }
+    if (!file) throw new BadRequestException('Không có file ảnh được upload');
     return this.productService.uploadMainImage(id, file);
+  }
+
+  // === ENDPOINT MỚI CHO ADMIN DASHBOARD ===
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats/count')
+  async getProductCount() {
+    return this.productService.getProductCount();
   }
 }
