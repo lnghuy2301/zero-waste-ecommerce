@@ -101,4 +101,11 @@ export class OrderController {
   async getRevenueByMonth() {
     return this.orderService.getRevenueByMonth();
   }
+  // === THÊM MỚI: Lấy tất cả đơn hàng (Dành cho Admin) ===
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get()
+  async getAllOrders(): Promise<OrderResponseDto[]> {
+    return this.orderService.getAllOrders();
+  }
 }

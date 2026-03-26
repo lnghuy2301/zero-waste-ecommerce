@@ -7,7 +7,7 @@ import { List_accountRequestDto } from './dto/list_account.request.dto';
 import { UpdateActiveRequestDto } from './dto/update_active.request.dto';
 import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
 import { plainToInstance } from 'class-transformer';
-import {Role} from "@prisma/client";
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class AccountRepository {
@@ -98,7 +98,9 @@ export class AccountRepository {
         id: id,
       },
     });
-    return account ? plainToInstance(Account_profileResponseDto, account) : null;
+    return account
+      ? plainToInstance(Account_profileResponseDto, account)
+      : null;
   }
 
   async getAllAccount(): Promise<AccountResponseDto[]> {

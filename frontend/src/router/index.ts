@@ -27,20 +27,6 @@ const router = createRouter({
     { path: '/products', name: 'products', component: () => import('../views/Products.vue') },
     { path: '/orders', name: 'orders', component: () => import('../views/Order.vue') },
 
-    // === ADMIN ROUTE ===
-    {
-      path: '/admin',
-      name: 'admin',
-      component: () => import('../views/admin/AdminLayout.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true },
-      children: [
-        {
-          path: '',
-          name: 'admin-dashboard',
-          component: () => import('../views/admin/Dashboard.vue'),
-        },
-      ],
-    },
     // === ADMIN ROUTE (có bảo vệ) ===
     {
       path: '/admin',
@@ -58,6 +44,18 @@ const router = createRouter({
           name: 'admin-products',
           component: () => import('../views/admin/ProductManagement.vue'),
           meta: { requiresAuth: true, requiresAdmin: true }, // bảo vệ thêm
+        },
+        {
+          path: 'orders',
+          name: 'admin-orders',
+          component: () => import('../views/admin/OrderManagement.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
+          path: 'accounts',
+          name: 'admin-accounts',
+          component: () => import('../views/admin/AccountManagement.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true },
         },
       ],
     },

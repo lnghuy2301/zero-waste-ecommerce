@@ -54,7 +54,7 @@ const logout = () => {
           <span>Đơn hàng</span>
         </RouterLink>
         <RouterLink
-          to="/admin/users"
+          to="/admin/accounts"
           class="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/10 transition-colors font-medium"
         >
           <span class="material-symbols-outlined">group</span>

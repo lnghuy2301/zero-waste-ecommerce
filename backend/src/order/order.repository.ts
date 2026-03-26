@@ -212,4 +212,32 @@ export class OrderRepository {
 
     return monthlyRevenue; // trả về mảng 12 số [tháng 1, tháng 2, ..., tháng 12]
   }
+  async getAllOrders(): Promise<OrderResponseDto[]> {
+    const orders = await this.prismaService.order.findMany({
+      include: {
+        orderItems: {
+          include: { variant: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return orders.map((order) => {
+      const transformed = {
+        ...order,
+        totalAmount: Number(order.totalAmount),
+        orderItems: order.orderItems.map((oi) => ({
+          ...oi,
+          price: Number(oi.price),
+          variant: oi.variant
+            ? {
+                ...oi.variant,
+                price: Number(oi.variant.price),
+              }
+            : undefined,
+        })),
+      };
+      return plainToInstance(OrderResponseDto, transformed);
+    });
+  }
 }

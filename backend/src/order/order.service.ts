@@ -75,4 +75,7 @@ export class OrderService {
   async getRevenueByMonth() {
     return this.orderRepository.getRevenueByMonth();
   }
+  async getAllOrders(): Promise<OrderResponseDto[]> {
+    return this.orderRepository.getAllOrders();
+  }
 }
