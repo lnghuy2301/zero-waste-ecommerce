@@ -3,10 +3,12 @@ import { ref, onMounted } from 'vue'
 import ProductService from '@/service/product.ts'
 import ProductVariantService from '@/service/productVariant.ts'
 import { notify } from '@/utils/notifier.ts'
+import { Category } from '@/service/category.ts' // ← sửa thành destructuring
 
 const products = ref<any[]>([])
 const variants = ref<any[]>([])
 const loading = ref(false)
+const categories = ref<any[]>([]) // ← thêm
 
 const selectedProductIds = ref<number[]>([])
 const selectedVariantIds = ref<number[]>([])
@@ -14,8 +16,17 @@ const selectedVariantIds = ref<number[]>([])
 const showProductModal = ref(false)
 const showImageModal = ref(false)
 const showVariantModal = ref(false)
+const showCategoryImageModal = ref(false)
+const showCategoryModal = ref(false) // ← modal tạo danh mục
+
 const currentProductId = ref<number | null>(null)
 const currentProductIdForImage = ref<number | null>(null)
+
+const newCategory = ref({
+  // ← form tạo danh mục
+  name: '',
+  description: '',
+})
 
 const newProduct = ref({
   name: '',
@@ -34,16 +45,18 @@ const newVariant = ref({
   size: '',
 })
 
-// Load dữ liệu
+// Load tất cả dữ liệu
 const loadData = async () => {
   loading.value = true
   try {
-    const [prodRes, varRes] = await Promise.all([
+    const [prodRes, varRes, catRes] = await Promise.all([
       ProductService.getAllProducts(),
       ProductVariantService.getAll(),
+      Category.getAllCategories(), // ← thêm dòng này
     ])
     products.value = prodRes
     variants.value = varRes
+    categories.value = catRes || []
   } catch (e) {
     notify.error('Không tải được dữ liệu')
   } finally {
@@ -63,7 +76,7 @@ const toggleVariantSelect = (id: number) => {
   else selectedVariantIds.value.push(id)
 }
 
-// Tạo sản phẩm (JSON)
+// Tạo sản phẩm
 const createProduct = async () => {
   if (!newProduct.value.name?.trim()) return notify.error('Tên sản phẩm không được bỏ trống')
   if (!newProduct.value.slug?.trim()) return notify.error('Slug không được bỏ trống')
@@ -86,7 +99,6 @@ const createProduct = async () => {
 
     currentProductIdForImage.value = created.id
     showImageModal.value = true
-
     loadData()
   } catch (e: any) {
     const msg = e.response?.data?.message || 'Tạo sản phẩm thất bại'
@@ -94,10 +106,9 @@ const createProduct = async () => {
   }
 }
 
-// Upload ảnh riêng
+// Upload ảnh
 const uploadProductImage = async () => {
   if (!currentProductIdForImage.value) return
-
   const fileInput = document.getElementById('imageUpload') as HTMLInputElement
   const file = fileInput?.files?.[0]
   if (!file) return notify.error('Vui lòng chọn file ảnh')
@@ -112,6 +123,7 @@ const uploadProductImage = async () => {
   }
 }
 
+// Tạo biến thể
 const createVariant = async () => {
   if (!currentProductId.value || !newVariant.value.name || newVariant.value.price <= 0) {
     return notify.error('Vui lòng nhập đầy đủ thông tin biến thể')
@@ -132,6 +144,53 @@ const createVariant = async () => {
     loadData()
   } catch (e) {
     notify.error('Tạo biến thể thất bại')
+  }
+}
+
+const currentCategoryIdForImage = ref<number | null>(null) // ← thêm dòng này
+
+// Tạo danh mục (chỉ name + description)
+const createCategory = async () => {
+  if (!newCategory.value.name?.trim()) {
+    return notify.error('Tên danh mục không được bỏ trống')
+  }
+
+  try {
+    const created = await Category.createCategory({
+      name: newCategory.value.name.trim(),
+      description: newCategory.value.description?.trim() || null,
+    })
+
+    notify.success('Tạo danh mục thành công!')
+    showCategoryModal.value = false
+    newCategory.value = { name: '', description: '' }
+
+    // Mở modal upload ảnh ngay sau khi tạo
+    currentCategoryIdForImage.value = created.id
+    showCategoryImageModal.value = true // ← modal upload ảnh danh mục
+
+    loadData()
+  } catch (e: any) {
+    const msg = e.response?.data?.message || 'Tạo danh mục thất bại'
+    notify.error(Array.isArray(msg) ? msg.join(' • ') : msg)
+  }
+}
+
+// Upload ảnh cho danh mục
+const uploadCategoryImage = async () => {
+  if (!currentCategoryIdForImage.value) return
+
+  const fileInput = document.getElementById('categoryImageUpload') as HTMLInputElement
+  const file = fileInput?.files?.[0]
+  if (!file) return notify.error('Vui lòng chọn file ảnh')
+
+  try {
+    await Category.uploadImage(currentCategoryIdForImage.value, file) // cần thêm hàm này vào service
+    notify.success('Upload ảnh danh mục thành công!')
+    showCategoryImageModal.value = false
+    loadData()
+  } catch (e) {
+    notify.error('Upload ảnh danh mục thất bại')
   }
 }
 
@@ -208,6 +267,14 @@ onMounted(loadData)
           class="bg-[#658a22] hover:bg-[#58791d] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-100 transition-all"
         >
           <span class="material-symbols-outlined">add_circle</span> Tạo sản phẩm mới
+        </button>
+
+        <!-- Nút Tạo danh mục - style giống hệt -->
+        <button
+          @click="showCategoryModal = true"
+          class="bg-[#658a22] hover:bg-[#58791d] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-100 transition-all"
+        >
+          <span class="material-symbols-outlined">add_circle</span> Tạo danh mục
         </button>
       </div>
     </div>
@@ -337,16 +404,18 @@ onMounted(loadData)
           <div>
             <label
               class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
-              >Danh mục *</label
             >
+              Danh mục *
+            </label>
             <select
               v-model="newProduct.categoryId"
               class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
             >
-              <option value="1">Danh mục 1</option>
-              <option value="2">Danh mục 2</option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                {{ cat.name }}
+              </option>
             </select>
-          </div>
+          </div>uploadProductImage
           <div>
             <label
               class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
@@ -355,7 +424,7 @@ onMounted(loadData)
             <textarea
               v-model="newProduct.description"
               rows="3"
-              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all resize-y"
+              class="w-full text-slate-800 bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all resize-y"
             ></textarea>
           </div>
           <div>
@@ -417,7 +486,7 @@ onMounted(loadData)
         </div>
       </div>
     </div>
-
+    <!-- Tạo biến thể -->
     <div
       v-if="showVariantModal"
       class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
@@ -498,6 +567,91 @@ onMounted(loadData)
             class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
           >
             Lưu biến thể
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Tạo danh mục -->
+    <!-- Modal Tạo Danh Mục Mới -->
+    <div
+      v-if="showCategoryModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      @click.self="showCategoryModal = false"
+    >
+      <div class="bg-white rounded-[40px] w-full max-w-md p-10 shadow-2xl" @click.stop>
+        <h2 class="text-2xl font-black mb-8 text-slate-900 flex items-center gap-2">
+          <span class="w-2 h-8 bg-[#658a22] rounded-full"></span> Tạo danh mục mới
+        </h2>
+        <div class="space-y-6">
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Tên danh mục *</label
+            >
+            <input
+              v-model="newCategory.name"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              placeholder="Ví dụ: Ống hút tre"
+            />
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Mô tả (tùy chọn)</label
+            >
+            <textarea
+              v-model="newCategory.description"
+              rows="3"
+              class="w-full text-slate-800 bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all resize-y"
+              placeholder="Mô tả ngắn về danh mục..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="flex gap-4 mt-10">
+          <button
+            @click="showCategoryModal = false"
+            class="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-all"
+          >
+            Đóng
+          </button>
+          <button
+            @click="createCategory"
+            class="flex-1 py-4 bg-[#658a22] text-white rounded-2xl font-black shadow-lg shadow-emerald-100 hover:shadow-emerald-200 transition-all"
+          >
+            Tạo danh mục
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Upload Ảnh Cho Danh Mục -->
+    <!-- Modal Upload Ảnh cho Danh Mục -->
+    <div
+      v-if="showCategoryImageModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      @click.self="showCategoryImageModal = false"
+    >
+      <div class="bg-white rounded-[40px] w-full max-w-md p-10 shadow-2xl" @click.stop>
+        <h2 class="text-2xl font-black mb-8 text-slate-900">Thêm hình ảnh cho danh mục</h2>
+        <div class="space-y-6">
+          <input
+            id="categoryImageUpload"
+            type="file"
+            accept="image/*"
+            class="block w-full text-sm text-slate-500"
+          />
+        </div>
+        <div class="flex gap-4 mt-10">
+          <button
+            @click="showCategoryImageModal = false"
+            class="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600 transition-all"
+          >
+            Hủy
+          </button>
+          <button
+            @click="uploadCategoryImage"
+            class="flex-1 py-4 bg-[#658a22] text-white rounded-2xl font-black"
+          >
+            Upload hình ảnh
           </button>
         </div>
       </div>

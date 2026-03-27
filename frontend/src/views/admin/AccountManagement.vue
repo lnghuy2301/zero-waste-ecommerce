@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import Account from '@/service/account.ts'
 import { notify } from '@/utils/notifier.ts'
-
+import Profile from '@/service/profile.ts'
 const accounts = ref<any[]>([])
 const loading = ref(false)
 const selectedAccountIds = ref<number[]>([])
@@ -31,9 +31,21 @@ const toggleSelect = (id: number) => {
   else selectedAccountIds.value.push(id)
 }
 
-// Xem chi tiết
-const viewDetail = (account: any) => {
+// Xem chi tiết + load profile
+const viewDetail = async (account: any) => {
   currentAccount.value = account
+
+  // Load profile nếu chưa có
+  if (!account.customerProfile) {
+    try {
+      const profile = await Profile.getCustomerProfile(account.id)
+      currentAccount.value.customerProfile = profile
+    } catch (e) {
+      // Nếu chưa có profile thì để trống
+      currentAccount.value.customerProfile = null
+    }
+  }
+
   showDetailModal.value = true
 }
 
@@ -165,13 +177,14 @@ onMounted(loadAccounts)
       </table>
     </div>
 
+    <!-- Modal Chi tiết tài khoản + Customer Profile -->
     <div
       v-if="showDetailModal"
       class="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4"
       @click.self="showDetailModal = false"
     >
       <div class="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl" @click.stop>
-        <h2 class="text-2xl font-black mb-6 text-slate-900">Thông tin chi tiết</h2>
+        <h2 class="text-2xl font-black mb-6 text-slate-900">Thông tin tài khoản</h2>
 
         <div class="space-y-6">
           <div class="grid grid-cols-2 gap-4">
@@ -184,10 +197,12 @@ onMounted(loadAccounts)
               <p class="font-medium text-slate-800">{{ currentAccount?.role }}</p>
             </div>
           </div>
+
           <div>
             <p class="text-slate-500 text-sm">Email</p>
             <p class="font-medium text-slate-800">{{ currentAccount?.email }}</p>
           </div>
+
           <div>
             <p class="text-slate-500 text-sm">Trạng thái</p>
             <span
@@ -201,59 +216,48 @@ onMounted(loadAccounts)
             </span>
           </div>
 
-          <div
-            v-if="currentAccount?.profile || currentAccount?.customerProfile"
-            class="border-t pt-6"
-          >
-            <h3 class="font-bold text-lg mb-4 text-slate-900">Thông tin hồ sơ</h3>
+          <!-- Phần Profile -->
+          <div v-if="currentAccount?.customerProfile" class="border-t pt-6 mt-4">
+            <h3 class="font-bold text-lg mb-4 text-slate-900">Thông tin hồ sơ khách hàng</h3>
             <div class="grid grid-cols-2 gap-6 text-sm">
               <div>
                 <p class="text-slate-500">Họ tên</p>
                 <p class="font-medium text-slate-800">
-                  {{ (currentAccount.profile || currentAccount.customerProfile).ho_ten || 'Trống' }}
+                  {{ currentAccount.customerProfile.fullName || 'Chưa có' }}
                 </p>
               </div>
               <div>
                 <p class="text-slate-500">Số điện thoại</p>
                 <p class="font-medium text-slate-800">
-                  {{ (currentAccount.profile || currentAccount.customerProfile).sdt || 'Trống' }}
+                  {{ currentAccount.customerProfile.phone || 'Chưa có' }}
                 </p>
               </div>
               <div class="col-span-2">
                 <p class="text-slate-500">Địa chỉ</p>
                 <p class="font-medium text-slate-800">
-                  {{
-                    (currentAccount.profile || currentAccount.customerProfile).dia_chi || 'Trống'
-                  }}
+                  {{ currentAccount.customerProfile.address || 'Chưa có' }}
                 </p>
               </div>
               <div>
                 <p class="text-slate-500">Giới tính</p>
                 <p class="font-medium text-slate-800">
-                  {{
-                    (currentAccount.profile || currentAccount.customerProfile).gioi_tinh || 'Trống'
-                  }}
+                  {{ currentAccount.customerProfile.gender || 'Chưa có' }}
                 </p>
               </div>
               <div>
                 <p class="text-slate-500">Ngày sinh</p>
                 <p class="font-medium text-slate-800">
                   {{
-                    (currentAccount.profile || currentAccount.customerProfile).ngay_sinh
-                      ? new Date(
-                          (currentAccount.profile || currentAccount.customerProfile).ngay_sinh,
-                        ).toLocaleDateString('vi-VN')
-                      : 'Trống'
+                    currentAccount.customerProfile.dob
+                      ? new Date(currentAccount.customerProfile.dob).toLocaleDateString('vi-VN')
+                      : 'Chưa có'
                   }}
                 </p>
               </div>
             </div>
           </div>
 
-          <div
-            v-else
-            class="mt-8 p-4 bg-slate-50 rounded-2xl text-slate-400 text-sm italic text-center"
-          >
+          <div v-else class="mt-8 p-6 bg-slate-50 rounded-2xl text-center text-slate-400">
             Tài khoản này chưa có thông tin hồ sơ chi tiết.
           </div>
         </div>
@@ -261,7 +265,7 @@ onMounted(loadAccounts)
         <div class="flex justify-end mt-10">
           <button
             @click="showDetailModal = false"
-            class="px-10 py-3.5 border border-slate-300 rounded-2xl font-medium text-slate-600"
+            class="text-slate-800 px-10 py-3.5 border border-slate-300 rounded-2xl font-medium"
           >
             Đóng
           </button>
