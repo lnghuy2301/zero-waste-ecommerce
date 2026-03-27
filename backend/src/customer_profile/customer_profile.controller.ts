@@ -35,9 +35,7 @@ export class CustomerProfileController {
   async getCustomerProfileById(
     @Param('accountId', ParseIntPipe) accountId: number,
   ): Promise<CustomerProfileResponseDto | null> {
-    return await this.customerProfileService.getCustomerProfileById(
-        accountId,
-    );
+    return await this.customerProfileService.getCustomerProfileById(accountId);
   }
 
   @UseGuards(JwtAuthGuard)
