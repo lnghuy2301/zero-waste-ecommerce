@@ -49,6 +49,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
+      avatar: user.avatar,
       isActive: user.isActive,
     };
     return {
@@ -56,6 +57,7 @@ export class AuthService {
       id: payload.id, // sửa thành payload.id
       email: payload.email,
       role: payload.role,
+      avatar: user.avatar,
       isActive: payload.isActive,
     };
   }
@@ -94,6 +96,7 @@ export class AuthService {
         id: account.id,
         email: account.email,
         fullName: account.profile?.fullName,
+        avatar: account.avatar,
         role: account.role
       },
       token

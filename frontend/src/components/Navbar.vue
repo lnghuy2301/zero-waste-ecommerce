@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, useRouter } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import auth from '@/service/auth.ts'
 import { notify } from '@/utils/notifier.ts'
 
@@ -8,11 +8,18 @@ const router = useRouter()
 const isMenuOpen = ref(false)
 const user = ref<any>(null)
 
+const getAvatarUrl = (path: string | null) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return `http://localhost:3000${path}`;
+};
+
 const checkAuth = () => {
   const savedUser = localStorage.getItem('user')
   if (savedUser) {
     try {
       user.value = JSON.parse(savedUser)
+      console.log('user từ localStorage:', user.value)
     } catch (e) {
       user.value = null
     }
@@ -21,9 +28,17 @@ const checkAuth = () => {
   }
 }
 
+const handleUserUpdate = (event: any) => {
+  if (event.detail) {
+    user.value = event.detail
+  } else {
+    checkAuth()
+  }
+}
+
 onMounted(() => {
   checkAuth()
-  // Đóng menu khi click ra ngoài
+  window.addEventListener('user-updated', handleUserUpdate)
   window.addEventListener('click', (e: any) => {
     if (!e.target.closest('.user-menu-container')) {
       isMenuOpen.value = false
@@ -31,23 +46,23 @@ onMounted(() => {
   })
 })
 
+onUnmounted(() => {
+  window.removeEventListener('user-updated', handleUserUpdate)
+})
+
 const handleLogout = () => {
   notify.success('Đăng xuất thành công')
-  // Đóng menu ngay lập tức
   isMenuOpen.value = false
-
   setTimeout(() => {
     auth.logout()
-    user.value = null // Cập nhật UI ngay
+    user.value = null
     router.push('/login')
   }, 800)
 }
 </script>
 
 <template>
-  <header
-    class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 font-inter"
-  >
+  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 font-inter">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
         <RouterLink to="/" class="flex items-center gap-2">
@@ -56,182 +71,81 @@ const handleLogout = () => {
         </RouterLink>
 
         <nav class="hidden md:flex items-center space-x-8">
-          <RouterLink to="/products" class="text-sm font-bold hover:text-[#658a22] text-slate-700"
-            >Sản phẩm</RouterLink
-          >
-          <RouterLink to="/" class="text-sm font-bold hover:text-[#658a22] text-slate-700"
-            >Khuyến mãi</RouterLink
-          >
-          <RouterLink to="/" class="text-sm font-bold hover:text-[#658a22] text-slate-700"
-            >Về Chúng tôi</RouterLink
-          >
+          <RouterLink to="/products" class="text-sm font-bold hover:text-[#658a22] text-slate-700">Sản phẩm</RouterLink>
+          <RouterLink to="/" class="text-sm font-bold hover:text-[#658a22] text-slate-700">Khuyến mãi</RouterLink>
+          <RouterLink to="/" class="text-sm font-bold hover:text-[#658a22] text-slate-700">Về Chúng tôi</RouterLink>
         </nav>
 
-        <!--        <div class="flex items-center gap-2 sm:gap-4">-->
-        <!--          <button class="p-2 hover:bg-slate-100 rounded-full">-->
-        <!--            <span class="material-symbols-outlined text-slate-600">search</span>-->
-        <!--          </button>-->
-
-        <!--          <div v-if="user" class="relative user-menu-container">-->
-        <!--            <button-->
-        <!--              @click.stop="isMenuOpen = !isMenuOpen"-->
-        <!--              class="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-xl border border-transparent transition-all"-->
-        <!--              :class="{ 'border-slate-200 bg-slate-50': isMenuOpen }"-->
-        <!--            >-->
-        <!--              <div class="size-8 bg-[#658a22]/10 rounded-full flex items-center justify-center">-->
-        <!--                <span class="material-symbols-outlined text-[#658a22] text-[20px]">person</span>-->
-        <!--              </div>-->
-        <!--              <div class="hidden lg:flex flex-col items-start leading-none text-left">-->
-        <!--                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{{user.role}}</span>-->
-        <!--                <span class="text-xs font-semibold text-slate-700 max-w-[120px] truncate">{{ user.email }}</span>-->
-        <!--              </div>-->
-        <!--              <span class="material-symbols-outlined text-slate-400 text-[18px] transition-transform" :class="{ 'rotate-180': isMenuOpen }">-->
-        <!--                expand_more-->
-        <!--              </span>-->
-        <!--            </button>-->
-
-        <!--            <div-->
-        <!--              v-if="isMenuOpen"-->
-        <!--              class="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-slate-100 py-2 z-[100]"-->
-        <!--            >-->
-        <!--              <div class="px-4 py-2 border-b border-slate-50 mb-1">-->
-        <!--                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tài khoản của tôi</p>-->
-        <!--              </div>-->
-
-        <!--              <RouterLink to="/profile" @click="isMenuOpen = false" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">-->
-        <!--                <span class="material-symbols-outlined text-[20px]">account_circle</span>-->
-        <!--                Hồ sơ cá nhân-->
-        <!--              </RouterLink>-->
-
-        <!--              <RouterLink to="/orders" @click="isMenuOpen = false" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">-->
-        <!--                <span class="material-symbols-outlined text-[20px]">package_2</span>-->
-        <!--                Đơn hàng của tôi-->
-        <!--              </RouterLink>-->
-
-        <!--              <div class="h-px bg-slate-100 my-1"></div>-->
-
-        <!--              <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-500 hover:bg-red-50">-->
-        <!--                <span class="material-symbols-outlined text-[20px]">logout</span>-->
-        <!--                Đăng xuất-->
-        <!--              </button>-->
-        <!--            </div>-->
-        <!--          </div>-->
-
-        <!--          <RouterLink v-else to="/login" class="text-xs font-bold text-[#658a22] bg-[#658a22]/10 px-4 py-2 rounded-lg transition-colors hover:bg-[#658a22]/20">-->
-        <!--            Đăng Nhập-->
-        <!--          </RouterLink>-->
-
-        <!--          <RouterLink to="/cartpayment" class="p-2 hover:bg-slate-100 rounded-full relative">-->
-        <!--            <span class="material-symbols-outlined text-slate-600">shopping_cart</span>-->
-        <!--            <span class="absolute top-1 right-1 bg-[#658a22] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">3</span>-->
-        <!--          </RouterLink>-->
-        <!--        </div>-->
-
         <div class="flex items-center gap-2 sm:gap-4">
-          <!-- 1. Icon Tìm kiếm -->
-          <button
-            class="p-2 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center"
-          >
+          <button class="p-2 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center">
             <span class="material-symbols-outlined text-slate-600">search</span>
           </button>
 
-          <!-- 2. Menu Người dùng (KHI ĐÃ ĐĂNG NHẬP) -->
           <div v-if="user" class="relative user-menu-container">
             <button
               @click.stop="isMenuOpen = !isMenuOpen"
-              class="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-xl border border-transparent transition-all"
-              :class="{ 'border-slate-200 bg-slate-50': isMenuOpen }"
+              class="flex items-center gap-2 p-1 hover:bg-slate-50 rounded-xl border border-transparent transition-all"
+              :class="{ 'border-slate-200 bg-slate-50 shadow-sm': isMenuOpen }"
             >
-              <!-- SỬA TẠI ĐÂY: Hiển thị Avatar thật hoặc Avatar chữ cái tự động -->
-              <img
-                :src="
-                  user.avatarUrl ||
-                  `https://ui-avatars.com/api/?name=${user.email || 'U'}&background=eef4e6&color=658a22&rounded=true`
-                "
-                alt="User Avatar"
-                class="size-8 rounded-full object-cover border border-slate-200 bg-white"
-              />
-
-              <div class="hidden lg:flex flex-col items-start leading-none text-left">
-                <span class="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{{
-                  user.role
-                }}</span>
-                <span class="text-xs font-semibold text-slate-700 max-w-[120px] truncate">{{
-                  user.email
-                }}</span>
+              <div class="size-9 rounded-full overflow-hidden border border-slate-200 flex items-center justify-center bg-[#eef4e6]">
+                <img
+                  v-if="user.avatar"
+                  :src="getAvatarUrl(user.avatar)"
+                  class="w-full h-full object-cover"
+                  alt="Avatar"
+                />
+                <span v-else class="text-[13px] font-bold text-[#658a22] uppercase">
+                  {{ user.email ? user.email.substring(0, 2) : 'TP' }}
+                </span>
               </div>
-              <span
-                class="material-symbols-outlined text-slate-400 text-[18px] transition-transform"
-                :class="{ 'rotate-180': isMenuOpen }"
-              >
+
+              <div class="hidden lg:flex flex-col items-start leading-tight text-left mr-1">
+                <span class="text-[9px] text-[#658a22] font-black uppercase tracking-tighter">{{ user.role }}</span>
+                <span class="text-[11px] font-bold text-slate-700 max-w-[100px] truncate">{{ user.email }}</span>
+              </div>
+              <span class="material-symbols-outlined text-slate-400 text-[18px] transition-transform" :class="{ 'rotate-180': isMenuOpen }">
                 expand_more
               </span>
             </button>
 
-            <!-- Dropdown menu (Giữ nguyên của đối tác) -->
-            <div
-              v-if="isMenuOpen"
-              class="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-slate-100 py-2 z-[100]"
-            >
+            <div v-if="isMenuOpen" class="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-slate-100 py-2 z-[100]">
               <div class="px-4 py-2 border-b border-slate-50 mb-1">
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  Tài khoản của tôi
-                </p>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tài khoản</p>
               </div>
 
-              <RouterLink
-                to="/profile"
-                @click="isMenuOpen = false"
-                class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              >
+              <RouterLink to="/profile" @click="isMenuOpen = false" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <span class="material-symbols-outlined text-[20px]">account_circle</span>
                 Hồ sơ cá nhân
               </RouterLink>
 
-              <RouterLink
-                to="/orders"
-                @click="isMenuOpen = false"
-                class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
-              >
+              <RouterLink to="/orders" @click="isMenuOpen = false" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <span class="material-symbols-outlined text-[20px]">package_2</span>
                 Đơn hàng của tôi
               </RouterLink>
 
               <div class="h-px bg-slate-100 my-1"></div>
 
-              <button
-                @click="handleLogout"
-                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-500 hover:bg-red-50"
-              >
+              <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors">
                 <span class="material-symbols-outlined text-[20px]">logout</span>
                 Đăng xuất
               </button>
             </div>
           </div>
 
-          <!-- 3. Icon Đăng Nhập (KHI CHƯA ĐĂNG NHẬP) -->
-          <!-- SỬA TẠI ĐÂY: Đổi nút Text thành Icon đồng bộ -->
-          <RouterLink
-            v-else
-            to="/login"
-            class="p-2 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center"
-          >
+          <RouterLink v-else to="/login" class="p-2 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center">
             <span class="material-symbols-outlined text-slate-600">account_circle</span>
           </RouterLink>
 
-          <!-- 4. Icon Giỏ hàng -->
-          <RouterLink
-            to="/cartpayment"
-            class="p-2 hover:bg-slate-100 rounded-full relative transition-colors flex items-center justify-center"
-          >
+          <RouterLink to="/cartpayment" class="p-2 hover:bg-slate-100 rounded-full relative transition-colors flex items-center justify-center">
             <span class="material-symbols-outlined text-slate-600">shopping_cart</span>
-            <span
-              class="absolute top-1 right-1 bg-[#658a22] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-              >3</span
-            >
+            <span class="absolute top-1 right-1 bg-[#658a22] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">3</span>
           </RouterLink>
         </div>
       </div>
     </div>
   </header>
 </template>
+
+<style scoped>
+.font-inter { font-family: 'Inter', sans-serif; }
+</style>

@@ -164,6 +164,10 @@ model Account {
   role     Role    @default(CUSTOMER) @map("quyen")
   isActive Boolean @default(true) @map("trang_thai")
 
+  avatar   String? @map("anh_dai_dien") @db.VarChar(255)
+  resetPasswordToken   String?   @map("ma_khoi_phuc") @db.VarChar(255)
+  resetPasswordExpires DateTime? @map("han_khoi_phuc")
+
   profile CustomerProfile?
 
   carts             Cart[]

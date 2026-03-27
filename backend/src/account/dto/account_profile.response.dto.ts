@@ -9,7 +9,7 @@ export class Account_profileResponseDto {
   @Expose()
   email: string;
 
-  @Exclude()
+  @Exclude() // Ẩn password đi là chuẩn bài rồi nè!
   password: string;
 
   @Expose()
@@ -19,12 +19,13 @@ export class Account_profileResponseDto {
   isActive: boolean;
 
   @Expose()
+  avatar: string | null;
+
+  @Expose()
   @Type(() => CustomerProfileResponseDto)
   profile: CustomerProfileResponseDto | null;
 
   constructor(partial: Partial<Account_profileResponseDto>) {
     Object.assign(this, partial);
-    //this: lấy dữ liệu từ file này
-    //partial: gôm cục dữ liệu từ AccountResponseDto
   }
 }

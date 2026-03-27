@@ -1,4 +1,6 @@
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+import * as nodemailer from 'nodemailer';
 import {
   BadRequestException,
   Injectable,
@@ -15,13 +17,14 @@ import { UpdateRoleRequesrDto } from './dto/update_role.request.dto';
 import { List_accountRequestDto } from './dto/list_account.request.dto';
 import { AccountHelper } from './account.helper';
 import { plainToInstance } from 'class-transformer';
+import { Express } from 'express'; // Thêm dòng này
 
 @Injectable()
 export class AccountService {
   constructor(
-    private accountRepository: AccountRepository,
-    private prismaService: PrismaService,
-    private accountHelper: AccountHelper,
+      private accountRepository: AccountRepository,
+      private prismaService: PrismaService,
+      private accountHelper: AccountHelper,
   ) {}
 
   async createAccount(account: AccountRequestDto): Promise<AccountResponseDto> {
@@ -41,22 +44,32 @@ export class AccountService {
     return plainToInstance(AccountResponseDto, created);
   }
 
-  async resetPassword(
-    id: number,
-    resetPassword: ResetPasswordRequestDto,
-    currentUser: any,
-  ) {
-    // Kiểm tra quyền: Chỉ mình mới được đổi pass của mình (hoặc Admin reset hộ)
+  // === HÀM XỬ LÝ UPLOAD AVATAR ===
+  async uploadAvatar(id: number, file: Express.Multer.File, currentUser: any) {
     await this.accountHelper.checkSelfOrAdmin(
-      currentUser.id,
-      id,
-      currentUser.role,
+        currentUser.id,
+        id,
+        currentUser.role,
+    );
+    return this.accountRepository.uploadAvatar(id, file);
+  }
+  // ===============================
+
+  async resetPassword(
+      id: number,
+      resetPassword: ResetPasswordRequestDto,
+      currentUser: any,
+  ) {
+    await this.accountHelper.checkSelfOrAdmin(
+        currentUser.id,
+        id,
+        currentUser.role,
     );
 
     const account = await this.accountHelper.check_account(id);
     const check_password = await bcrypt.compare(
-      resetPassword.old_password,
-      account.password,
+        resetPassword.old_password,
+        account.password,
     );
     if (!check_password) {
       throw new BadRequestException('Mật khẩu cũ sai');
@@ -70,17 +83,17 @@ export class AccountService {
   }
 
   async updateActive(
-    id: number,
-    updateisActive: UpdateActiveRequestDto,
+      id: number,
+      updateisActive: UpdateActiveRequestDto,
   ): Promise<AccountResponseDto> {
     await this.accountHelper.check_account(id);
-    await this.accountHelper.checkAdmin(id); // Hàm này đã đảm bảo chỉ Admin mới vào được
+    await this.accountHelper.checkAdmin(id);
     return this.accountRepository.updateActive(id, updateisActive);
   }
 
   async updateRole(
-    id: number,
-    updateRole: UpdateRoleRequesrDto,
+      id: number,
+      updateRole: UpdateRoleRequesrDto,
   ): Promise<AccountResponseDto> {
     await this.accountHelper.check_account(id);
     await this.accountHelper.checkAdmin(id);
@@ -96,13 +109,13 @@ export class AccountService {
   }
 
   async getAccountById(
-    id: number,
-    currentUser: any,
+      id: number,
+      currentUser: any,
   ): Promise<AccountResponseDto | null> {
     await this.accountHelper.checkSelfOrAdmin(
-      currentUser.id,
-      id,
-      currentUser.role,
+        currentUser.id,
+        id,
+        currentUser.role,
     );
 
     const account = await this.accountRepository.getAccountById(id);
@@ -113,7 +126,7 @@ export class AccountService {
   }
 
   async getAllAccounts(currentUser: any): Promise<AccountResponseDto[]> {
-    await this.accountHelper.checkAdmin(currentUser.id); // Chỉ Admin mới được xem list
+    await this.accountHelper.checkAdmin(currentUser.id);
     const account = await this.accountRepository.getAllAccount();
     if (account.length == 0) {
       throw new BadRequestException('Không có tài khoản nào tồn tại');
@@ -122,14 +135,14 @@ export class AccountService {
   }
 
   async deleteAccountById(
-    id: number,
-    currentUser: any,
+      id: number,
+      currentUser: any,
   ): Promise<AccountResponseDto | null> {
     await this.accountHelper.check_account(id);
     await this.accountHelper.checkSelfOrAdmin(
-      currentUser.id,
-      id,
-      currentUser.role,
+        currentUser.id,
+        id,
+        currentUser.role,
     );
     return this.accountRepository.deleteAccountById(id);
   }
@@ -138,9 +151,94 @@ export class AccountService {
     const account = await this.accountRepository.deleteListAccount(listAccount);
     if (!account) {
       throw new NotFoundException(
-        'Không tìm thấy tài khoản nào hợp lệ để xóa hoặc danh sách chứa Admin',
+          'Không tìm thấy tài khoản nào hợp lệ để xóa hoặc danh sách chứa Admin',
       );
     }
     return account;
+  }
+
+  // 1. HÀM QUÊN MẬT KHẨU (Gửi mail)
+  async forgotPassword(email: string) {
+    const account = await this.prismaService.account.findUnique({
+      where: { email },
+    });
+
+    if (!account) {
+      // Để bảo mật, dù không có email cũng cứ báo thành công để hacker không dò được email
+      return { message: 'Nếu email tồn tại, link khôi phục đã được gửi!' };
+    }
+
+    // Tạo token ngẫu nhiên
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    // Hash token để lưu vào DB (bảo mật hơn)
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    // Set thời gian hết hạn (ví dụ 15 phút)
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+    // Lưu token vào DB
+    await this.prismaService.account.update({
+      where: { email },
+      data: {
+        resetPasswordToken: hashedToken,
+        resetPasswordExpires: expires,
+      },
+    });
+
+    // CẤU HÌNH GỬI MAIL (Thay bằng email thật của bồ sau nhé)
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'tphuc290923@gmail.com',
+        pass: 'alif fvzo illw ntvs',
+      },
+    });
+
+    // Link dẫn tới trang Vue Frontend của bồ (kèm theo token ở trên URL)
+    const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}&email=${email}`;
+
+    await transporter.sendMail({
+      from: '"Zero Waste Ecommerce" <no-reply@zerowaste.com>',
+      to: email,
+      subject: 'Yêu cầu khôi phục mật khẩu',
+      html: `
+        <h3>Xin chào!</h3>
+        <p>Bạn vừa yêu cầu đặt lại mật khẩu. Vui lòng click vào link bên dưới để tạo mật khẩu mới:</p>
+        <a href="${resetUrl}" style="padding: 10px 15px; background: #658a22; color: white; text-decoration: none; border-radius: 5px;">Đặt lại mật khẩu</a>
+        <p><i>Link này sẽ hết hạn sau 15 phút. Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</i></p>
+      `,
+    });
+
+    return { message: 'Link khôi phục đã được gửi vào email của bạn!' };
+  }
+
+  async resetPasswordWithToken(body: any) {
+    const { email, token, newPassword } = body;
+
+    // Hash lại cái token gửi từ Frontend để so với cái trong DB
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const account = await this.prismaService.account.findFirst({
+      where: {
+        email: email,
+        resetPasswordToken: hashedToken,
+        resetPasswordExpires: { gt: new Date() }, // Kiểm tra token còn hạn không
+      },
+    });
+
+    if (!account) {
+      throw new BadRequestException('Token không hợp lệ hoặc đã hết hạn!');
+    }
+    const saltRounds = 10;
+    const hash_password = await bcrypt.hash(newPassword, saltRounds);
+
+    await this.prismaService.account.update({
+      where: { email },
+      data: {
+        password: hash_password,
+        resetPasswordToken: null, // Xóa token đi
+        resetPasswordExpires: null,
+      },
+    });
+
+    return { message: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập.' };
   }
 }

@@ -16,4 +16,7 @@ export class AccountResponseDto {
 
   @Expose()
   isActive: boolean;
+
+  @Expose()
+  avatar: string | null;
 }

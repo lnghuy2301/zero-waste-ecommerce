@@ -169,4 +169,15 @@ export class AccountRepository {
       return { count: accounts.length };
     });
   }
+
+  async uploadAvatar(id: number, file: Express.Multer.File): Promise<Account_profileResponseDto> {
+    const updated = await this.prismaService.account.update({
+      where: { id },
+      data: {
+        avatar: `/uploads/${file.filename}`,
+      },
+      include: { profile: true },
+    });
+    return updated;
+  }
 }

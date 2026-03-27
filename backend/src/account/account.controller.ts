@@ -7,7 +7,11 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Patch,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { AccountService } from './account.service';
 import { AccountRequestDto } from './dto/account.request.dto';
@@ -22,25 +26,46 @@ import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
 import { GetUser } from '../auth/get-user.decorator';
 
+// Import thư viện upload file y chang Product
+import { FileInterceptor } from '@nestjs/platform-express';
+import { fileFilter, multerStorage } from '../media/config/multer.config';
+import { Express } from 'express';
+
 @Controller('account')
 export class AccountController {
   constructor(private accountService: AccountService) {}
 
-  @Post() // Public (Đăng ký)
+  @Post()
   async createAccount(
-    @Body() account: AccountRequestDto,
+      @Body() account: AccountRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.createAccount(account);
   }
 
-  // Chỉnh sửa: Đổi mật khẩu (Cần chính chủ hoặc Admin)
+  // === API UPLOAD & CẬP NHẬT AVATAR ===
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.CUSTOMER)
+  @Patch(':id/avatar')
+  @UseInterceptors(
+      FileInterceptor('avatar', { storage: multerStorage, fileFilter }),
+  )
+  async uploadAvatar(
+      @Param('id', ParseIntPipe) id: number,
+      @UploadedFile() file: Express.Multer.File,
+      @GetUser() currentUser: any,
+  ) {
+    if (!file) throw new BadRequestException('Không có file ảnh được upload');
+    return this.accountService.uploadAvatar(id, file, currentUser);
+  }
+  // ===================================
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.CUSTOMER)
   @Put(':id/password')
   async updatePassword(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() resetPassword: ResetPasswordRequestDto,
-    @GetUser() currentUser: any, // Lấy user từ Token
+      @Param('id', ParseIntPipe) id: number,
+      @Body() resetPassword: ResetPasswordRequestDto,
+      @GetUser() currentUser: any,
   ) {
     return this.accountService.resetPassword(id, resetPassword, currentUser);
   }
@@ -49,8 +74,8 @@ export class AccountController {
   @Roles(Role.ADMIN)
   @Put(':id/active')
   async updateActive(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() account: UpdateActiveRequestDto,
+      @Param('id', ParseIntPipe) id: number,
+      @Body() account: UpdateActiveRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.updateActive(id, account);
   }
@@ -59,8 +84,8 @@ export class AccountController {
   @Roles(Role.ADMIN)
   @Put(':id/role')
   async updateRole(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() account: UpdateRoleRequesrDto,
+      @Param('id', ParseIntPipe) id: number,
+      @Body() account: UpdateRoleRequesrDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.updateRole(id, account);
   }
@@ -72,13 +97,12 @@ export class AccountController {
     return this.accountService.statsAccount();
   }
 
-  // Chỉnh sửa: Xem tài khoản (Chỉ xem chính mình hoặc Admin xem hết)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.CUSTOMER)
   @Get(':id')
   async getAccount(
-    @Param('id', ParseIntPipe) id: number,
-    @GetUser() currentUser: any,
+      @Param('id', ParseIntPipe) id: number,
+      @GetUser() currentUser: any,
   ): Promise<AccountResponseDto | null> {
     return this.accountService.getAccountById(id, currentUser);
   }
@@ -87,18 +111,17 @@ export class AccountController {
   @Roles(Role.ADMIN)
   @Get()
   async getAllAccounts(
-    @GetUser() currentUser: any,
+      @GetUser() currentUser: any,
   ): Promise<AccountResponseDto[]> {
     return this.accountService.getAllAccounts(currentUser);
   }
 
-  // Chỉnh sửa: Xóa tài khoản (Chỉ mình xóa mình hoặc Admin xóa người khác)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.CUSTOMER)
   @Delete(':id')
   async deleteAccountById(
-    @Param('id', ParseIntPipe) id: number,
-    @GetUser() currentUser: any,
+      @Param('id', ParseIntPipe) id: number,
+      @GetUser() currentUser: any,
   ): Promise<AccountResponseDto | null> {
     return this.accountService.deleteAccountById(id, currentUser);
   }
@@ -108,5 +131,15 @@ export class AccountController {
   @Delete()
   async list_delete_account(@Body() listAccount: List_accountRequestDto) {
     return this.accountService.deleteListAccount(listAccount);
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body('email') email: string) {
+    return this.accountService.forgotPassword(email);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: any) {
+    return this.accountService.resetPasswordWithToken(body);
   }
 }

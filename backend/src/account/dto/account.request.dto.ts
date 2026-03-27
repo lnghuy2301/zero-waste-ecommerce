@@ -1,8 +1,7 @@
 import {
   IsBoolean,
   IsEnum,
-  //   IsInt,
-  IsNotEmpty,
+  IsNotEmpty, IsOptional,
   IsString,
   MinLength,
   ValidateNested,
@@ -29,6 +28,10 @@ export class AccountRequestDto {
   @IsNotEmpty({ message: 'Trạng thái không được bỏ trống' })
   @IsBoolean({ message: 'Trạng thái phải true/false' })
   isActive: boolean;
+
+  @IsOptional()
+  @IsString()
+  avatar?: string | null;
 
   @ValidateNested()
   @Type(() => CustomerProfileRequestDto)

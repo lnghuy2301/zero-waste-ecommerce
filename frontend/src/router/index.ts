@@ -26,7 +26,16 @@ const router = createRouter({
     },
     { path: '/products', name: 'products', component: () => import('../views/Products.vue') },
     { path: '/orders', name: 'orders', component: () => import('../views/Order.vue') },
-
+    {
+      path: '/change-password',
+      name: 'ChangePassword',
+      component: () => import('../views/Change_password.vue')
+    },
+    {
+      path: '/reset-password',
+      name: 'ResetPassword',
+      component: () => import('@/views/ResetPassword.vue')
+    },
     // === ADMIN ROUTE (có bảo vệ) ===
     {
       path: '/admin',
