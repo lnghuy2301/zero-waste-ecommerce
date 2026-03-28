@@ -1,7 +1,6 @@
 import api from './api.ts';
 
 export const Media = {
-  // 1. Upload ảnh hoặc video cho bình luận
   async uploadReviewMedia(commentId: number, file: File) {
     const formData = new FormData();
     formData.append('file', file);
