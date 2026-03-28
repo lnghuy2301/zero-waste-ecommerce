@@ -22,7 +22,7 @@ onMounted(() => {
 
   if (!form.token || !form.email) {
     notify.error('Liên kết không hợp lệ hoặc đã hết hạn!')
-    router.push('/login')
+    router.push('/login');
   }
 })
 
