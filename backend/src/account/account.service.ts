@@ -22,9 +22,9 @@ import { Express } from 'express'; // Thêm dòng này
 @Injectable()
 export class AccountService {
   constructor(
-      private accountRepository: AccountRepository,
-      private prismaService: PrismaService,
-      private accountHelper: AccountHelper,
+    private accountRepository: AccountRepository,
+    private prismaService: PrismaService,
+    private accountHelper: AccountHelper,
   ) {}
 
   async createAccount(account: AccountRequestDto): Promise<AccountResponseDto> {
@@ -47,29 +47,29 @@ export class AccountService {
   // === HÀM XỬ LÝ UPLOAD AVATAR ===
   async uploadAvatar(id: number, file: Express.Multer.File, currentUser: any) {
     await this.accountHelper.checkSelfOrAdmin(
-        currentUser.id,
-        id,
-        currentUser.role,
+      currentUser.id,
+      id,
+      currentUser.role,
     );
     return this.accountRepository.uploadAvatar(id, file);
   }
   // ===============================
 
   async resetPassword(
-      id: number,
-      resetPassword: ResetPasswordRequestDto,
-      currentUser: any,
+    id: number,
+    resetPassword: ResetPasswordRequestDto,
+    currentUser: any,
   ) {
     await this.accountHelper.checkSelfOrAdmin(
-        currentUser.id,
-        id,
-        currentUser.role,
+      currentUser.id,
+      id,
+      currentUser.role,
     );
 
     const account = await this.accountHelper.check_account(id);
     const check_password = await bcrypt.compare(
-        resetPassword.old_password,
-        account.password,
+      resetPassword.old_password,
+      account.password,
     );
     if (!check_password) {
       throw new BadRequestException('Mật khẩu cũ sai');
@@ -83,8 +83,8 @@ export class AccountService {
   }
 
   async updateActive(
-      id: number,
-      updateisActive: UpdateActiveRequestDto,
+    id: number,
+    updateisActive: UpdateActiveRequestDto,
   ): Promise<AccountResponseDto> {
     await this.accountHelper.check_account(id);
     await this.accountHelper.checkAdmin(id);
@@ -92,8 +92,8 @@ export class AccountService {
   }
 
   async updateRole(
-      id: number,
-      updateRole: UpdateRoleRequesrDto,
+    id: number,
+    updateRole: UpdateRoleRequesrDto,
   ): Promise<AccountResponseDto> {
     await this.accountHelper.check_account(id);
     await this.accountHelper.checkAdmin(id);
@@ -109,13 +109,13 @@ export class AccountService {
   }
 
   async getAccountById(
-      id: number,
-      currentUser: any,
+    id: number,
+    currentUser: any,
   ): Promise<AccountResponseDto | null> {
     await this.accountHelper.checkSelfOrAdmin(
-        currentUser.id,
-        id,
-        currentUser.role,
+      currentUser.id,
+      id,
+      currentUser.role,
     );
 
     const account = await this.accountRepository.getAccountById(id);
@@ -135,14 +135,14 @@ export class AccountService {
   }
 
   async deleteAccountById(
-      id: number,
-      currentUser: any,
+    id: number,
+    currentUser: any,
   ): Promise<AccountResponseDto | null> {
     await this.accountHelper.check_account(id);
     await this.accountHelper.checkSelfOrAdmin(
-        currentUser.id,
-        id,
-        currentUser.role,
+      currentUser.id,
+      id,
+      currentUser.role,
     );
     return this.accountRepository.deleteAccountById(id);
   }
@@ -151,7 +151,7 @@ export class AccountService {
     const account = await this.accountRepository.deleteListAccount(listAccount);
     if (!account) {
       throw new NotFoundException(
-          'Không tìm thấy tài khoản nào hợp lệ để xóa hoặc danh sách chứa Admin',
+        'Không tìm thấy tài khoản nào hợp lệ để xóa hoặc danh sách chứa Admin',
       );
     }
     return account;
@@ -171,7 +171,10 @@ export class AccountService {
     // Tạo token ngẫu nhiên
     const resetToken = crypto.randomBytes(32).toString('hex');
     // Hash token để lưu vào DB (bảo mật hơn)
-    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
     // Set thời gian hết hạn (ví dụ 15 phút)
     const expires = new Date(Date.now() + 15 * 60 * 1000);
 
