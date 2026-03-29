@@ -2,10 +2,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { notify } from '@/utils/notifier.ts'
-import OrderService from '../service/order.ts'
+import { OrderService } from '../service/order.ts'
 import OrderDetailService from '../service/order_detail.ts'
 import CommentService from '../service/comment.ts'
-import MediaService from '../service/media.ts' // IMPORT MEDIA SERVICE VÀO ĐÂY NÈ
+import MediaService from '../service/media.ts'
+import { Cart } from '../service/cart.ts'
 
 const router = useRouter()
 const userId = ref<number | null>(null)
@@ -126,19 +127,35 @@ const handleCancelOrder = async (id: number) => {
   }
 }
 
-const handleReorder = (order: any) => {
+const handleReorder = async (order: any) => {
   if (!order.orderItems || order.orderItems.length === 0) {
     notify.error('Đơn hàng này không có sản phẩm để mua lại.')
     return
   }
 
-  const itemsToReorder = order.orderItems.map((item: any) => ({
-    variantId: item.variantId,
-    quantity: item.quantity,
-  }))
+  if (!userId.value) {
+    notify.error('Vui lòng đăng nhập để thực hiện.')
+    return
+  }
 
-  notify.success('Đã thêm các sản phẩm này vào giỏ hàng!')
-  router.push('/cart')
+  try {
+    const reorderPromises = order.orderItems.map((item: any) => {
+      const payload = {
+        accountId: Number(userId.value),
+        variantId: Number(item.variantId || item.variant?.id),
+        quantity: Number(item.quantity),
+      }
+      return Cart.create(payload)
+    })
+
+    await Promise.all(reorderPromises)
+    window.dispatchEvent(new CustomEvent('cart-updated'))
+    notify.success('Đã thêm các sản phẩm này vào giỏ hàng!')
+    router.push('/cartpayment')
+  } catch (error: any) {
+    console.error('Lỗi khi mua lại đơn hàng:', error)
+    notify.error('Có lỗi xảy ra khi thêm vào giỏ hàng. Vui lòng thử lại!')
+  }
 }
 
 const goToProduct = (productId: number | undefined) => {
@@ -154,7 +171,6 @@ const triggerFileInput = () => {
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   const files = target.files
-
   if (!files || files.length === 0) return
 
   if (selectedMediaFiles.value.length + files.length > 5) {
@@ -173,9 +189,7 @@ const handleFileChange = (event: Event) => {
 
 const removeMedia = (index: number) => {
   const urlToRevoke = mediaPreviewUrls.value[index]
-  if (urlToRevoke) {
-    URL.revokeObjectURL(urlToRevoke) // Fix lỗi gạch đỏ TypeScript
-  }
+  if (urlToRevoke) URL.revokeObjectURL(urlToRevoke)
   mediaPreviewUrls.value.splice(index, 1)
   selectedMediaFiles.value.splice(index, 1)
 }
@@ -185,7 +199,6 @@ const openReviewModalForProduct = (order: any, item: any) => {
   selectedItemToReview.value = item
   selectedProductToReview.value = item.variant?.product?.id || item.variant?.productId
 
-  // Reset form
   reviewContent.value = ''
   reviewRating.value = 5
   selectedMediaFiles.value = []
@@ -200,7 +213,6 @@ const closeReviewModal = () => {
   orderToReview.value = null
   selectedProductToReview.value = null
   selectedItemToReview.value = null
-
   mediaPreviewUrls.value.forEach((url) => URL.revokeObjectURL(url))
   mediaPreviewUrls.value = []
   selectedMediaFiles.value = []
@@ -211,7 +223,6 @@ const submitReview = async () => {
     notify.error('Vui lòng nhập nội dung đánh giá!')
     return
   }
-
   if (!selectedProductToReview.value) {
     notify.error('Không xác định được sản phẩm cần đánh giá!')
     return
@@ -219,7 +230,6 @@ const submitReview = async () => {
 
   isSubmittingReview.value = true
   try {
-    // 1. Gửi bình luận text
     const createdComment = await CommentService.createComment(selectedProductToReview.value, {
       content: reviewContent.value,
       rating: reviewRating.value,
@@ -227,7 +237,6 @@ const submitReview = async () => {
 
     const commentId = createdComment.id || createdComment.data?.id
 
-    // 2. Upload hình ảnh/video bằng Promise.all cho lẹ
     if (commentId && selectedMediaFiles.value.length > 0) {
       const uploadPromises = selectedMediaFiles.value.map((file) =>
         MediaService.uploadReviewMedia(commentId, file),
@@ -259,12 +268,7 @@ onMounted(() => {
       console.error('Lỗi đọc thông tin user từ localStorage', e)
     }
   }
-
-  if (userId.value) {
-    fetchOrders()
-  } else {
-    console.warn('Chưa đăng nhập hoặc không tìm thấy ID')
-  }
+  if (userId.value) fetchOrders()
 })
 </script>
 
@@ -401,7 +405,7 @@ onMounted(() => {
                   </p>
                   <p class="font-semibold text-sm mt-1">{{ formatCurrency(item.price) }}</p>
                   <div class="flex items-center justify-between mt-2">
-                    <p class="text-xs text-gray-500">SL: x{{ item.quantity }}</p>
+                    <p class="text-xs text-gray-500">Số lượng: x{{ item.quantity }}</p>
                     <button
                       v-if="selectedOrder.status === 'COMPLETED'"
                       @click.stop="openReviewModalForProduct(selectedOrder, item)"
@@ -411,12 +415,6 @@ onMounted(() => {
                     </button>
                   </div>
                 </div>
-              </div>
-              <div
-                v-if="!selectedOrder.orderItems || selectedOrder.orderItems.length === 0"
-                class="text-gray-400 text-sm italic"
-              >
-                Chưa có sản phẩm nào trong đơn hàng này.
               </div>
             </div>
           </div>
@@ -504,7 +502,6 @@ onMounted(() => {
     >
       <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden p-6 relative">
         <h2 class="text-xl font-bold mb-5 text-gray-800">Đánh giá sản phẩm</h2>
-
         <div class="mb-5 p-3 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-4">
           <div
             class="w-14 h-14 bg-white rounded-lg border border-gray-100 overflow-hidden flex-shrink-0"
@@ -555,7 +552,6 @@ onMounted(() => {
             <label class="block text-sm font-medium text-gray-700">Thêm hình ảnh/video</label>
             <span class="text-xs text-gray-400">(Tối đa 5 file)</span>
           </div>
-
           <input
             type="file"
             ref="fileInputRef"
@@ -564,7 +560,6 @@ onMounted(() => {
             accept="image/*,video/*"
             class="hidden"
           />
-
           <div class="flex flex-wrap gap-3">
             <div
               v-for="(url, index) in mediaPreviewUrls"
@@ -577,21 +572,19 @@ onMounted(() => {
                 class="w-full h-full object-cover"
               />
               <video v-else :src="url" class="w-full h-full object-cover"></video>
-
               <button
                 @click="removeMedia(index)"
                 class="absolute top-0.5 right-0.5 bg-black bg-opacity-50 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <span class="material-symbols-outlined text-[10px] font-bold">close</span>
+                <span class="text-[10px] font-bold">✕</span>
               </button>
             </div>
-
             <button
               v-if="mediaPreviewUrls.length < 5"
               @click="triggerFileInput"
               class="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-green-500 hover:text-green-500 transition-colors"
             >
-              <span class="material-symbols-outlined text-xl">add_a_photo</span>
+              <span class="text-xl">+</span>
             </button>
           </div>
         </div>
@@ -600,36 +593,15 @@ onMounted(() => {
           <button
             @click="closeReviewModal"
             :disabled="isSubmittingReview"
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
+            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
           >
             Trở lại
           </button>
           <button
             @click="submitReview"
             :disabled="isSubmittingReview"
-            class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition shadow disabled:opacity-50 disabled:cursor-not-allowed"
+            class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition shadow"
           >
-            <svg
-              v-if="isSubmittingReview"
-              class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
             {{ isSubmittingReview ? 'Đang gửi...' : 'Gửi đánh giá' }}
           </button>
         </div>
