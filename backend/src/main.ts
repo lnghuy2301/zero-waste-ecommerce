@@ -46,5 +46,13 @@ async function bootstrap() {
   await app.listen(3000);
   console.log(`Application is running on: ${await app.getUrl()}`);
   console.log(`Swagger Docs is running on: ${await app.getUrl()}/api/docs`);
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 }
 bootstrap();

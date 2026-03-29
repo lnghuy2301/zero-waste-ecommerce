@@ -4,13 +4,138 @@ import ProductService from '@/service/product.ts'
 import ProductVariantService from '@/service/productVariant.ts'
 import { notify } from '@/utils/notifier.ts'
 import { Category } from '@/service/category.ts' // ← sửa thành destructuring
+import Promotion from '@/service/promotion.ts'
 
+// Các state của khuyến mãi
+const promotions = ref<any[]>([])
+const selectedVariantIdsForPromotion = ref<number[]>([]) // ← thêm dòng này
+const showPromotionModal = ref(false)
+const currentPromotion = ref<any>(null)
+const isEditPromotion = ref(false) // phân biệt tạo hay sửa
+const newPromotion = ref({
+  name: '',
+  code: '',
+  discountType: 'PERCENT', // PERCENT hoặc FIXED_AMOUNT
+  discountValue: 0,
+  startDate: '',
+  endDate: '',
+  isActive: true,
+})
+
+const openCreatePromotion = () => {
+  currentPromotion.value = null
+  isEditPromotion.value = false
+  newPromotion.value = {
+    name: '',
+    code: '',
+    discountType: 'PERCENT',
+    discountValue: 0,
+    startDate: '',
+    endDate: '',
+    isActive: true,
+  }
+  showPromotionModal.value = true
+}
+
+const editPromotion = (promo: any) => {
+  currentPromotion.value = promo
+  isEditPromotion.value = true
+  newPromotion.value = { ...promo }
+  showPromotionModal.value = true
+}
+
+const savePromotion = async () => {
+  if (!newPromotion.value.name?.trim()) return notify.error('Tên khuyến mãi không được bỏ trống')
+  if (!newPromotion.value.code?.trim()) return notify.error('Mã khuyến mãi không được bỏ trống')
+  if (!newPromotion.value.discountValue || newPromotion.value.discountValue <= 0) {
+    return notify.error('Giá trị giảm phải lớn hơn 0')
+  }
+
+  try {
+    if (isEditPromotion.value && currentPromotion.value) {
+      await Promotion.updatePromotion(currentPromotion.value.id, newPromotion.value)
+      notify.success('Cập nhật khuyến mãi thành công')
+    } else {
+      await Promotion.createPromotion(newPromotion.value)
+      notify.success('Tạo khuyến mãi thành công')
+    }
+    showPromotionModal.value = false
+    loadData()
+  } catch (e: any) {
+    const msg = e.response?.data?.message || 'Lưu khuyến mãi thất bại'
+    notify.error(Array.isArray(msg) ? msg.join(' • ') : msg)
+  }
+}
+
+const deletePromotion = async (id: number) => {
+  if (!confirm('Xóa khuyến mãi này?')) return
+  try {
+    await Promotion.deletePromotion(id)
+    notify.success('Xóa khuyến mãi thành công')
+    loadData()
+  } catch (e) {
+    notify.error('Xóa khuyến mãi thất bại')
+  }
+}
+
+// Áp dụng khuyến mãi cho biến thể
+const applyPromotionToVariant = async (variantId: number) => {
+  // Bạn có thể mở một modal chọn khuyến mãi, hoặc chọn từ danh sách có sẵn
+  const promoId = prompt('Nhập ID khuyến mãi muốn áp dụng cho biến thể này:')
+  if (!promoId) return
+
+  try {
+    await Promotion.applyPromotionToVariant(variantId, Number(promoId)) // cần thêm hàm này vào service
+    notify.success('Áp dụng khuyến mãi thành công cho biến thể')
+    loadData()
+  } catch (e) {
+    notify.error('Áp dụng khuyến mãi thất bại')
+  }
+}
+
+// Áp dụng khuyến mãi cho tất cả biến thể của các sản phẩm đã chọn
+// Mở modal chọn khuyến mãi cho các sản phẩm đã chọn
+const openApplyPromotionModal = () => {
+  if (selectedProductIds.value.length === 0) {
+    return notify.error('Vui lòng chọn ít nhất 1 sản phẩm')
+  }
+
+  const variantIds = variants.value
+    .filter((v) => selectedProductIds.value.includes(v.productId))
+    .map((v) => v.id)
+
+  if (variantIds.length === 0) {
+    return notify.error('Không có biến thể nào để áp dụng')
+  }
+
+  selectedVariantIdsForPromotion.value = variantIds
+  showApplyPromotionModal.value = true
+}
+
+// Áp dụng khuyến mãi từ modal
+const confirmApplyPromotion = async (promotionId: number) => {
+  try {
+    await ProductVariantService.applyPromotion({
+      variantIds: selectedVariantIdsForPromotion.value,
+      promotionId: promotionId,
+    })
+    notify.success(
+      `Đã áp dụng khuyến mãi cho ${selectedVariantIdsForPromotion.value.length} biến thể`,
+    )
+    showApplyPromotionModal.value = false
+    loadData()
+  } catch (e: any) {
+    notify.error('Áp dụng khuyến mãi thất bại')
+  }
+}
 const products = ref<any[]>([])
 const variants = ref<any[]>([])
 const loading = ref(false)
 const categories = ref<any[]>([]) // ← thêm
 
 const selectedProductIds = ref<number[]>([])
+const showApplyPromotionModal = ref(false)
+const selectedPromotionForApply = ref<number | null>(null)
 const selectedVariantIds = ref<number[]>([])
 
 const showProductModal = ref(false)
@@ -49,14 +174,16 @@ const newVariant = ref({
 const loadData = async () => {
   loading.value = true
   try {
-    const [prodRes, varRes, catRes] = await Promise.all([
+    const [prodRes, varRes, catRes, promoRes] = await Promise.all([
       ProductService.getAllProducts(),
       ProductVariantService.getAll(),
-      Category.getAllCategories(), // ← thêm dòng này
+      Category.getAllCategories(),
+      Promotion.getAllPromotions(),
     ])
     products.value = prodRes
     variants.value = varRes
     categories.value = catRes || []
+    promotions.value = promoRes || []
   } catch (e) {
     notify.error('Không tải được dữ liệu')
   } finally {
@@ -246,6 +373,19 @@ onMounted(loadData)
       </div>
       <div class="flex gap-3">
         <button
+          @click="openCreatePromotion"
+          class="bg-[#658a22] hover:bg-[#58791d] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-100 transition-all"
+        >
+          <span class="material-symbols-outlined">percent</span> Quản lý khuyến mãi
+        </button>
+        <button
+          v-if="selectedProductIds.length > 0"
+          @click="openApplyPromotionModal"
+          class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-amber-100 transition-all"
+        >
+          Áp dụng KM cho {{ selectedProductIds.length }} sản phẩm
+        </button>
+        <button
           v-if="selectedProductIds.length > 0"
           @click="deleteSelectedProducts"
           class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-red-100 transition-all"
@@ -357,6 +497,12 @@ onMounted(loadData)
             <div class="text-[10px] font-bold text-slate-400 mt-3 uppercase">
               Kho: {{ variant.stock }} | SKU: {{ variant.sku }}
             </div>
+            <button
+              @click.stop="applyPromotionToVariant(variant.id)"
+              class="mt-2 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1 rounded-xl font-medium"
+            >
+              Áp dụng KM
+            </button>
 
             <div
               v-if="selectedVariantIds.includes(variant.id)"
@@ -415,7 +561,7 @@ onMounted(loadData)
                 {{ cat.name }}
               </option>
             </select>
-          </div>uploadProductImage
+          </div>
           <div>
             <label
               class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
@@ -652,6 +798,136 @@ onMounted(loadData)
             class="flex-1 py-4 bg-[#658a22] text-white rounded-2xl font-black"
           >
             Upload hình ảnh
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Quản lý Khuyến mãi -->
+    <div
+      v-if="showPromotionModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      @click.self="showPromotionModal = false"
+    >
+      <div
+        class="bg-white rounded-[40px] w-full max-w-2xl p-10 shadow-2xl max-h-[90vh] overflow-auto"
+        @click.stop
+      >
+        <h2 class="text-2xl font-black mb-8 text-slate-900 flex items-center gap-2">
+          <span class="w-2 h-8 bg-[#658a22] rounded-full"></span> Quản lý Khuyến mãi
+        </h2>
+
+        <!-- Danh sách khuyến mãi -->
+        <div class="mb-8">
+          <h3 class="font-bold mb-4 text-slate-800">Danh sách khuyến mãi hiện có</h3>
+          <div class="space-y-3">
+            <div
+              v-for="promo in promotions"
+              :key="promo.id"
+              class="flex justify-between items-center bg-slate-50 p-4 rounded-2xl mb-2 border-2 border-slate-100"
+            >
+              <div>
+                <div class="font-bold text-slate-600 mb-2">{{ promo.name }}</div>
+                <div class="text-sm text-slate-500">
+                  {{ promo.code }} •
+                  {{
+                    promo.discountType === 'PERCENT'
+                      ? promo.discountValue + '%'
+                      : promo.discountValue + 'đ'
+                  }}
+                </div>
+              </div>
+              <button @click="editPromotion(promo)" class="text-blue-600 hover:text-blue-700">
+                Sửa
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form tạo/sửa khuyến mãi -->
+        <div class="text-slate-800">
+          <h3 class="font-bold mb-4">Tạo / Sửa khuyến mãi</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <input
+              v-model="newPromotion.name"
+              placeholder="Tên khuyến mãi"
+              class="border-2 border-slate-100 rounded-2xl px-5 py-4"
+            />
+            <input
+              v-model="newPromotion.code"
+              placeholder="Mã khuyến mãi"
+              class="border-2 border-slate-100 rounded-2xl px-5 py-4"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <select
+              v-model="newPromotion.discountType"
+              class="border-2 border-slate-100 rounded-2xl px-5 py-4"
+            >
+              <option value="PERCENT">Giảm theo %</option>
+              <option value="FIXED_AMOUNT">Giảm số tiền cố định</option>
+            </select>
+            <input
+              v-model="newPromotion.discountValue"
+              type="number"
+              placeholder="Giá trị giảm"
+              class="border-2 border-slate-100 rounded-2xl px-5 py-4"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <input
+              v-model="newPromotion.startDate"
+              type="date"
+              class="border-2 border-slate-100 rounded-2xl px-5 py-4"
+            />
+            <input
+              v-model="newPromotion.endDate"
+              type="date"
+              class="border-2 border-slate-100 rounded-2xl px-5 py-4"
+            />
+          </div>
+          <button
+            @click="savePromotion"
+            class="mt-6 w-full py-4 bg-[#658a22] text-white rounded-2xl font-bold"
+          >
+            Lưu khuyến mãi
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Chọn Khuyến mãi để áp dụng -->
+    <div
+      v-if="showApplyPromotionModal"
+      class="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] p-4"
+      @click.self="showApplyPromotionModal = false"
+    >
+      <div class="bg-white rounded-[32px] w-full max-w-md p-8 shadow-2xl" @click.stop>
+        <h2 class="text-xl font-bold mb-6 text-slate-900">Chọn khuyến mãi để áp dụng</h2>
+
+        <div class="max-h-[400px] overflow-y-auto space-y-2">
+          <button
+            v-for="promo in promotions"
+            :key="promo.id"
+            @click="confirmApplyPromotion(promo.id)"
+            class="w-full text-left p-4 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-all"
+          >
+            <div class="font-medium">{{ promo.name }}</div>
+            <div class="text-sm text-slate-500">
+              {{ promo.code }} —
+              {{
+                promo.discountType === 'PERCENT'
+                  ? promo.discountValue + '%'
+                  : promo.discountValue.toLocaleString('vi-VN') + 'đ'
+              }}
+            </div>
+          </button>
+        </div>
+
+        <div class="flex justify-end mt-6">
+          <button
+            @click="showApplyPromotionModal = false"
+            class="px-8 py-3 text-slate-600 border border-slate-300 rounded-2xl"
+          >
+            Hủy
           </button>
         </div>
       </div>
