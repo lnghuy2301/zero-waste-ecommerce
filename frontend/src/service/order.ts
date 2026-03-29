@@ -1,6 +1,6 @@
 import api from './api.ts'
 
-export const Order = {
+export const OrderService = {
   // 1. Tạo đơn hàng mới
   async createOrder(orderData: any) {
     const response = await api.post('/order', orderData)
@@ -46,4 +46,4 @@ export const Order = {
   },
 }
 
-export default Order
+export default OrderService

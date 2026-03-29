@@ -2,10 +2,11 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { notify } from "@/utils/notifier.ts";
-import OrderService from '../service/order.ts';
+import { OrderService } from '../service/order.ts';
 import OrderDetailService from '../service/order_detail.ts';
 import CommentService from '../service/comment.ts';
-import MediaService from '../service/media.ts'; // IMPORT MEDIA SERVICE VÀO ĐÂY NÈ
+import MediaService from '../service/media.ts';
+import { Cart } from '../service/cart.ts'; // IMPORT THÊM CART SERVICE
 
 const router = useRouter();
 const userId = ref<number | null>(null);
@@ -126,19 +127,42 @@ const handleCancelOrder = async (id: number) => {
   }
 };
 
-const handleReorder = (order: any) => {
+// --- HÀM MUA LẠI ĐÃ ĐƯỢC FIX ---
+const handleReorder = async (order: any) => {
   if (!order.orderItems || order.orderItems.length === 0) {
     notify.error("Đơn hàng này không có sản phẩm để mua lại.");
     return;
   }
 
-  const itemsToReorder = order.orderItems.map((item: any) => ({
-    variantId: item.variantId,
-    quantity: item.quantity
-  }));
+  if (!userId.value) {
+    notify.error("Vui lòng đăng nhập để thực hiện.");
+    return;
+  }
 
-  notify.success("Đã thêm các sản phẩm này vào giỏ hàng!");
-  router.push('/cart');
+  try {
+    // Dùng Promise.all để gửi tất cả sản phẩm vào giỏ hàng cùng lúc cho nhanh
+    const reorderPromises = order.orderItems.map((item: any) => {
+      const payload = {
+        accountId: Number(userId.value),
+        variantId: Number(item.variantId || item.variant?.id),
+        quantity: Number(item.quantity)
+      };
+      return Cart.create(payload);
+    });
+
+    await Promise.all(reorderPromises);
+
+    // Bắn sự kiện để cái icon giỏ hàng trên Header tự động nhảy số lên
+    window.dispatchEvent(new CustomEvent('cart-updated'));
+
+    notify.success("Đã thêm các sản phẩm này vào giỏ hàng!");
+
+    // Chuyển hướng sang trang thanh toán/giỏ hàng
+    router.push('/cartpayment');
+  } catch (error: any) {
+    console.error("Lỗi khi mua lại đơn hàng:", error);
+    notify.error("Có lỗi xảy ra khi thêm vào giỏ hàng. Vui lòng thử lại!");
+  }
 };
 
 const goToProduct = (productId: number | undefined) => {
@@ -174,7 +198,7 @@ const handleFileChange = (event: Event) => {
 const removeMedia = (index: number) => {
   const urlToRevoke = mediaPreviewUrls.value[index];
   if (urlToRevoke) {
-    URL.revokeObjectURL(urlToRevoke); // Fix lỗi gạch đỏ TypeScript
+    URL.revokeObjectURL(urlToRevoke);
   }
   mediaPreviewUrls.value.splice(index, 1);
   selectedMediaFiles.value.splice(index, 1);
@@ -333,7 +357,7 @@ onMounted(() => {
                   <p class="font-medium text-sm text-gray-800 group-hover:text-green-600 transition-colors">{{ item.variant?.name }}</p>
                   <p class="font-semibold text-sm mt-1">{{ formatCurrency(item.price) }}</p>
                   <div class="flex items-center justify-between mt-2">
-                    <p class="text-xs text-gray-500">SL: x{{ item.quantity }}</p>
+                    <p class="text-xs text-gray-500">Số lượng: x{{ item.quantity }}</p>
                     <button v-if="selectedOrder.status === 'COMPLETED'" @click.stop="openReviewModalForProduct(selectedOrder, item)" class="px-3 py-1 bg-white border border-green-500 text-green-600 hover:bg-green-50 rounded shadow-sm text-xs font-semibold transition-colors">
                       Đánh giá
                     </button>
