@@ -15,6 +15,11 @@ export const ProductVariantService = {
     const response = await api.delete('/product-variant', { data })
     return response.data
   },
+
+  async applyPromotion(data: { variantIds: number[]; promotionId: number | null }) {
+    const res = await api.patch('/product-variant/apply-promotion', data)
+    return res.data
+  },
 }
 
 export default ProductVariantService

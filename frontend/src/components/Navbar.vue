@@ -102,10 +102,14 @@ const handleLogout = () => {
         <nav class="hidden md:flex items-center space-x-8">
           <RouterLink to="/products" class="text-sm font-bold hover:text-[#658a22] text-slate-700">Sản phẩm</RouterLink>
           <RouterLink to="/" class="text-sm font-bold hover:text-[#658a22] text-slate-700">Khuyến mãi</RouterLink>
-          <RouterLink to="/about" class="text-sm font-bold hover:text-[#658a22] text-slate-700">Về Chúng tôi</RouterLink>
+          <RouterLink to="/" class="text-sm font-bold hover:text-[#658a22] text-slate-700">Về Chúng tôi</RouterLink>
         </nav>
 
         <div class="flex items-center gap-2 sm:gap-4">
+          <button class="p-2 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center">
+            <span class="material-symbols-outlined text-slate-600">search</span>
+          </button>
+
           <div v-if="user" class="relative user-menu-container">
             <button
               @click.stop="isMenuOpen = !isMenuOpen"

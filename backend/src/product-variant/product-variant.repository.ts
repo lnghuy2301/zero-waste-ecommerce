@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductVariantRequestDto } from './dto/product-variant.request.dto';
 import { ProductVariantResponseDto } from './dto/product-variant.response.dto';
+import { ApplyPromotionDto } from './dto/apply-promotion.dto';
 import { DeleteListProductVariantDto } from './dto/delete-list-product-variant.dto';
 import { plainToInstance } from 'class-transformer';
 import { Prisma } from '@prisma/client';
@@ -107,6 +108,15 @@ export class ProductVariantRepository {
     const result = await this.prismaService.productVariant.deleteMany({
       where: { id: { in: dto.Ids } },
     });
+    return { count: result.count };
+  }
+
+  async applyPromotion(dto: ApplyPromotionDto) {
+    const result = await this.prismaService.productVariant.updateMany({
+      where: { id: { in: dto.variantIds } },
+      data: { promotionId: dto.promotionId ?? null },
+    });
+
     return { count: result.count };
   }
 }

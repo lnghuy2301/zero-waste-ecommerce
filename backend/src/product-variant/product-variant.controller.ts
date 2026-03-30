@@ -5,14 +5,18 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ProductVariantService } from './product-variant.service';
 import { ProductVariantRequestDto } from './dto/product-variant.request.dto';
 import { ProductVariantResponseDto } from './dto/product-variant.response.dto';
 import { DeleteListProductVariantDto } from './dto/delete-list-product-variant.dto';
+import { ApplyPromotionDto } from './dto/apply-promotion.dto';
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
 import { RolesGuard } from '../auth/auth.role.guard';
 import { Roles } from '../auth/auth.role.decorator';
@@ -69,5 +73,19 @@ export class ProductVariantController {
     @Body() dto: DeleteListProductVariantDto,
   ): Promise<{ count: number }> {
     return this.productVariantService.deleteListVariants(dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Patch('apply-promotion')
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
+  async applyPromotion(@Body() dto: ApplyPromotionDto) {
+    return this.productVariantService.applyPromotion(dto);
   }
 }

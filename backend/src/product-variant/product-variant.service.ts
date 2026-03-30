@@ -8,7 +8,7 @@ import { ProductVariantHelper } from './product-variant.helper';
 import { ProductVariantRequestDto } from './dto/product-variant.request.dto';
 import { ProductVariantResponseDto } from './dto/product-variant.response.dto';
 import { DeleteListProductVariantDto } from './dto/delete-list-product-variant.dto';
-
+import { ApplyPromotionDto } from './dto/apply-promotion.dto';
 @Injectable()
 export class ProductVariantService {
   constructor(
@@ -65,5 +65,9 @@ export class ProductVariantService {
       throw new NotFoundException('Không tìm thấy biến thể nào để xóa');
     }
     return result;
+  }
+
+  async applyPromotion(dto: ApplyPromotionDto) {
+    return this.productVariantRepository.applyPromotion(dto);
   }
 }
