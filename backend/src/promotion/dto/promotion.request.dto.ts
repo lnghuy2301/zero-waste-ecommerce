@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -6,6 +7,8 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  IsNumber,
+  Min,
 } from 'class-validator';
 import { DiscountType } from '@prisma/client';
 
@@ -25,7 +28,9 @@ export class PromotionRequestDto {
   discountType: DiscountType;
 
   @IsNotEmpty({ message: 'Giá trị giảm không được bỏ trống' })
-  @IsString({ message: 'Giá trị giảm phải là chuỗi số' })
+  @Type(() => Number) // Tự động ép kiểu sang số nếu client lỡ gửi string
+  @IsNumber({}, { message: 'Giá trị giảm phải là số' })
+  @Min(0, { message: 'Giá trị giảm không được là số âm' })
   discountValue: string;
 
   @IsNotEmpty({ message: 'Ngày bắt đầu không được bỏ trống' })

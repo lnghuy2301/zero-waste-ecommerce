@@ -82,8 +82,10 @@ onMounted(loadAccounts)
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto p-6 bg-slate-50 min-h-screen">
-    <div class="flex justify-between items-center mb-8">
+  <div class="max-w-7xl mx-auto p-6 bg-transparent min-h-screen">
+    <div
+      class="flex justify-between items-center mb-10 sticky top-0 z-40 bg-white/40 backdrop-blur-lg py-6 -mx-6 px-6 border-b border-white/20 shadow-sm"
+    >
       <div>
         <h1 class="text-3xl font-black text-slate-900 tracking-tight">Quản lý Tài khoản</h1>
         <p class="text-slate-500">Click vào dòng để chọn tài khoản</p>
@@ -101,9 +103,12 @@ onMounted(loadAccounts)
       Đang tải danh sách tài khoản...
     </div>
 
-    <div v-else class="bg-white rounded-3xl shadow-sm overflow-hidden">
+    <div
+      v-else
+      class="bg-white/70 backdrop-blur-md rounded-[32px] shadow-xl overflow-hidden border border-white/30"
+    >
       <table class="w-full">
-        <thead class="bg-slate-100 border-b">
+        <thead class="bg-white/30 border-b border-white/20">
           <tr>
             <th class="w-10 px-6 py-4"></th>
             <th class="px-6 py-4 text-left font-medium text-slate-700">ID</th>
@@ -118,7 +123,7 @@ onMounted(loadAccounts)
             v-for="account in accounts"
             :key="account.id"
             @click="toggleSelect(account.id)"
-            class="hover:bg-slate-50 cursor-pointer transition-all"
+            class="hover:bg-white/40 cursor-pointer transition-all group"
             :class="
               selectedAccountIds.includes(account.id)
                 ? 'bg-[#f8fdf0] border-l-4 border-[#658a22]'
@@ -183,7 +188,10 @@ onMounted(loadAccounts)
       class="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4"
       @click.self="showDetailModal = false"
     >
-      <div class="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl" @click.stop>
+      <div
+        class="bg-white/90 backdrop-blur-xl rounded-[40px] w-full max-w-lg p-10 shadow-2xl border border-white/50"
+        @click.stop
+      >
         <h2 class="text-2xl font-black mb-6 text-slate-900">Thông tin tài khoản</h2>
 
         <div class="space-y-6">
@@ -257,7 +265,10 @@ onMounted(loadAccounts)
             </div>
           </div>
 
-          <div v-else class="mt-8 p-6 bg-slate-50 rounded-2xl text-center text-slate-400">
+          <div
+            v-else
+            class="mt-8 p-6 bg-black/5 rounded-2xl text-center text-slate-500 font-medium border border-white/20"
+          >
             Tài khoản này chưa có thông tin hồ sơ chi tiết.
           </div>
         </div>
@@ -265,7 +276,7 @@ onMounted(loadAccounts)
         <div class="flex justify-end mt-10">
           <button
             @click="showDetailModal = false"
-            class="text-slate-800 px-10 py-3.5 border border-slate-300 rounded-2xl font-medium"
+            class="px-10 py-4 border-2 border-slate-200 rounded-2xl font-black uppercase text-xs tracking-widest text-slate-400 hover:text-slate-600 hover:bg-white/50 transition-all"
           >
             Đóng
           </button>

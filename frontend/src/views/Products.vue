@@ -159,7 +159,9 @@ onMounted(() => {
     <div class="flex flex-col lg:flex-row gap-10">
       <!-- Sidebar Danh mục -->
       <aside class="w-full lg:w-72 flex-shrink-0">
-        <div class="sticky top-24 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div
+          class="sticky top-24 bg-background-light p-6 rounded-3xl border border-slate-100 shadow-sm"
+        >
           <h3 class="font-black text-xl mb-6 text-slate-900 flex items-center gap-2">
             <span class="material-symbols-outlined text-red-600">category</span>
             Danh mục

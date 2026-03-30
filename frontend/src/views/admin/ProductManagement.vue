@@ -37,44 +37,73 @@ const openCreatePromotion = () => {
   showPromotionModal.value = true
 }
 
+const formatDateForInput = (dateString: string) => {
+  if (!dateString) return ''
+  // Cắt lấy 10 ký tự đầu (yyyy-MM-dd) từ chuỗi ISO hoặc chuỗi bất kỳ
+  return new Date(dateString).toISOString().split('T')[0]
+}
 const editPromotion = (promo: any) => {
   currentPromotion.value = promo
   isEditPromotion.value = true
-  newPromotion.value = { ...promo }
+  // Format lại ngày trước khi gán vào form để input type="date" hiểu được
+  newPromotion.value = {
+    ...promo,
+    startDate: formatDateForInput(promo.startDate),
+    endDate: formatDateForInput(promo.endDate),
+    discountValue: Number(promo.discountValue), // Đảm bảo là số để tính toán
+  }
   showPromotionModal.value = true
 }
 
 const savePromotion = async () => {
   if (!newPromotion.value.name?.trim()) return notify.error('Tên khuyến mãi không được bỏ trống')
   if (!newPromotion.value.code?.trim()) return notify.error('Mã khuyến mãi không được bỏ trống')
-  if (!newPromotion.value.discountValue || newPromotion.value.discountValue <= 0) {
-    return notify.error('Giá trị giảm phải lớn hơn 0')
+
+  // Chuyển đổi dữ liệu trước khi gửi lên Server
+  const payload = {
+    ...newPromotion.value,
+    discountValue: Number(newPromotion.value.discountValue),
+    // Chuyển ngày về định dạng ISO để Backend không bị lỗi 500
+    startDate: newPromotion.value.startDate
+      ? new Date(newPromotion.value.startDate).toISOString()
+      : null,
+    endDate: newPromotion.value.endDate ? new Date(newPromotion.value.endDate).toISOString() : null,
   }
 
   try {
     if (isEditPromotion.value && currentPromotion.value) {
-      await Promotion.updatePromotion(currentPromotion.value.id, newPromotion.value)
+      await Promotion.updatePromotion(currentPromotion.value.id, payload)
       notify.success('Cập nhật khuyến mãi thành công')
     } else {
-      await Promotion.createPromotion(newPromotion.value)
+      await Promotion.createPromotion(payload)
       notify.success('Tạo khuyến mãi thành công')
     }
     showPromotionModal.value = false
     loadData()
   } catch (e: any) {
+    // Log lỗi chi tiết ra console để kiểm tra nếu vẫn lỗi
+    console.error('Lỗi API:', e.response?.data)
     const msg = e.response?.data?.message || 'Lưu khuyến mãi thất bại'
     notify.error(Array.isArray(msg) ? msg.join(' • ') : msg)
   }
 }
 
-const deletePromotion = async (id: number) => {
-  if (!confirm('Xóa khuyến mãi này?')) return
+const removePromotion = async (id: number) => {
+  // 1. Hỏi xác nhận trước khi xóa
+  if (!confirm('Bạn có chắc chắn muốn xóa khuyến mãi này không?')) return
+
   try {
+    // 2. Gọi API xóa
     await Promotion.deletePromotion(id)
-    notify.success('Xóa khuyến mãi thành công')
-    loadData()
+
+    // 3. Thông báo thành công (nếu bạn có dùng notifier)
+    // notify.success('Đã xóa khuyến mãi')
+
+    // 4. Cập nhật lại danh sách trên giao diện mà không cần load lại trang
+    promotions.value = promotions.value.filter((p: any) => p.id !== id)
   } catch (e) {
-    notify.error('Xóa khuyến mãi thất bại')
+    console.error('Lỗi khi xóa:', e)
+    alert('Không thể xóa khuyến mãi này. Vui lòng thử lại!')
   }
 }
 
@@ -365,8 +394,10 @@ onMounted(loadData)
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto p-6 bg-slate-50 min-h-screen">
-    <div class="flex justify-between items-center mb-10">
+  <div class="max-w-7xl mx-auto p-6 bg-transparent min-h-screen">
+    <div
+      class="flex justify-between items-center mb-10 sticky top-0 z-40 bg-white/60 backdrop-blur-lg border-b border-white/20"
+    >
       <div>
         <h1 class="text-3xl font-black text-slate-900 tracking-tight">Quản lý Sản phẩm</h1>
         <p class="text-slate-500 font-medium">Nhấn vào thẻ để chọn sản phẩm cần thao tác.</p>
@@ -431,7 +462,7 @@ onMounted(loadData)
         v-for="product in products"
         :key="product.id"
         @click="toggleProductSelect(product.id)"
-        class="bg-white rounded-[32px] p-8 border-2 transition-all cursor-pointer relative active:scale-[0.995] select-none"
+        class="bg-white/70 backdrop-blur-md rounded-[32px] p-8 border-2 transition-all cursor-pointer relative active:scale-[0.995] select-none"
         :class="
           selectedProductIds.includes(product.id)
             ? 'border-[#658a22] shadow-xl bg-[#fcfdf9]'
@@ -520,7 +551,7 @@ onMounted(loadData)
       class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
       @click.self="showProductModal = false"
     >
-      <div class="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl" @click.stop>
+      <div class="bg-transparent rounded-[40px] w-full max-w-lg p-10 shadow-2xl" @click.stop>
         <h2 class="text-2xl font-black mb-8 text-slate-900 flex items-center gap-2">
           <span class="w-2 h-8 bg-[#658a22] rounded-full"></span> Tạo sản phẩm mới
         </h2>
@@ -836,9 +867,22 @@ onMounted(loadData)
                   }}
                 </div>
               </div>
-              <button @click="editPromotion(promo)" class="text-blue-600 hover:text-blue-700">
-                Sửa
-              </button>
+
+              <div class="flex gap-4">
+                <button
+                  @click="editPromotion(promo)"
+                  class="text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Sửa
+                </button>
+
+                <button
+                  @click="removePromotion(promo.id)"
+                  class="text-red-500 hover:text-red-700 font-medium"
+                >
+                  Xóa
+                </button>
+              </div>
             </div>
           </div>
         </div>

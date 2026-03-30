@@ -76,7 +76,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="bg-background-light min-h-screen">
+  <div class="bg-transparent min-h-screen">
     <section class="relative h-[600px] flex items-center overflow-hidden">
       <div class="absolute inset-0 z-0">
         <img
@@ -107,7 +107,9 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <section class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-white/30 backdrop-blur-md rounded-3xl my-10"
+    >
       <div class="flex flex-col items-center mb-12">
         <h2 class="text-3xl font-bold mb-4 text-slate-900">Mua Sắm Theo Danh Mục</h2>
         <div class="h-1 w-24 bg-primary rounded-full"></div>
@@ -178,8 +180,10 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <section class="py-20 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section class="py-20 bg-white/20 backdrop-blur-sm">
+      <div
+        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-white/40 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-sm"
+      >
         <div class="flex justify-between items-end mb-10">
           <div>
             <h2 class="text-3xl font-bold mb-2 text-slate-900">Sản Phẩm Mới</h2>

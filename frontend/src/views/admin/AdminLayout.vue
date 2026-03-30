@@ -22,7 +22,7 @@ const logout = () => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-slate-50">
+  <div class="flex h-screen bg-transparent">
     <!-- Sidebar -->
     <div class="w-72 bg-[#658a22] text-white flex flex-col">
       <div class="px-6 py-8 flex items-center gap-3 border-b border-white/20">
@@ -76,7 +76,7 @@ const logout = () => {
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Top bar -->
-      <header class="h-16 bg-white border-b flex items-center px-8 justify-between">
+      <header class="h-16 bg-background-light border-b flex items-center px-8 justify-between">
         <div class="flex items-center gap-4">
           <h1 class="text-xl font-bold text-slate-900">Tổng quan hệ thống</h1>
         </div>
@@ -93,7 +93,7 @@ const logout = () => {
       </header>
 
       <!-- Nội dung trang con -->
-      <main class="flex-1 overflow-auto p-8 bg-slate-50">
+      <main class="flex-1 overflow-auto p-8 bg-transparent">
         <RouterView />
       </main>
     </div>
