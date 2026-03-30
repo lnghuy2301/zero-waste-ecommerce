@@ -7,7 +7,6 @@
   --font-display: "Inter", sans-serif;
 }
 
-/* Ẩn thanh cuộn (scrollbar) */
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -16,4 +15,13 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+body {
+  background-image: url('./assets/image/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #f8fafc;
 }

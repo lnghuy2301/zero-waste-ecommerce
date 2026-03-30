@@ -1,259 +1,476 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router' // Đã thêm useRouter để fix lỗi click ảnh
 import { Category } from '@/service/category.ts'
+import api from '@/service/api.ts'
 
+const router = useRouter()
 const categories = ref<any[]>([])
+const allProducts = ref<any[]>([])
+const promotions = ref<any[]>([])
+const variantMap = ref<Map<number, any[]>>(new Map())
 const isLoading = ref(true)
 
-// --- LOGIC SLIDER ---
+// --- STATE QUẢN LÝ SLIDER DANH MỤC ---
 const currentPage = ref(0)
-const itemsPerPage = 3
+const itemsPerPage = ref(window.innerWidth < 768 ? 1 : 3)
 
 const chunkedCategories = computed(() => {
   const chunks = []
-  for (let i = 0; i < categories.value.length; i += itemsPerPage) {
-    chunks.push(categories.value.slice(i, i + itemsPerPage))
+  for (let i = 0; i < categories.value.length; i += itemsPerPage.value) {
+    chunks.push(categories.value.slice(i, i + itemsPerPage.value))
   }
   return chunks
 })
 
 const totalPages = computed(() => chunkedCategories.value.length)
-
 const nextPage = () => {
-  currentPage.value = (currentPage.value + 1) % totalPages.value
+  if (totalPages.value > 0) currentPage.value = (currentPage.value + 1) % totalPages.value
 }
-
 const prevPage = () => {
-  currentPage.value = (currentPage.value - 1 + totalPages.value) % totalPages.value
+  if (totalPages.value > 0)
+    currentPage.value = (currentPage.value - 1 + totalPages.value) % totalPages.value
 }
 
-// --- AUTO-PLAY ---
-const autoPlayInterval = ref<number | null>(null)
+// --- LOGIC LỌC SẢN PHẨM ---
+const latestProducts = computed(() => {
+  return [...allProducts.value].sort((a, b) => b.id - a.id).slice(0, 10)
+})
 
-const startAutoPlay = () => {
-  if (autoPlayInterval.value) clearInterval(autoPlayInterval.value)
-  autoPlayInterval.value = setInterval(nextPage, 3000)
+const promoProducts = computed(() => {
+  return allProducts.value
+    .filter((p) => {
+      const variants = variantMap.value.get(p.id) || []
+      return variants.some((v) => v.promotionId !== null)
+    })
+    .slice(0, 5)
+})
+
+const displayPromoProducts = computed(() => {
+  return promoProducts.value.length > 0 ? promoProducts.value : latestProducts.value.slice(0, 5)
+})
+
+// --- HELPER & API ---
+const BACKEND_URL = 'http://localhost:3000'
+const getImageUrl = (path: string | null) => {
+  if (!path) return 'https://placehold.co/400x400/f4f7ee/658a22?text=Eco+Store'
+  return `${BACKEND_URL}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
-const stopAutoPlay = () => {
-  if (autoPlayInterval.value) {
-    clearInterval(autoPlayInterval.value)
-    autoPlayInterval.value = null
+const getDiscountedPrice = (productId: number) => {
+  const variants = variantMap.value.get(productId) || []
+  if (variants.length === 0) return 0
+  const variant = variants[0]
+
+  if (!variant.promotionId) return Number(variant.price)
+  const promo = promotions.value.find((p) => p.id === variant.promotionId)
+  if (!promo || !promo.isActive) return Number(variant.price)
+
+  let finalPrice = Number(variant.price)
+  if (promo.discountType === 'PERCENT') {
+    finalPrice *= 1 - Number(promo.discountValue) / 100
+  } else if (promo.discountType === 'FIXED_AMOUNT') {
+    finalPrice -= Number(promo.discountValue)
   }
+  return Math.max(0, finalPrice)
 }
 
-// --- API ---
-const fetchCategories = async () => {
+const fetchData = async () => {
   try {
     isLoading.value = true
-    const data = await Category.getAllCategories()
-    categories.value = data
+    const [catData, prodRes, varRes, promoRes] = await Promise.all([
+      Category.getAllCategories(),
+      api.get('/product'),
+      api.get('/product-variant'),
+      api.get('/promotion'),
+    ])
+
+    categories.value = catData
+    allProducts.value = prodRes.data
+    promotions.value = promoRes.data
+
+    const map = new Map<number, any[]>()
+    varRes.data.forEach((v: any) => {
+      if (!map.has(v.productId)) map.set(v.productId, [])
+      map.get(v.productId)!.push(v)
+    })
+    variantMap.value = map
   } catch (error) {
-    console.error('Lỗi khi tải danh mục:', error)
+    console.error('Lỗi khi tải dữ liệu:', error)
   } finally {
     isLoading.value = false
   }
 }
 
-const BACKEND_URL = 'http://localhost:3000'
+// --- AUTO-PLAY SLIDER ---
+let autoPlayInterval: any = null
+const startAutoPlay = () => {
+  autoPlayInterval = setInterval(nextPage, 4000)
+}
+const stopAutoPlay = () => {
+  clearInterval(autoPlayInterval)
+}
 
-const getImageUrl = (imagePath: string | null) => {
-  if (!imagePath) {
-    return 'https://placehold.co/600x400/eef2e6/658a22?text=Zero+Waste'
-  }
-  return `${BACKEND_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`
+const handleResize = () => {
+  itemsPerPage.value = window.innerWidth < 768 ? 1 : 3
 }
 
 onMounted(() => {
-  fetchCategories()
+  fetchData()
   startAutoPlay()
+  window.addEventListener('resize', handleResize)
 })
-
 onUnmounted(() => {
   stopAutoPlay()
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <template>
-  <div class="bg-transparent min-h-screen">
-    <section class="relative h-[600px] flex items-center overflow-hidden">
+  <main class="bg-[#f8fafc] min-h-screen font-sans selection:bg-[#eef4e6] selection:text-[#658a22]">
+    <section
+      class="relative h-[80vh] flex items-center overflow-hidden rounded-b-[3.5rem] shadow-2xl"
+    >
       <div class="absolute inset-0 z-0">
         <img
-          alt="Sống xanh"
+          alt="Green living"
           class="w-full h-full object-cover"
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkoGZJG_MUKBvy5eHgenV5gHcWqf1V5bML85bunMInMK2pbGFrCWgqqmIn-r-8AMaTrvahaizJHoQubA9k1PCv75FbhcF3zCgFx8dmWCs6FyUf87bl8h4c5AtwW-gU1quAidlG-qbGfLEpjviAQx9lX1RoVB5_l9t92ngN7oxf4jFVxIjmZ-CGIUfAlTMe7h0DXQB6ICgc-v7U1rxRv1od9xOxQ4lYEXQzD-L_9bCwPAPmc3ZOuQsgrRn7vwT5HOlwfnM0kA9zSQU"
+          src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=2000&auto=format&fit=crop"
         />
-        <div class="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"></div>
+        <div
+          class="absolute inset-0 bg-gradient-to-r from-[#1e293b]/90 via-[#1e293b]/50 to-transparent"
+        ></div>
       </div>
-      <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div class="max-w-2xl">
-          <h1 class="text-5xl md:text-7xl font-black text-white leading-tight mb-6">
-            Sống Bền Vững, <br />
-            <span class="text-primary">Mua Sắm Có Ý Thức</span>
+      <div class="relative z-10 max-w-[1400px] mx-auto px-4 md:px-10 w-full">
+        <div class="max-w-2xl animate-fade-in-up">
+          <div
+            class="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-full font-bold text-xs uppercase tracking-widest mb-6 border border-white/30"
+          >
+            <span class="material-symbols-outlined text-[16px]">eco</span>
+            Dự án Recycle Store
+          </div>
+          <h1
+            class="text-5xl md:text-7xl font-black text-white leading-tight uppercase italic mb-6"
+          >
+            Mua Sắm <span class="text-[#a4d651]">Xanh</span><br />Sống Bền Vững
           </h1>
-          <p class="text-lg text-white/90 mb-8 font-medium max-w-xl">
-            Khám phá bộ sưu tập các sản phẩm không chứa nhựa thiết yếu của chúng tôi cho một ngôi
-            nhà xanh hơn và một hành tinh khỏe mạnh hơn.
+          <p class="text-lg text-slate-300 mb-10 font-medium max-w-lg leading-relaxed">
+            Mỗi lựa chọn của bạn hôm nay đều góp phần tạo nên một Trái Đất xanh và sạch hơn cho ngày
+            mai.
           </p>
           <RouterLink
             to="/products"
-            class="inline-flex items-center justify-center px-8 py-4 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg"
+            class="inline-flex items-center gap-3 px-8 py-4 bg-[#658a22] text-white font-black rounded-full hover:bg-[#52701b] hover:scale-105 transition-all shadow-[0_10px_30px_rgba(101,138,34,0.4)]"
           >
-            Mua Sắm Ngay
-            <span class="material-symbols-outlined ml-2">arrow_forward</span>
+            KHÁM PHÁ NGAY <span class="material-symbols-outlined">arrow_forward</span>
           </RouterLink>
         </div>
       </div>
     </section>
 
-    <section
-      class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-white/30 backdrop-blur-md rounded-3xl my-10"
-    >
-      <div class="flex flex-col items-center mb-12">
-        <h2 class="text-3xl font-bold mb-4 text-slate-900">Mua Sắm Theo Danh Mục</h2>
-        <div class="h-1 w-24 bg-primary rounded-full"></div>
+    <section class="py-24 max-w-[1400px] mx-auto px-4 md:px-10">
+      <div
+        class="flex flex-col md:flex-row justify-between items-center md:items-end mb-12 gap-6 text-center md:text-left"
+      >
+        <div>
+          <h2 class="text-4xl font-black text-slate-900 uppercase italic mb-2">
+            Danh mục <span class="text-[#658a22]">Nổi bật</span>
+          </h2>
+          <p class="text-slate-500 font-medium">Lựa chọn hàng đầu cho lối sống không rác thải</p>
+        </div>
+        <div class="flex gap-3">
+          <button
+            @click="prevPage"
+            class="w-12 h-12 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-400 hover:bg-[#658a22] hover:text-white hover:border-[#658a22] transition-all"
+          >
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <button
+            @click="nextPage"
+            class="w-12 h-12 rounded-full border-2 border-slate-200 flex items-center justify-center text-slate-400 hover:bg-[#658a22] hover:text-white hover:border-[#658a22] transition-all"
+          >
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+        </div>
       </div>
 
-      <div v-if="isLoading" class="flex justify-center py-12">
-        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+      <div v-if="isLoading" class="flex flex-col items-center py-10">
+        <div
+          class="w-10 h-10 border-4 border-[#658a22] border-t-transparent rounded-full animate-spin"
+        ></div>
       </div>
 
-      <div v-else-if="categories.length > 0" class="relative px-4 md:px-20">
-        <button
-          @click="prevPage"
-          class="absolute -left-2 md:left-0 top-1/2 -translate-y-1/2 z-30 size-14 bg-white/80 backdrop-blur-sm rounded-full shadow-lg border border-primary/20 flex items-center justify-center text-primary hover:bg-primary/90 hover:text-white hover:border-transparent transition-all duration-300 ease-in-out hover:scale-125 hover:shadow-xl"
+      <div
+        v-else
+        class="overflow-hidden rounded-[2rem]"
+        @mouseenter="stopAutoPlay"
+        @mouseleave="startAutoPlay"
+      >
+        <div
+          class="flex transition-transform duration-700 ease-in-out"
+          :style="{ transform: `translateX(-${currentPage * 100}%)` }"
         >
-          <span class="material-symbols-outlined text-2xl">chevron_left</span>
-        </button>
-
-        <div class="overflow-hidden py-8" @mouseenter="stopAutoPlay" @mouseleave="startAutoPlay">
           <div
-            class="flex transition-transform duration-700 ease-in-out"
-            :style="{ transform: `translateX(-${currentPage * 100}%)` }"
+            v-for="(group, idx) in chunkedCategories"
+            :key="idx"
+            class="w-full shrink-0 grid grid-cols-1 md:grid-cols-3 gap-6"
+          >
+            <RouterLink
+              v-for="cat in group"
+              :key="cat.id"
+              :to="`/products?category=${cat.id}`"
+              class="relative aspect-[4/5] rounded-[2rem] overflow-hidden group border-4 border-white shadow-lg"
+            >
+              <img
+                :src="getImageUrl(cat.image)"
+                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div
+                class="absolute inset-0 bg-gradient-to-t from-[#1e293b]/90 via-[#1e293b]/20 to-transparent group-hover:from-[#658a22]/90 transition-colors duration-500"
+              ></div>
+              <div class="absolute bottom-8 left-8 right-8">
+                <h3
+                  class="text-3xl font-black text-white uppercase italic mb-2 transform group-hover:-translate-y-2 transition-transform duration-500"
+                >
+                  {{ cat.name }}
+                </h3>
+                <span
+                  class="text-white/80 font-bold uppercase tracking-widest text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                >
+                  Khám phá <span class="material-symbols-outlined text-[14px]">east</span>
+                </span>
+              </div>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-24 bg-[#fff5f5] relative border-y-2 border-red-100 overflow-hidden">
+      <div
+        class="absolute -top-20 -left-20 w-64 h-64 bg-red-200 rounded-full blur-3xl opacity-50"
+      ></div>
+      <div class="max-w-[1400px] mx-auto px-4 md:px-10 relative z-10">
+        <div
+          class="flex flex-col md:flex-row justify-between items-center md:items-end mb-12 gap-6"
+        >
+          <div class="flex items-center gap-5">
+            <div
+              class="w-20 h-20 bg-red-500 text-white rounded-3xl flex items-center justify-center shadow-lg shadow-red-500/40 animate-bounce"
+            >
+              <span class="material-symbols-outlined text-4xl">local_fire_department</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span
+                  class="px-2 py-1 bg-red-100 text-red-600 font-black text-[10px] uppercase rounded-md tracking-widest"
+                  >Sự kiện</span
+                >
+                <span class="font-bold text-red-500 text-sm">Đang diễn ra</span>
+              </div>
+              <h2
+                class="text-4xl md:text-5xl font-black text-slate-900 uppercase italic tracking-tight"
+              >
+                Ưu Đãi <span class="text-red-500">Giới Hạn</span>
+              </h2>
+            </div>
+          </div>
+          <RouterLink
+            to="/products"
+            class="font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-6 py-3 rounded-full flex items-center gap-2 transition-all border border-red-200"
+          >
+            Xem tất cả <span class="material-symbols-outlined text-sm">arrow_forward</span>
+          </RouterLink>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 lg:gap-8">
+          <div
+            v-for="p in displayPromoProducts"
+            :key="p.id"
+            class="group bg-white p-3 md:p-4 rounded-[2rem] border-2 border-red-50 hover:border-red-300 hover:shadow-2xl transition-all duration-300 flex flex-col relative transform hover:-translate-y-1"
           >
             <div
-              v-for="(group, index) in chunkedCategories"
-              :key="index"
-              class="w-full shrink-0 px-2"
+              class="absolute top-0 right-6 bg-red-500 text-white font-black text-[11px] px-3 py-3 rounded-b-xl z-10 shadow-md flex flex-col items-center leading-none"
             >
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+              <span class="material-symbols-outlined text-[16px] mb-0.5">sell</span>SALE
+            </div>
+            <div
+              class="aspect-square rounded-[1.5rem] overflow-hidden mb-4 bg-slate-50 cursor-pointer"
+              @click="router.push(`/product/${p.id}`)"
+            >
+              <img
+                :src="getImageUrl(p.mainImage)"
+                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              />
+            </div>
+            <div class="flex flex-col flex-grow px-1">
+              <RouterLink
+                :to="`/product/${p.id}`"
+                class="font-bold text-slate-800 text-[15px] mb-2 line-clamp-2 leading-snug group-hover:text-red-500 transition-colors"
+              >
+                {{ p.name }}
+              </RouterLink>
+              <div
+                class="mt-auto pt-3 flex flex-wrap items-center justify-between border-t border-slate-100 gap-y-2"
+              >
+                <div class="flex flex-col">
+                  <span class="text-[11px] text-slate-300 line-through font-bold"
+                    >{{ (getDiscountedPrice(p.id) * 1.2).toLocaleString('vi-VN') }}đ</span
+                  >
+                  <span class="text-[18px] font-black text-red-500"
+                    >{{ getDiscountedPrice(p.id).toLocaleString('vi-VN') }}đ</span
+                  >
+                </div>
                 <RouterLink
-                  v-for="category in group"
-                  :key="category.id"
-                  :to="`/products?category=${category.id}`"
-                  class="group/card relative overflow-hidden rounded-2xl aspect-[4/5] cursor-pointer shadow-md hover:shadow-2xl transition-all"
+                  :to="`/product/${p.id}`"
+                  class="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm"
                 >
-                  <img
-                    :alt="category.name"
-                    class="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110"
-                    :src="getImageUrl(category.image)"
-                  />
-                  <div
-                    class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent group-hover/card:from-black/80 transition-colors duration-500"
-                  ></div>
-
-                  <div class="absolute bottom-8 left-8 right-8">
-                    <h3 class="text-3xl font-bold text-white mb-3">{{ category.name }}</h3>
-                    <span
-                      class="text-sm font-bold text-white/90 uppercase tracking-widest border-b-2 border-primary pb-1"
-                    >
-                      Xem Bộ Sưu Tập
-                    </span>
-                  </div>
+                  <span class="material-symbols-outlined text-[18px]">shopping_cart_checkout</span>
                 </RouterLink>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <button
-          @click="nextPage"
-          class="absolute -right-2 md:right-0 top-1/2 -translate-y-1/2 z-30 size-14 bg-white/80 backdrop-blur-sm rounded-full shadow-lg border border-primary/20 flex items-center justify-center text-primary hover:bg-primary/90 hover:text-white hover:border-transparent transition-all duration-300 ease-in-out hover:scale-125 hover:shadow-xl"
+    <section class="py-24 max-w-[1400px] mx-auto px-4 md:px-10">
+      <div class="flex flex-col items-center mb-16 text-center">
+        <div
+          class="inline-flex items-center gap-2 px-3 py-1.5 bg-[#eef4e6] text-[#658a22] rounded-md font-black text-[10px] uppercase tracking-widest mb-4"
         >
-          <span class="material-symbols-outlined text-2xl">chevron_right</span>
-        </button>
-      </div>
-
-      <div v-else class="text-center text-slate-500 py-10">
-        Chưa có danh mục sản phẩm nào được tạo.
-      </div>
-    </section>
-
-    <section class="py-20 bg-white/20 backdrop-blur-sm">
-      <div
-        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-white/40 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-sm"
-      >
-        <div class="flex justify-between items-end mb-10">
-          <div>
-            <h2 class="text-3xl font-bold mb-2 text-slate-900">Sản Phẩm Mới</h2>
-            <p class="text-slate-500">
-              Những sự bổ sung mới nhất cho danh mục thân thiện với môi trường
-            </p>
-          </div>
+          Cập nhật mới
         </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div
-            class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-shadow group"
-          >
-            <div class="relative aspect-square mb-5 overflow-hidden rounded-xl bg-slate-50">
-              <img
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdTveclGH-N5fdCnmSY1UEgQdHdoGrmBHLriBqdvxAAiJTdnfosjgYP3Ej_qVWZORjDaJB6LQTkO0P7bX1Mk7LubmJCsqZAGj_QGcfnK1n7gFloPucQdtfphKsrIyhO7b9CNTAVWN8H1qMKu7zQPWkSGh9VL5kLXSJKmEVkPS5exhc3gRI_gzZTQcLLCl6INvd9nYNvw-OBweSn8DgL4TShQbqqEgA8bmK-A4vsaAU3HWJNU8Qdq7SPq7v6mGaxEm6xl_gQ9eexqw"
-                alt="Bàn chải"
-              />
-            </div>
-            <h4 class="font-bold text-slate-900 mb-1">Set Bàn Chải Tre</h4>
-            <p class="text-primary font-bold">129.000đ</p>
-          </div>
-
-          <!-- Các sản phẩm mới khác giữ nguyên -->
-        </div>
-      </div>
-    </section>
-
-    <section class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="bg-[#eef2e6] rounded-[2.5rem] p-12 md:p-20 text-center shadow-sm">
-        <h2 class="text-3xl md:text-4xl font-bold mb-16 text-slate-900">
-          Tại Sao Chọn Zero-Waste?
+        <h2 class="text-4xl font-black text-slate-900 uppercase italic mb-4">
+          Sản phẩm <span class="text-[#658a22]">Mới nhất</span>
         </h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div class="flex flex-col items-center">
+        <div class="w-16 h-1.5 bg-[#658a22] rounded-full"></div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 lg:gap-8">
+        <div
+          v-for="p in latestProducts"
+          :key="p.id"
+          class="group bg-white p-3 md:p-4 rounded-[2rem] border border-slate-100 hover:border-[#658a22]/30 hover:shadow-xl transition-all duration-300 flex flex-col transform hover:-translate-y-1"
+        >
+          <div
+            class="aspect-square rounded-[1.5rem] overflow-hidden mb-4 bg-slate-50 cursor-pointer relative"
+            @click="router.push(`/product/${p.id}`)"
+          >
+            <img
+              :src="getImageUrl(p.mainImage)"
+              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            />
             <div
-              class="size-20 bg-primary text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-primary/30"
+              class="absolute top-3 left-3 bg-[#1e293b] text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-widest"
             >
-              <span class="material-symbols-outlined text-4xl">energy_savings_leaf</span>
+              MỚI
             </div>
-            <h3 class="text-xl font-bold mb-3 text-slate-900">Thân Thiện Môi Trường</h3>
-            <p class="text-slate-600 leading-relaxed">
-              Nguyên liệu được khai thác bền vững, tôn trọng tự nhiên và bảo tồn đa dạng sinh học.
-            </p>
           </div>
-          <div class="flex flex-col items-center">
-            <div
-              class="size-20 bg-primary text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-primary/30"
+          <div class="flex flex-col flex-grow px-1">
+            <RouterLink
+              :to="`/product/${p.id}`"
+              class="font-bold text-slate-800 text-[15px] mb-2 line-clamp-2 leading-snug group-hover:text-[#658a22] transition-colors"
             >
-              <span class="material-symbols-outlined text-4xl">recycling</span>
+              {{ p.name }}
+            </RouterLink>
+            <div
+              class="mt-auto pt-3 flex flex-wrap items-center justify-between border-t border-slate-100 gap-y-2"
+            >
+              <div class="flex flex-col">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5"
+                  >Giá bán</span
+                >
+                <span class="text-[16px] font-black text-[#658a22]"
+                  >{{ getDiscountedPrice(p.id).toLocaleString('vi-VN') }}đ</span
+                >
+              </div>
+              <RouterLink
+                :to="`/product/${p.id}`"
+                class="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-[#658a22] hover:text-white transition-all"
+              >
+                <span class="material-symbols-outlined text-[18px]">add</span>
+              </RouterLink>
             </div>
-            <h3 class="text-xl font-bold mb-3 text-slate-900">Giảm Thiểu Nhựa</h3>
-            <p class="text-slate-600 leading-relaxed">
-              Loại bỏ nhựa dùng một lần bằng các giải pháp thay thế bền bỉ, có thể tái sử dụng.
-            </p>
           </div>
-          <div class="flex flex-col items-center">
+        </div>
+      </div>
+      <div class="mt-20 text-center">
+        <RouterLink
+          to="/products"
+          class="inline-flex items-center gap-2 px-10 py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-full font-black uppercase tracking-widest hover:bg-[#1e293b] hover:text-white hover:border-[#1e293b] transition-all shadow-sm"
+        >
+          Khám phá toàn bộ <span class="material-symbols-outlined text-[18px]">grid_view</span>
+        </RouterLink>
+      </div>
+    </section>
+
+    <section class="py-24 max-w-[1400px] mx-auto px-4 md:px-10">
+      <div class="bg-[#1e293b] rounded-[3.5rem] p-10 md:p-20 relative overflow-hidden shadow-2xl">
+        <div class="absolute -right-10 -bottom-10 opacity-[0.03] pointer-events-none">
+          <span class="material-symbols-outlined text-[35rem] text-white">public</span>
+        </div>
+        <div class="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div
+            v-for="(feature, idx) in [
+              {
+                icon: 'energy_savings_leaf',
+                title: 'Nguồn Gốc Bền Vững',
+                desc: 'Sản phẩm được làm từ nguyên liệu tự nhiên, thân thiện với hệ sinh thái.',
+              },
+              {
+                icon: 'recycling',
+                title: 'Tái Chế & Giảm Nhựa',
+                desc: 'Giải pháp hoàn hảo thay thế đồ nhựa dùng một lần trong gia đình.',
+              },
+              {
+                icon: 'science',
+                title: 'An Toàn Tuyệt Đối',
+                desc: 'Không sử dụng hóa chất tẩy rửa độc hại, an toàn cho mọi làn da.',
+              },
+            ]"
+            :key="idx"
+            class="flex flex-col items-center text-center group"
+          >
             <div
-              class="size-20 bg-primary text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-primary/30"
+              class="w-20 h-20 bg-[#1e293b] border-2 border-[#a4d651]/30 rounded-3xl flex items-center justify-center mb-6 group-hover:bg-[#a4d651] transition-all duration-300"
             >
-              <span class="material-symbols-outlined text-4xl">science</span>
+              <span
+                class="material-symbols-outlined text-4xl text-[#a4d651] group-hover:text-[#1e293b]"
+                >{{ feature.icon }}</span
+              >
             </div>
-            <h3 class="text-xl font-bold mb-3 text-slate-900">Thành Phần Tự Nhiên</h3>
-            <p class="text-slate-600 leading-relaxed">
-              Công thức sạch, không hóa chất độc hại, an toàn tuyệt đối cho gia đình bạn.
-            </p>
+            <h3 class="text-white text-xl font-black uppercase mb-3 tracking-wide">
+              {{ feature.title }}
+            </h3>
+            <p class="text-slate-400 text-sm leading-relaxed max-w-xs">{{ feature.desc }}</p>
           </div>
         </div>
       </div>
     </section>
-  </div>
+  </main>
 </template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+.font-sans {
+  font-family: 'Inter', sans-serif;
+}
+.animate-fade-in-up {
+  animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(30px);
+}
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

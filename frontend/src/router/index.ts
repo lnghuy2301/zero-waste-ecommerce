@@ -36,6 +36,11 @@ const router = createRouter({
       name: 'ResetPassword',
       component: () => import('@/views/ResetPassword.vue'),
     },
+    {
+      path: '/about',
+      name: 'About',
+      component: () => import('@/views/About.vue')
+    },
     // === ADMIN ROUTE (có bảo vệ) ===
     {
       path: '/admin',
