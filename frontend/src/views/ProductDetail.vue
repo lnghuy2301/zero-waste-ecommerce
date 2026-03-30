@@ -3,7 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '@/service/api.ts'
 import CommentService from '@/service/comment.ts'
-import { Cart } from '@/service/cart.ts' // Đảm bảo import đúng service đã viết
+import { Cart } from '@/service/cart.ts'
 
 const route = useRoute()
 const product = ref<any>(null)
@@ -50,7 +50,6 @@ const closeLightbox = () => {
 }
 
 // --- LOGIC THÊM VÀO GIỎ HÀNG ---
-// --- LOGIC THÊM VÀO GIỎ HÀNG ---
 const handleAddToCart = async () => {
   if (!selectedVariant.value) {
     alert('Vui lòng chọn phân loại sản phẩm!')
@@ -74,11 +73,9 @@ const handleAddToCart = async () => {
       quantity: Number(quantity.value)
     }
 
-    // 1. Gửi lên server
     await Cart.create(payload)
 
-    // 2. PHÁT SỰ KIỆN TOÀN CỤC (QUAN TRỌNG)
-    // Chúng ta bắn tin nhắn: "Này các component khác, giỏ hàng vừa cập nhật đấy!"
+    // Phát sự kiện toàn cục cập nhật Header
     window.dispatchEvent(new CustomEvent('cart-updated'));
 
     alert(`Thành công! Đã thêm vào giỏ hàng.`)
@@ -116,7 +113,7 @@ const fetchData = async () => {
       api.get(`/product/${id}`),
       api.get('/product-variant'),
       api.get('/promotion'),
-      api.get(`/bundle-item?bundleProductId=${id}`),
+      api.get(`/bundle-item?bundleProductId=${id}`).catch(() => ({ data: [] })), // Bắt lỗi nếu API bundle không tồn tại
     ])
 
     product.value = prodRes.data
@@ -176,94 +173,132 @@ watch(() => route.params.id, fetchData)
 
 <template>
   <main class="mx-auto max-w-[1200px] w-full px-4 py-8 font-sans">
-    <div v-if="loading" class="text-center py-20 text-slate-600">
-      <p class="text-lg">Đang tải thông tin...</p>
+
+    <div v-if="loading" class="flex flex-col items-center justify-center py-32 text-slate-400">
+      <span class="material-symbols-outlined text-5xl text-[#658a22] animate-bounce mb-4">eco</span>
+      <p class="font-bold uppercase tracking-widest text-sm text-[#658a22]">Đang tải sản phẩm...</p>
     </div>
 
-    <div v-else-if="!product" class="text-center py-20 text-slate-500 text-xl">
-      Không tìm thấy sản phẩm
+    <div v-else-if="!product" class="text-center py-32 bg-white rounded-[2rem] border-2 border-slate-100 border-dashed text-slate-500">
+      <span class="material-symbols-outlined text-6xl text-slate-300 mb-4">search_off</span>
+      <p class="font-bold text-lg">Không tìm thấy sản phẩm.</p>
     </div>
 
     <div v-else>
-      <nav class="flex items-center gap-2 mb-6 text-[15px] font-medium text-slate-500">
-        <RouterLink to="/" class="hover:text-red-600 transition-colors">Trang Chủ</RouterLink>
+      <nav class="flex items-center gap-2 mb-8 text-[13px] font-bold text-slate-400 uppercase tracking-wide">
+        <RouterLink to="/" class="hover:text-[#658a22] transition-colors flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">home</span>
+          Trang Chủ
+        </RouterLink>
         <span class="material-symbols-outlined text-sm">chevron_right</span>
-        <span class="text-slate-900 font-bold">{{ product.name }}</span>
+        <RouterLink to="/products" class="hover:text-[#658a22] transition-colors">
+          Cửa hàng
+        </RouterLink>
+        <span class="material-symbols-outlined text-sm">chevron_right</span>
+        <span class="text-slate-800">{{ product.name }}</span>
       </nav>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white p-6 md:p-10 rounded-3xl shadow-xl border border-slate-100">
-        <div class="space-y-4">
-          <div class="aspect-square w-full bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-200">
-            <img :src="getImageUrl(product.mainImage)" class="w-[85%] h-[85%] object-contain" />
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100">
+
+        <div class="lg:col-span-5 space-y-4">
+          <div class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group">
+            <img :src="getImageUrl(product.mainImage)" class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500" />
+
+            <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm text-[#658a22] text-[10px] font-black px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm border border-[#658a22]/20">
+              <span class="material-symbols-outlined text-sm">recycling</span>
+              Thân thiện môi trường
+            </div>
           </div>
         </div>
 
-        <div class="flex flex-col gap-6">
-          <h1 class="text-3xl md:text-4xl font-black text-slate-900 leading-tight">
-            {{ product.name }}
-          </h1>
+        <div class="lg:col-span-7 flex flex-col gap-6">
 
-          <div class="flex items-center gap-4">
+          <div>
+            <h1 class="text-3xl md:text-4xl font-black text-slate-900 leading-tight mb-2">
+              {{ product.name }}
+            </h1>
+            <div class="flex items-center gap-4 text-sm font-bold text-slate-400">
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-yellow-400 text-lg">star</span> 5.0 ({{ commentTotal }} đánh giá)</span>
+              <span>|</span>
+              <span class="text-[#658a22] bg-[#eef4e6] px-2 py-0.5 rounded-md">Có sẵn hàng</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 p-5 bg-[#f4f7ee]/50 rounded-2xl border border-[#658a22]/10">
             <div class="flex items-baseline gap-3">
-              <p v-if="selectedVariant?.promotionId" class="text-2xl text-slate-400 line-through">
+              <p v-if="selectedVariant?.promotionId" class="text-xl text-slate-400 line-through font-bold">
                 {{ Number(selectedVariant.price).toLocaleString('vi-VN') }}đ
               </p>
-              <p class="text-4xl font-extrabold text-red-600">
+              <p class="text-4xl font-black text-[#658a22]">
                 {{ selectedVariant ? Number(getDiscountedPrice(selectedVariant)).toLocaleString('vi-VN') : '---' }}đ
               </p>
             </div>
-            <span v-if="selectedVariant?.promotionId" class="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded">
+
+            <span v-if="selectedVariant?.promotionId" class="px-3 py-1 bg-[#658a22] text-white text-[11px] font-black rounded-full uppercase tracking-widest shadow-md">
               GIẢM {{ promotions.find((p) => p.id === selectedVariant.promotionId)?.discountValue }}{{ promotions.find((p) => p.id === selectedVariant.promotionId)?.discountType === 'PERCENT' ? '%' : 'đ' }}
             </span>
           </div>
 
           <div v-if="variants.length > 0" class="space-y-3">
-            <p class="text-sm font-bold text-slate-700 uppercase tracking-wide">Phân loại sản phẩm:</p>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Chọn phân loại</p>
+            <div class="flex flex-wrap gap-3">
               <button
                 v-for="v in variants"
                 :key="v.id"
                 @click="selectedVariant = v"
                 :class="[
-                  'px-3 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center text-center leading-tight',
+                  'px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center text-center leading-tight min-w-[100px]',
                   selectedVariant?.id === v.id
-                    ? 'border-red-600 bg-red-50 text-red-600'
-                    : 'border-slate-200 text-slate-600 hover:border-slate-400',
+                    ? 'border-[#658a22] bg-[#eef4e6] text-[#658a22] shadow-sm'
+                    : 'border-slate-100 text-slate-600 hover:border-slate-300 bg-slate-50 hover:bg-white',
                 ]"
               >
                 {{ v.name }}
-                <span class="text-[11px] font-normal opacity-70 mt-1">{{ v.color }}</span>
+                <span class="text-[10px] font-normal opacity-70 mt-1 uppercase tracking-wider">{{ v.color }}</span>
               </button>
             </div>
           </div>
 
-          <p class="text-slate-600 text-base leading-relaxed italic border-l-4 border-slate-200 pl-4">
-            {{ product.description }}
-          </p>
+          <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+            <p class="text-slate-600 text-sm leading-relaxed text-justify">
+              {{ product.description || 'Sản phẩm thay thế hoàn hảo cho đồ nhựa dùng một lần. Chất liệu an toàn, dễ dàng phân hủy hoặc tái sử dụng nhiều lần.' }}
+            </p>
+          </div>
 
-          <div class="flex flex-col sm:flex-row items-center gap-4 py-6 border-t border-slate-100">
-            <div class="flex items-center border-2 border-slate-200 rounded-xl bg-slate-100 h-14 overflow-hidden">
-              <button @click="updateQuantity(-1)" class="px-5 h-full hover:bg-slate-200 text-slate-700 transition-colors">
-                <span class="material-symbols-outlined font-bold">remove</span>
+          <div class="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t-2 border-dashed border-slate-100 mt-auto">
+
+            <div class="flex items-center border-2 border-slate-200 rounded-2xl bg-white h-14 overflow-hidden w-full sm:w-auto">
+              <button @click="updateQuantity(-1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 transition-colors font-black text-lg">
+                -
               </button>
-              <input type="text" readonly :value="quantity" class="w-12 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-xl" />
-              <button @click="updateQuantity(1)" class="px-5 h-full hover:bg-slate-200 text-slate-700 transition-colors">
-                <span class="material-symbols-outlined font-bold">add</span>
+              <input type="text" readonly :value="quantity" class="w-12 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-lg" />
+              <button @click="updateQuantity(1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 transition-colors font-black text-lg">
+                +
               </button>
             </div>
 
             <button
               @click="handleAddToCart"
               :disabled="isAdding"
-              class="w-full flex-1 bg-slate-900 hover:bg-black text-white font-black h-14 rounded-xl flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full flex-1 bg-[#1e293b] hover:bg-black text-white font-black h-14 rounded-2xl flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg active:scale-95 uppercase tracking-widest text-sm"
             >
-              <span v-if="!isAdding" class="material-symbols-outlined">shopping_cart</span>
+              <span v-if="!isAdding" class="material-symbols-outlined">shopping_bag</span>
               <span v-else class="material-symbols-outlined animate-spin">sync</span>
-              {{ isAdding ? 'ĐANG XỬ LÝ...' : 'THÊM VÀO GIỎ HÀNG' }}
+              {{ isAdding ? 'ĐANG XỬ LÝ...' : 'THÊM VÀO GIỎ' }}
             </button>
           </div>
+
         </div>
       </div>
+
     </div>
   </main>
 </template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+
+.font-sans {
+  font-family: 'Inter', sans-serif;
+}
+</style>
