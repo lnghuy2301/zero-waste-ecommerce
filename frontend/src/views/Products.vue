@@ -14,6 +14,7 @@ const searchQuery = ref('')
 
 const selectedVariants = ref<Map<number, any>>(new Map())
 const sortOption = ref('newest')
+const showOnlyPromotion = ref(false) // ← lọc chỉ sản phẩm có khuyến mãi
 
 const currentPage = ref(1)
 const itemsPerPage = 15
@@ -77,9 +78,11 @@ const fetchProducts = async () => {
   }
 }
 
+// === COMPUTED: Lọc + Sắp xếp ===
 const filteredAndSortedProducts = computed(() => {
   let list = [...products.value]
 
+  // Lọc theo từ khóa
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim()
     list = list.filter(
@@ -89,12 +92,32 @@ const filteredAndSortedProducts = computed(() => {
     )
   }
 
+  // Lọc chỉ sản phẩm có khuyến mãi
+  if (showOnlyPromotion.value) {
+    list = list.filter((p) => {
+      const variants = variantMap.value.get(p.id) || []
+      return variants.some((v) => v.promotionId != null)
+    })
+  }
+
+  // Sắp xếp
   if (sortOption.value === 'price-asc') {
     list.sort((a, b) => (getLowestPrice(a.id) || Infinity) - (getLowestPrice(b.id) || Infinity))
   } else if (sortOption.value === 'price-desc') {
     list.sort((a, b) => (getLowestPrice(b.id) || -Infinity) - (getLowestPrice(a.id) || -Infinity))
-  } else if (sortOption.value === 'newest') {
-    list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  } else if (sortOption.value === 'rating-desc') {
+    list.sort((a, b) => (b.danhGiaTrungBinh || 0) - (a.danhGiaTrungBinh || 0))
+  } else if (sortOption.value === 'promotion') {
+    list.sort((a, b) => {
+      const hasPromoA = (variantMap.value.get(a.id) || []).some((v) => v.promotionId != null)
+      const hasPromoB = (variantMap.value.get(b.id) || []).some((v) => v.promotionId != null)
+      if (hasPromoA && !hasPromoB) return -1
+      if (!hasPromoA && hasPromoB) return 1
+      return 0
+    })
+  } else {
+    // newest
+    list.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
   }
 
   return list
@@ -312,7 +335,17 @@ onMounted(() => {
                 <option value="newest">Mới nhất</option>
                 <option value="price-asc">Giá: Thấp → Cao</option>
                 <option value="price-desc">Giá: Cao → Thấp</option>
+                <option value="rating-desc">Đánh giá cao nhất</option>
+                <option value="promotion">Có khuyến mãi</option>
               </select>
+
+              <!-- Checkbox lọc chỉ khuyến mãi -->
+              <!-- <label
+                class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer"
+              >
+                <input type="checkbox" v-model="showOnlyPromotion" class="accent-[#658a22]" />
+                Chỉ hiển thị sản phẩm có khuyến mãi
+              </label> -->
             </div>
           </div>
         </div>
@@ -406,7 +439,7 @@ onMounted(() => {
                     >
                       {{ Number(selectedVariants.get(product.id).price).toLocaleString('vi-VN') }}đ
                     </span>
-                    <span class="text-[16px] font-black text-[#658a22]">
+                    <span class="text-[16px] font-black text-[#d00000]">
                       <template v-if="selectedVariants.has(product.id)">
                         {{
                           Number(
