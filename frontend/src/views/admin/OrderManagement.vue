@@ -68,16 +68,18 @@ const updateStatus = async (id: number, status: string) => {
 
 // Hủy đơn
 const cancelOrder = async (id: number) => {
-  if (!confirm('Hủy đơn hàng này?')) return
+  if (!confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) return
   try {
-    await Order.cancelOrder(id)
-    notify.success('Hủy đơn hàng thành công')
-    loadOrders()
+    // Dùng chung logic với updateStatus, truyền vào chuỗi 'CANCELLED'
+    await Order.updateOrderStatus(id, 'CANCELLED')
+
+    notify.success('Đã hủy đơn hàng thành công')
+    loadOrders() // Load lại danh sách để cập nhật giao diện
   } catch (e) {
-    notify.error('Hủy thất bại')
+    notify.error('Hủy đơn hàng thất bại')
+    console.error(e)
   }
 }
-
 // Xóa nhiều
 const deleteSelected = async () => {
   if (selectedOrderIds.value.length === 0) return

@@ -260,7 +260,9 @@ onMounted(fetchData)
                     >
                       -
                     </button>
-                    <span class="px-2 py-1 text-[11px] font-black">{{ item.quantity }}</span>
+                    <span class="px-2 py-1 text-[11px] font-black text-slate-800">{{
+                      item.quantity
+                    }}</span>
                     <button
                       @click="updateQuantity(item, 1)"
                       class="px-2 py-1 text-slate-500 font-black hover:bg-slate-200"

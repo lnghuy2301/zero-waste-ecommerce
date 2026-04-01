@@ -78,4 +78,7 @@ export class OrderService {
   async getAllOrders(): Promise<OrderResponseDto[]> {
     return this.orderRepository.getAllOrders();
   }
+  async getStats() {
+    return this.orderRepository.getStats();
+  }
 }

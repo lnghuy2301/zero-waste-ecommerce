@@ -240,4 +240,59 @@ export class OrderRepository {
       return plainToInstance(OrderResponseDto, transformed);
     });
   }
+  async getStats() {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const [
+      totalUsers,
+      totalOrders,
+      totalProducts,
+      revenueResult,
+      monthlyRaw,
+      statusRaw,
+    ] = await Promise.all([
+      this.prismaService.account.count(),
+      this.prismaService.order.count(),
+      this.prismaService.product.count(),
+      this.prismaService.order.aggregate({
+        where: { status: 'COMPLETED' },
+        _sum: { totalAmount: true },
+      }),
+      this.prismaService.order.groupBy({
+        by: ['createdAt'],
+        where: {
+          status: 'COMPLETED',
+          createdAt: { gte: startOfYear },
+        },
+        _sum: { totalAmount: true },
+      }),
+      this.prismaService.order.groupBy({
+        by: ['status'],
+        _count: { id: true },
+      }),
+    ]);
+
+    // Xử lý monthly revenue thành mảng 12 tháng
+    const monthlyRevenue = Array(12).fill(0);
+    monthlyRaw.forEach((item) => {
+      const month = new Date(item.createdAt).getMonth(); // 0-11
+      monthlyRevenue[month] = Number(item._sum.totalAmount || 0);
+    });
+
+    // Xử lý status count
+    const statusCount: Record<string, number> = {};
+    statusRaw.forEach((item) => {
+      statusCount[item.status] = item._count.id;
+    });
+
+    return {
+      totalUsers,
+      totalOrders,
+      totalProducts,
+      totalRevenue: Number(revenueResult._sum.totalAmount || 0),
+      monthlyRevenue,
+      statusCount,
+    };
+  }
 }

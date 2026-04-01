@@ -108,4 +108,11 @@ export class OrderController {
   async getAllOrders(): Promise<OrderResponseDto[]> {
     return this.orderService.getAllOrders();
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats')
+  async getStats() {
+    return this.orderService.getStats();
+  }
 }
