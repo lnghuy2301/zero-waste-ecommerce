@@ -84,6 +84,7 @@ export class CommentService {
           select: {
             id: true,
             email: true,
+            avatar: true,
             profile: {
               select: {
                 fullName: true,

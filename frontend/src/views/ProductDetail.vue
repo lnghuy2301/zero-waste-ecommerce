@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '@/service/api.ts'
-import CommentService from '@/service/comment.ts' // File chứa api getComments
+import CommentService from '@/service/comment.ts'
 import { Cart } from '@/service/cart.ts'
 
 const route = useRoute()
@@ -61,7 +61,6 @@ const closeLightbox = () => {
   currentLightboxMedia.value = null
 }
 
-// --- LOGIC THÊM VÀO GIỎ HÀNG ---
 const handleAddToCart = async () => {
   if (!selectedVariant.value) {
     alert('Vui lòng chọn phân loại sản phẩm!')
@@ -86,10 +85,7 @@ const handleAddToCart = async () => {
     }
 
     await Cart.create(payload)
-
-    // Phát sự kiện toàn cục cập nhật Header
     window.dispatchEvent(new CustomEvent('cart-updated'))
-
     alert(`Thành công! Đã thêm vào giỏ hàng.`)
   } catch (error: any) {
     console.error('Lỗi chi tiết:', error.response?.data)
@@ -105,7 +101,6 @@ const fetchComments = async (id: number) => {
   isCommentsLoading.value = true
   try {
     const response = await CommentService.getComments({ productId: id })
-    // Xử lý dữ liệu trả về tùy theo cấu trúc BE (data, items, v.v...)
     const responseData = response.data || response
     comments.value = responseData.data || responseData.items || responseData || []
     commentTotal.value = responseData.meta?.total || comments.value.length
@@ -153,7 +148,6 @@ const fetchData = async () => {
       })
     }
 
-    // Gọi API lấy đánh giá sau khi đã có ID sản phẩm
     await fetchComments(id)
   } catch (e) {
     console.error('Lỗi tải dữ liệu:', e)
@@ -192,105 +186,58 @@ watch(() => route.params.id, fetchData)
       <p class="font-bold uppercase tracking-widest text-sm text-[#658a22]">Đang tải sản phẩm...</p>
     </div>
 
-    <div
-      v-else-if="!product"
-      class="text-center py-32 bg-white rounded-[2rem] border-2 border-slate-100 border-dashed text-slate-500"
-    >
+    <div v-else-if="!product" class="text-center py-32 bg-white rounded-[2rem] border-2 border-slate-100 border-dashed text-slate-500">
       <span class="material-symbols-outlined text-6xl text-slate-300 mb-4">search_off</span>
       <p class="font-bold text-lg">Không tìm thấy sản phẩm.</p>
     </div>
 
     <div v-else>
-      <nav
-        class="flex items-center gap-2 mb-8 text-[13px] font-bold text-slate-400 uppercase tracking-wide"
-      >
+      <nav class="flex items-center gap-2 mb-8 text-[13px] font-bold text-slate-400 uppercase tracking-wide">
         <RouterLink to="/" class="hover:text-[#658a22] transition-colors flex items-center gap-1">
           <span class="material-symbols-outlined text-sm">home</span>
           Trang Chủ
         </RouterLink>
         <span class="material-symbols-outlined text-sm">chevron_right</span>
-        <RouterLink to="/products" class="hover:text-[#658a22] transition-colors">
-          Cửa hàng
-        </RouterLink>
+        <RouterLink to="/products" class="hover:text-[#658a22] transition-colors">Cửa hàng</RouterLink>
         <span class="material-symbols-outlined text-sm">chevron_right</span>
         <span class="text-slate-800">{{ product.name }}</span>
       </nav>
 
-      <div
-        class="grid grid-cols-1 lg:grid-cols-12 gap-10 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100"
-      >
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100">
         <div class="lg:col-span-5 space-y-4">
-          <div
-            class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group"
-          >
-            <img
-              :src="getImageUrl(product.mainImage)"
-              class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500"
-            />
-            <div
-              class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm text-[#658a22] text-[10px] font-black px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm border border-[#658a22]/20"
-            >
-              <span class="material-symbols-outlined text-sm">recycling</span>
-              Thân thiện môi trường
-            </div>
+          <div class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group">
+            <img :src="getImageUrl(product.mainImage)" class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500" />
           </div>
         </div>
 
         <div class="lg:col-span-7 flex flex-col gap-6">
           <div>
-            <h1 class="text-3xl md:text-4xl font-black text-slate-900 leading-tight mb-2">
-              {{ product.name }}
-            </h1>
+            <h1 class="text-3xl md:text-4xl font-black text-slate-900 leading-tight mb-2">{{ product.name }}</h1>
             <div class="flex items-center gap-4 text-sm font-bold text-slate-400">
               <span class="flex items-center gap-1">
                 <span class="text-yellow-400 text-lg">★</span>
                 5.0 ({{ commentTotal }} đánh giá)
               </span>
-              <span>|</span>
-              <span class="text-[#658a22] bg-[#eef4e6] px-2 py-0.5 rounded-md">Có sẵn hàng</span>
             </div>
           </div>
 
           <div class="flex items-center gap-4 p-5 bg-[#f4f7ee]/50 rounded-2xl border border-[#658a22]/10">
             <div class="flex items-baseline gap-3">
-              <p
-                v-if="selectedVariant?.promotionId"
-                class="text-xl text-slate-400 line-through font-bold"
-              >
+              <p v-if="selectedVariant?.promotionId" class="text-xl text-slate-400 line-through font-bold">
                 {{ Number(selectedVariant.price).toLocaleString('vi-VN') }}đ
               </p>
               <p class="text-4xl font-black text-[#d00000]">
-                {{
-                  selectedVariant
-                    ? Number(getDiscountedPrice(selectedVariant)).toLocaleString('vi-VN')
-                    : '---'
-                }}đ
+                {{ selectedVariant ? Number(getDiscountedPrice(selectedVariant)).toLocaleString('vi-VN') : '---' }}đ
               </p>
             </div>
-
-            <span
-              v-if="selectedVariant?.promotionId"
-              class="px-3 py-1 bg-[#658a22] text-white text-[11px] font-black rounded-full uppercase tracking-widest shadow-md"
-            >
-              GIẢM {{ promotions.find((p) => p.id === selectedVariant.promotionId)?.discountValue }}{{ promotions.find((p) => p.id === selectedVariant.promotionId)?.discountType === 'PERCENT' ? '%' : 'đ' }}
-            </span>
           </div>
 
           <div v-if="variants.length > 0" class="space-y-3">
-            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">
-              Chọn phân loại
-            </p>
+            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Chọn phân loại</p>
             <div class="flex flex-wrap gap-3">
               <button
-                v-for="v in variants"
-                :key="v.id"
-                @click="selectedVariant = v"
-                :class="[
-                  'px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center text-center leading-tight min-w-[100px]',
-                  selectedVariant?.id === v.id
-                    ? 'border-[#658a22] bg-[#eef4e6] text-[#658a22] shadow-sm'
-                    : 'border-slate-100 text-slate-600 hover:border-slate-300 bg-slate-50 hover:bg-white',
-                ]"
+                v-for="v in variants" :key="v.id" @click="selectedVariant = v"
+                :class="['px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center text-center leading-tight min-w-[100px]', selectedVariant?.id === v.id ? 'border-[#658a22] bg-[#eef4e6] text-[#658a22] shadow-sm' : 'border-slate-100 text-slate-600 hover:border-slate-300 bg-slate-50 hover:bg-white']"
               >
                 {{ v.name }}
                 <span class="text-[10px] font-normal opacity-70 mt-1 uppercase tracking-wider">{{ v.color }}</span>
@@ -300,27 +247,17 @@ watch(() => route.params.id, fetchData)
 
           <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
             <p class="text-slate-600 text-sm leading-relaxed text-justify">
-              {{
-                product.description ||
-                'Sản phẩm thay thế hoàn hảo cho đồ nhựa dùng một lần. Chất liệu an toàn, dễ dàng phân hủy hoặc tái sử dụng nhiều lần.'
-              }}
+              {{ product.description || 'Sản phẩm thay thế hoàn hảo cho đồ nhựa dùng một lần.' }}
             </p>
           </div>
 
           <div class="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t-2 border-dashed border-slate-100 mt-auto">
             <div class="flex items-center border-2 border-slate-200 rounded-2xl bg-white h-14 overflow-hidden w-full sm:w-auto">
-              <button @click="updateQuantity(-1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 transition-colors font-black text-lg">-</button>
+              <button @click="updateQuantity(-1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg">-</button>
               <input type="text" readonly :value="quantity" class="w-12 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-lg" />
-              <button @click="updateQuantity(1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 transition-colors font-black text-lg">+</button>
+              <button @click="updateQuantity(1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg">+</button>
             </div>
-
-            <button
-              @click="handleAddToCart"
-              :disabled="isAdding"
-              class="w-full flex-1 bg-[#1e293b] hover:bg-black text-white font-black h-14 rounded-2xl flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg active:scale-95 uppercase tracking-widest text-sm"
-            >
-              <span v-if="!isAdding" class="material-symbols-outlined">shopping_bag</span>
-              <span v-else class="material-symbols-outlined animate-spin">sync</span>
+            <button @click="handleAddToCart" :disabled="isAdding" class="w-full flex-1 bg-[#1e293b] hover:bg-black text-white font-black h-14 rounded-2xl flex items-center justify-center gap-3 transition-all uppercase tracking-widest text-sm">
               {{ isAdding ? 'ĐANG XỬ LÝ...' : 'THÊM VÀO GIỎ' }}
             </button>
           </div>
@@ -343,12 +280,12 @@ watch(() => route.params.id, fetchData)
         <div v-else-if="comments.length === 0" class="py-16 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
           <span class="material-symbols-outlined text-5xl text-slate-300 mb-3">chat_bubble_outline</span>
           <p class="text-slate-500 font-bold">Chưa có đánh giá nào cho sản phẩm này.</p>
-          <p class="text-sm text-slate-400 mt-1">Hãy là người đầu tiên trải nghiệm và chia sẻ nhé!</p>
         </div>
 
         <div v-else class="space-y-8">
           <div v-for="comment in comments" :key="comment.id" class="border-b border-slate-100 pb-8 last:border-0 last:pb-0">
             <div class="flex items-start gap-4">
+
               <div class="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-white shadow-sm">
                 <img
                   v-if="comment.account?.avatar"
@@ -360,17 +297,14 @@ watch(() => route.params.id, fetchData)
 
               <div class="flex-1">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                  <p class="font-bold text-slate-800">{{ comment.account?.fullName || comment.account?.username || 'Khách hàng ẩn danh' }}</p>
+                  <p class="font-bold text-slate-800">
+                    {{ comment.account?.profile?.fullName || comment.account?.email || 'Khách hàng ẩn danh' }}
+                  </p>
                   <p class="text-xs text-slate-400 font-medium">{{ formatDate(comment.createdAt) }}</p>
                 </div>
 
                 <div class="flex text-sm mb-3 gap-0.5">
-                  <span
-                    v-for="star in 5"
-                    :key="star"
-                    class="text-lg"
-                    :class="star <= Number(comment.rating || 5) ? 'text-yellow-400' : 'text-slate-200'"
-                  >
+                  <span v-for="star in 5" :key="star" class="text-lg" :class="star <= Number(comment.rating || 5) ? 'text-yellow-400' : 'text-slate-200'">
                     ★
                   </span>
                 </div>
@@ -379,29 +313,19 @@ watch(() => route.params.id, fetchData)
                   {{ comment.content }}
                 </p>
 
-                <div v-if="comment.ReviewMedia && comment.ReviewMedia.length > 0" class="flex flex-wrap gap-3">
+                <div v-if="comment.media && comment.media.length > 0" class="flex flex-wrap gap-3">
                   <div
-                    v-for="media in comment.ReviewMedia"
-                    :key="media.id"
-                    @click="openLightbox(media.url || media.path)"
+                    v-for="item in comment.media"
+                    :key="item.id"
+                    @click="openLightbox(item.url || item.path)"
                     class="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 cursor-pointer hover:border-[#658a22] transition-colors relative group"
                   >
-                    <video
-                      v-if="isVideo(media.url || media.path)"
-                      :src="getImageUrl(media.url || media.path)"
-                      class="w-full h-full object-cover"
-                    ></video>
-                    <img
-                      v-else
-                      :src="getImageUrl(media.url || media.path)"
-                      class="w-full h-full object-cover"
-                    />
+                    <video v-if="isVideo(item.url || item.path)" :src="getImageUrl(item.url || item.path)" class="w-full h-full object-cover"></video>
+                    <img v-else :src="getImageUrl(item.url || item.path)" class="w-full h-full object-cover" />
 
-                    <div v-if="isVideo(media.url || media.path)" class="absolute inset-0 bg-black/20 flex items-center justify-center">
+                    <div v-if="isVideo(item.url || item.path)" class="absolute inset-0 bg-black/20 flex items-center justify-center">
                       <span class="material-symbols-outlined text-white text-2xl drop-shadow-md">play_circle</span>
                     </div>
-
-                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
                   </div>
                 </div>
               </div>
@@ -412,30 +336,14 @@ watch(() => route.params.id, fetchData)
 
     </div>
 
-    <div
-      v-if="isLightboxOpen"
-      class="fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-10"
-      @click.self="closeLightbox"
-    >
-      <button
-        @click="closeLightbox"
-        class="absolute top-6 right-6 text-white hover:text-red-400 bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-      >
+    <div v-if="isLightboxOpen" class="fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-10" @click.self="closeLightbox">
+      <button @click="closeLightbox" class="absolute top-6 right-6 text-white hover:text-red-400 bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
         <span class="material-symbols-outlined">close</span>
       </button>
 
       <div class="max-w-4xl max-h-full w-full rounded-2xl overflow-hidden shadow-2xl relative">
-        <video
-          v-if="isVideo(currentLightboxMedia)"
-          :src="getImageUrl(currentLightboxMedia)"
-          controls autoplay
-          class="w-full max-h-[85vh] object-contain bg-black"
-        ></video>
-        <img
-          v-else
-          :src="getImageUrl(currentLightboxMedia)"
-          class="w-full max-h-[85vh] object-contain"
-        />
+        <video v-if="isVideo(currentLightboxMedia)" :src="getImageUrl(currentLightboxMedia)" controls autoplay class="w-full max-h-[85vh] object-contain bg-black"></video>
+        <img v-else :src="getImageUrl(currentLightboxMedia)" class="w-full max-h-[85vh] object-contain" />
       </div>
     </div>
   </main>
@@ -443,8 +351,5 @@ watch(() => route.params.id, fetchData)
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
-
-.font-sans {
-  font-family: 'Inter', sans-serif;
-}
+.font-sans { font-family: 'Inter', sans-serif; }
 </style>

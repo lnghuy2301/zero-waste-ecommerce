@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { notify } from '@/utils/notifier.ts'
 import { OrderService } from '../service/order.ts'
@@ -32,10 +32,16 @@ const selectedMediaFiles = ref<File[]>([])
 const mediaPreviewUrls = ref<string[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-// --- CÁC HÀM FORMAT ---
+// --- CÁC HÀM FORMAT & HELPER ---
 const formatCurrency = (amount: number | string) => {
   if (!amount) return '0đ'
   return Number(amount).toLocaleString('vi-VN') + 'đ'
+}
+
+const getImageUrl = (path: string | null) => {
+  if (!path) return '/placeholder.jpg'
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
 }
 
 const getStatusInfo = (status: string) => {
@@ -48,6 +54,28 @@ const getStatusInfo = (status: string) => {
   }
   return map[status] || { label: status, color: 'bg-gray-100 text-gray-700', step: 0 }
 }
+
+// --- TÁCH THÔNG TIN GIAO HÀNG TỪ CHUỖI ---
+const parsedShippingInfo = computed(() => {
+  if (!selectedOrder.value?.shippingAddress) return { name: '', phone: '', address: '' }
+
+  const addressString = selectedOrder.value.shippingAddress
+  const parts = addressString.split(' - ')
+
+  if (parts.length >= 3) {
+    return {
+      name: parts[0].trim(),
+      phone: parts[1].trim(),
+      address: parts.slice(2).join(' - ').trim()
+    }
+  }
+
+  return {
+    name: selectedOrder.value.account?.profile?.fullName || selectedOrder.value.account?.username || 'Khách hàng',
+    phone: '---',
+    address: addressString
+  }
+})
 
 // --- CÁC HÀM GỌI API ---
 const fetchDetail = async () => {
@@ -120,8 +148,6 @@ const goToProduct = (productId: number | undefined) => {
 }
 
 const goBack = () => {
-  // Thay đổi dòng này cho khớp với tên route hoặc đường dẫn trang Order của bạn
-  // Có thể dùng router.push('/orders') nếu bạn muốn trỏ về một path cố định
   router.back()
 }
 
@@ -316,7 +342,7 @@ onMounted(() => {
                   class="w-16 h-16 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 border group-hover:border-green-300 transition-colors"
                 >
                   <img
-                    :src="item.variant?.product?.mainImage || '/placeholder.jpg'"
+                    :src="getImageUrl(item.variant?.product?.mainImage)"
                     alt="product"
                     class="w-full h-full object-cover"
                   />
@@ -343,17 +369,37 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="space-y-4 text-sm">
-            <div class="bg-orange-50 p-4 rounded-xl">
-              <p class="font-bold text-orange-800 mb-1">Địa chỉ giao hàng</p>
-              <p class="text-orange-900 leading-relaxed">{{ selectedOrder.shippingAddress }}</p>
+          <div class="space-y-5 text-sm">
+
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <h4 class="font-bold text-slate-800 mb-3 text-[13px] uppercase tracking-wide">Thông tin giao hàng</h4>
+
+              <div class="space-y-3">
+                <div class="flex flex-col sm:flex-row gap-3">
+                  <div class="flex-1 bg-white px-4 py-3 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Người nhận</p>
+                    <p class="font-bold text-slate-800 text-sm">{{ parsedShippingInfo.name }}</p>
+                  </div>
+                  <div class="flex-1 bg-white px-4 py-3 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Số điện thoại</p>
+                    <p class="font-bold text-slate-800 text-sm">{{ parsedShippingInfo.phone }}</p>
+                  </div>
+                </div>
+
+                <div class="bg-white px-4 py-3 rounded-xl border border-slate-100 shadow-sm">
+                  <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Địa chỉ chi tiết</p>
+                  <p class="font-medium text-slate-700 text-sm leading-relaxed">{{ parsedShippingInfo.address }}</p>
+                </div>
+              </div>
             </div>
-            <div class="flex justify-between py-2 border-b border-gray-200">
+
+            <div class="flex justify-between py-3 border-b border-gray-200">
               <span class="text-gray-600">Phương thức thanh toán:</span>
               <span class="font-medium text-gray-800">{{
                   selectedOrder.paymentMethod?.name || 'Thanh toán khi nhận hàng (COD)'
                 }}</span>
             </div>
+
             <div class="flex justify-between text-lg font-bold pt-2 text-red-600">
               <span>Tổng cộng:</span>
               <span>{{ formatCurrency(selectedOrder.totalAmount) }}</span>
@@ -373,7 +419,7 @@ onMounted(() => {
               class="w-14 h-14 bg-white rounded-lg border border-gray-100 overflow-hidden flex-shrink-0"
             >
               <img
-                :src="selectedItemToReview?.variant?.product?.mainImage || '/placeholder.jpg'"
+                :src="getImageUrl(selectedItemToReview?.variant?.product?.mainImage)"
                 alt="img"
                 class="w-full h-full object-cover"
               />

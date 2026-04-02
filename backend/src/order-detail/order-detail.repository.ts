@@ -10,7 +10,7 @@ export class OrderDetailRepository {
   constructor(private prismaService: PrismaService) {}
 
   async createOrderDetail(
-    dto: OrderDetailRequestDto,
+      dto: OrderDetailRequestDto,
   ): Promise<OrderDetailResponseDto> {
     const order = await this.prismaService.order.findUnique({
       where: { id: dto.orderId },
@@ -30,24 +30,28 @@ export class OrderDetailRepository {
         quantity: dto.quantity,
         price: variant.price,
       },
-      include: { variant: true },
+      include: {
+        variant: {
+          include: { product: true } // Bổ sung lấy thông tin product gốc
+        }
+      },
     });
 
     return plainToInstance(OrderDetailResponseDto, {
       ...created,
       price: Number(created.price),
       variant: created.variant
-        ? {
+          ? {
             ...created.variant,
             price: Number(created.variant.price),
           }
-        : undefined,
+          : undefined,
     });
   }
 
   async updateOrderDetail(
-    id: number,
-    dto: OrderDetailRequestDto,
+      id: number,
+      dto: OrderDetailRequestDto,
   ): Promise<OrderDetailResponseDto> {
     const variant = await this.prismaService.productVariant.findUnique({
       where: { id: dto.variantId },
@@ -63,25 +67,33 @@ export class OrderDetailRepository {
         quantity: dto.quantity,
         price: variant.price,
       },
-      include: { variant: true },
+      include: {
+        variant: {
+          include: { product: true } // Bổ sung lấy thông tin product gốc
+        }
+      },
     });
 
     return plainToInstance(OrderDetailResponseDto, {
       ...updated,
       price: Number(updated.price),
       variant: updated.variant
-        ? {
+          ? {
             ...updated.variant,
             price: Number(updated.variant.price),
           }
-        : undefined,
+          : undefined,
     });
   }
 
   async getOrderDetailById(id: number): Promise<OrderDetailResponseDto | null> {
     const detail = await this.prismaService.orderDetail.findUnique({
       where: { id },
-      include: { variant: true },
+      include: {
+        variant: {
+          include: { product: true } // Bổ sung lấy thông tin product gốc
+        }
+      },
     });
 
     if (!detail) return null;
@@ -90,54 +102,62 @@ export class OrderDetailRepository {
       ...detail,
       price: Number(detail.price),
       variant: detail.variant
-        ? {
+          ? {
             ...detail.variant,
             price: Number(detail.variant.price),
           }
-        : undefined,
+          : undefined,
     });
   }
 
   async getOrderDetailsByOrder(
-    orderId: number,
+      orderId: number,
   ): Promise<OrderDetailResponseDto[]> {
     const details = await this.prismaService.orderDetail.findMany({
       where: { orderId },
-      include: { variant: true },
+      include: {
+        variant: {
+          include: { product: true } // Bổ sung lấy thông tin product gốc
+        }
+      },
     });
 
     return details.map((detail) => ({
       ...detail,
       price: Number(detail.price),
       variant: detail.variant
-        ? {
+          ? {
             ...detail.variant,
             price: Number(detail.variant.price),
           }
-        : undefined,
+          : undefined,
     }));
   }
 
   async deleteOrderDetail(id: number): Promise<OrderDetailResponseDto | null> {
     const deleted = await this.prismaService.orderDetail.delete({
       where: { id },
-      include: { variant: true },
+      include: {
+        variant: {
+          include: { product: true } // Bổ sung lấy thông tin product gốc
+        }
+      },
     });
 
     return plainToInstance(OrderDetailResponseDto, {
       ...deleted,
       price: Number(deleted.price),
       variant: deleted.variant
-        ? {
+          ? {
             ...deleted.variant,
             price: Number(deleted.variant.price),
           }
-        : undefined,
+          : undefined,
     });
   }
 
   async deleteListOrderDetails(
-    dto: DeleteListOrderDetailDto,
+      dto: DeleteListOrderDetailDto,
   ): Promise<{ count: number }> {
     const result = await this.prismaService.orderDetail.deleteMany({
       where: { id: { in: dto.Ids } },

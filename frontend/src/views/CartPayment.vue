@@ -5,7 +5,7 @@ import { Cart } from '../service/cart.ts'
 import { Profile } from '@/service/profile.ts'
 import { OrderService } from '@/service/order.ts'
 import api from '@/service/api.ts'
-import {notify} from "@/utils/notifier.ts"; // ← thêm dòng này
+import { notify } from '@/utils/notifier.ts'
 
 const router = useRouter()
 const cartItems = ref<any[]>([])
@@ -66,18 +66,30 @@ const isAllSelected = computed({
 })
 
 // --- METHODS ---
-const fetchData = async () => {
-  const userJson = localStorage.getItem('user')
-  if (!userJson) return
-  const user = JSON.parse(userJson)
-  accountId.value = Number(user.id)
-  loading.value = true
+const loadUserProfile = async (user: any) => {
+  // Gán tạm dữ liệu từ localStorage trước để hiển thị ngay lập tức
+  shippingInfo.value.fullName = user.fullName || user.username || ''
+  shippingInfo.value.phone = user.phone || ''
+  shippingInfo.value.address = user.address || ''
+
   try {
-    // Lấy giỏ hàng
-    const cartRes = await Cart.getByUser(Number(user.id))
+    // Gọi API lấy dữ liệu profile mới nhất
+    const profileData = await Profile.getCustomerProfile(Number(user.id))
+    if (profileData) {
+      shippingInfo.value.fullName = profileData.fullName || user.fullName || user.username || ''
+      shippingInfo.value.phone = profileData.phone || ''
+      shippingInfo.value.address = profileData.address || ''
+    }
+  } catch (error) {
+    console.error('Không tải được profile, dùng dữ liệu cũ.', error)
+  }
+}
+
+const loadCartData = async (userId: number) => {
+  try {
+    const cartRes = await Cart.getByUser(userId)
     let rawItems = Array.isArray(cartRes) ? cartRes : cartRes.data || []
 
-    // Lấy thông tin đầy đủ của từng variant (bao gồm ảnh)
     for (let item of rawItems) {
       const variantId = item.variantId || item.variant?.id
       if (variantId) {
@@ -90,22 +102,29 @@ const fetchData = async () => {
       }
     }
     cartItems.value = rawItems
-    // Mặc định chọn tất cả
     selectedIds.value = cartItems.value.map((item: any) => item.id)
-
-    // Load profile
-    const profileData = await Profile.getCustomerProfile(Number(user.id))
-    if (profileData) {
-      shippingInfo.value.fullName = profileData.fullName || ''
-      shippingInfo.value.phone = profileData.phone || ''
-      shippingInfo.value.address = profileData.address || ''
-    }
     syncHeaderCart()
-  } catch (e) {
-    console.error('Lỗi tải giỏ hàng:', e)
-  } finally {
-    loading.value = false
+  } catch (error) {
+    console.error('Lỗi tải giỏ hàng:', error)
   }
+}
+
+const fetchData = async () => {
+  const userJson = localStorage.getItem('user')
+  if (!userJson) return
+
+  const user = JSON.parse(userJson)
+  accountId.value = Number(user.id)
+  loading.value = true
+
+  // Chạy song song 2 luồng: Load Profile và Load Giỏ Hàng
+  // Đảm bảo profile luôn được load kể cả khi giỏ hàng trống
+  await Promise.all([
+    loadUserProfile(user),
+    loadCartData(Number(user.id))
+  ])
+
+  loading.value = false
 }
 
 const updateQuantity = async (item: any, change: number) => {
@@ -198,27 +217,40 @@ onMounted(fetchData)
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+
       <div class="lg:col-span-5">
-        <div class="bg-white/80 rounded-[2rem] p-6 shadow-xl border-2 border-white/50">
+        <div class="bg-white/80 rounded-[2rem] p-6 shadow-xl border-2 border-white/50 h-full flex flex-col">
+
           <div
-            class="flex items-center justify-between mb-8 pb-4 border-b-2 border-dashed border-slate-100"
+            class="flex items-center justify-between mb-6 pb-4 border-b-2 border-dashed border-slate-100 shrink-0"
           >
             <div class="flex items-center gap-3">
-              <input type="checkbox" v-model="isAllSelected" class="w-5 h-5 accent-[#658a22]" />
+              <input type="checkbox" v-model="isAllSelected" class="w-5 h-5 accent-[#658a22] cursor-pointer" />
               <span class="font-black text-slate-800 uppercase text-xs">
                 Tất cả ({{ cartItems.length }})
               </span>
             </div>
             <button
               @click="removeSelectedItems"
-              class="text-red-500 font-black text-[10px] uppercase hover:underline"
+              class="text-red-500 font-black text-[10px] uppercase hover:underline transition-all"
               :disabled="selectedIds.length === 0"
+              :class="selectedIds.length === 0 ? 'opacity-50 cursor-not-allowed' : 'opacity-100'"
             >
               XÓA ĐÃ CHỌN
             </button>
           </div>
 
-          <div class="space-y-6 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+          <div class="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-[300px] max-h-[450px]">
+
+            <div
+              v-if="cartItems.length === 0"
+              class="h-full flex items-center justify-center py-16"
+            >
+              <div class="text-center space-y-2">
+                <p class="text-slate-400 font-black uppercase text-xs tracking-widest">Giỏ hàng đang trống</p>
+              </div>
+            </div>
+
             <div
               v-for="item in cartItems"
               :key="item.id"
@@ -228,7 +260,7 @@ onMounted(fetchData)
                 type="checkbox"
                 :value="item.id"
                 v-model="selectedIds"
-                class="w-4 h-4 accent-[#658a22]"
+                class="w-4 h-4 accent-[#658a22] cursor-pointer"
               />
 
               <div
@@ -259,16 +291,16 @@ onMounted(fetchData)
                   >
                     <button
                       @click="updateQuantity(item, -1)"
-                      class="px-2 py-1 text-slate-500 font-black hover:bg-slate-200"
+                      class="px-3 py-1 text-slate-500 font-black hover:bg-slate-200 transition-colors"
                     >
                       -
                     </button>
                     <span class="px-2 py-1 text-[11px] font-black text-slate-800">{{
-                      item.quantity
-                    }}</span>
+                        item.quantity
+                      }}</span>
                     <button
                       @click="updateQuantity(item, 1)"
-                      class="px-2 py-1 text-slate-500 font-black hover:bg-slate-200"
+                      class="px-3 py-1 text-slate-500 font-black hover:bg-slate-200 transition-colors"
                     >
                       +
                     </button>
@@ -277,24 +309,17 @@ onMounted(fetchData)
                     <span class="font-black text-[#658a22] text-sm">
                       {{ formatVND(item.variant?.price || item.price || 0) }}
                     </span>
-                    <button @click="removeItem(item.id)" class="text-slate-300 hover:text-red-500">
+                    <button @click="removeItem(item.id)" class="text-slate-300 hover:text-red-500 transition-colors">
                       <span class="material-symbols-outlined text-[18px]">delete</span>
                     </button>
                   </div>
                 </div>
               </div>
             </div>
-
-            <div
-              v-if="cartItems.length === 0"
-              class="text-center py-10 text-slate-400 font-bold uppercase text-[10px]"
-            >
-              Giỏ hàng đang trống
-            </div>
           </div>
 
           <div
-            class="mt-8 pt-6 border-t-2 border-slate-100 space-y-3 font-bold text-[11px] uppercase text-slate-400"
+            class="mt-6 pt-6 border-t-2 border-slate-100 space-y-3 font-bold text-[11px] uppercase text-slate-400 shrink-0"
           >
             <div class="flex justify-between">
               <span>Tạm tính</span>
@@ -307,65 +332,72 @@ onMounted(fetchData)
               </span>
             </div>
             <div
-              class="flex justify-between text-slate-900 text-xl pt-4 border-t-2 border-dashed italic"
+              class="flex justify-between items-end text-slate-900 text-xl pt-4 border-t-2 border-dashed italic"
             >
-              <span>Tổng</span>
-              <span class="text-[#658a22] font-black">{{ formatVND(total) }}</span>
+              <span class="mb-1">Tổng</span>
+              <span class="text-[#658a22] font-black text-2xl">{{ formatVND(total) }}</span>
             </div>
           </div>
         </div>
       </div>
 
       <div class="lg:col-span-7 space-y-8 text-slate-800">
-        <section class="bg-white/80 p-8 rounded-[2rem] shadow-xl border-2 border-white/50">
-          <h3 class="text-xl font-black mb-6 uppercase italic flex items-center gap-3">
+
+        <section class="bg-white/80 p-6 md:p-8 rounded-[2rem] shadow-xl border-2 border-white/50 relative overflow-hidden">
+          <h3 class="text-xl font-black mb-6 uppercase italic flex items-center gap-3 relative z-10">
             <span
-              class="bg-[#658a22] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm"
+              class="bg-[#658a22] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md"
             >
               01
             </span>
             Thông Tin Giao Hàng
           </h3>
-          <div class="grid grid-cols-2 gap-4">
-            <input
-              v-model="shippingInfo.fullName"
-              placeholder="Họ tên người nhận"
-              class="col-span-1 p-4 bg-white/50 border-2 border-slate-100 rounded-2xl focus:border-[#658a22] outline-none font-bold text-sm"
-            />
-            <input
-              v-model="shippingInfo.phone"
-              placeholder="Số điện thoại"
-              class="col-span-1 p-4 bg-white/50 border-2 border-slate-100 rounded-2xl focus:border-[#658a22] outline-none font-bold text-sm"
-            />
+
+          <div class="space-y-4 relative z-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                v-model="shippingInfo.fullName"
+                placeholder="Họ tên người nhận"
+                class="col-span-1 p-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-[#658a22] outline-none font-bold text-sm text-slate-700 transition-colors shadow-sm"
+              />
+              <input
+                v-model="shippingInfo.phone"
+                placeholder="Số điện thoại"
+                class="col-span-1 p-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-[#658a22] outline-none font-bold text-sm text-slate-700 transition-colors shadow-sm"
+              />
+            </div>
+
             <input
               v-model="shippingInfo.address"
               placeholder="Địa chỉ chi tiết (Số nhà, đường...)"
-              class="col-span-2 p-4 bg-white/50 border-2 border-slate-100 rounded-2xl focus:border-[#658a22] outline-none font-bold text-sm"
+              class="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-[#658a22] outline-none font-bold text-sm text-slate-700 transition-colors shadow-sm"
             />
+
             <textarea
               v-model="shippingInfo.note"
               placeholder="Ghi chú thêm cho shipper..."
-              class="col-span-2 p-4 bg-white/50 border-2 border-slate-100 rounded-2xl focus:border-[#658a22] outline-none font-bold text-sm h-24"
+              class="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-[#658a22] outline-none font-bold text-sm text-slate-700 h-28 resize-none transition-colors shadow-sm"
             ></textarea>
           </div>
         </section>
 
-        <section class="bg-white/80 p-8 rounded-[2rem] shadow-xl border-2 border-white/50">
+        <section class="bg-white/80 p-6 md:p-8 rounded-[2rem] shadow-xl border-2 border-white/50">
           <h3 class="text-xl font-black mb-6 uppercase italic flex items-center gap-3">
             <span
-              class="bg-[#658a22] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm"
+              class="bg-[#658a22] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md"
             >
               02
             </span>
             Thanh Toán
           </h3>
+
           <div class="space-y-3">
             <label
               :class="[
-                'flex items-center p-5 rounded-2xl cursor-pointer border-2 transition-all',
+                'flex items-center p-5 rounded-2xl cursor-pointer border-2 transition-all shadow-sm',
                 paymentMethod === 'cod'
                   ? 'border-[#658a22] bg-[#f4f7ee]'
-                  : 'border-slate-100 bg-white/50',
+                  : 'border-slate-100 bg-white hover:border-slate-200',
               ]"
             >
               <input
@@ -374,14 +406,18 @@ onMounted(fetchData)
                 value="cod"
                 class="w-4 h-4 accent-[#658a22]"
               />
-              <span class="ml-3 font-bold uppercase text-xs">Tiền mặt (COD)</span>
+              <div class="ml-3 flex items-center justify-between w-full">
+                <span class="font-bold uppercase text-xs tracking-wider">Tiền mặt (COD)</span>
+                <span class="material-symbols-outlined text-slate-400 text-lg">local_shipping</span>
+              </div>
             </label>
+
             <label
               :class="[
-                'flex items-center p-5 rounded-2xl cursor-pointer border-2 transition-all',
+                'flex items-center p-5 rounded-2xl cursor-pointer border-2 transition-all shadow-sm',
                 paymentMethod === 'bank_transfer'
                   ? 'border-[#658a22] bg-[#f4f7ee]'
-                  : 'border-slate-100 bg-white/50',
+                  : 'border-slate-100 bg-white hover:border-slate-200',
               ]"
             >
               <input
@@ -390,16 +426,19 @@ onMounted(fetchData)
                 value="bank_transfer"
                 class="w-4 h-4 accent-[#658a22]"
               />
-              <span class="ml-3 font-bold uppercase text-xs">Chuyển khoản / QR Pay</span>
+              <div class="ml-3 flex items-center justify-between w-full">
+                <span class="font-bold uppercase text-xs tracking-wider">Chuyển khoản / QR Pay</span>
+                <span class="material-symbols-outlined text-slate-400 text-lg">qr_code_2</span>
+              </div>
             </label>
           </div>
 
           <button
             @click="handleSubmit"
-            :disabled="cartItems.length === 0"
-            class="w-full mt-8 bg-[#1e293b] hover:bg-black text-white p-5 rounded-2xl font-black text-lg uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50"
+            :disabled="cartItems.length === 0 || selectedItems.length === 0"
+            class="w-full mt-8 bg-[#1e293b] hover:bg-black text-white p-5 rounded-2xl font-black text-lg uppercase tracking-widest transition-all shadow-xl active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-3"
           >
-            XÁC NHẬN ĐẶT HÀNG | {{ formatVND(total) }}
+            XÁC NHẬN ĐẶT HÀNG <span class="opacity-50">|</span> {{ formatVND(total) }}
           </button>
         </section>
       </div>
@@ -409,13 +448,16 @@ onMounted(fetchData)
 
 <style scoped>
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
+  background: #cbd5e1;
   border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 </style>
