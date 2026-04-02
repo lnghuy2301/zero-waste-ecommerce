@@ -6,7 +6,7 @@ import Footer from './components/Footer.vue'
 
 // Import ảnh nền từ thư mục assets của bạn
 // Hãy đảm bảo bạn đã có file này trong src/assets/bg-main.jpg (hoặc đổi tên cho đúng)
-import bgImage from '@/assets/images/main-bg.jpg'
+// import bgImage from '@/assets/images/main-bg.jpg'
 
 const route = useRoute()
 
@@ -26,11 +26,11 @@ const isAuthPage = computed(() => {
   >
     <Navbar v-if="!isAuthPage" />
 
-    <main
-      class="flex-grow relative bg-cover bg-center bg-no-repeat transition-all duration-500"
-      :class="{ 'px-10': !isAuthPage }"
-      :style="!isAuthPage ? { backgroundImage: `url(${bgImage})` } : {}"
-    >
+    <main>
+<!--      class="flex-grow relative bg-cover bg-center bg-no-repeat transition-all duration-500"-->
+<!--      :class="{ 'px-10': !isAuthPage }"-->
+<!--      :style="!isAuthPage ? { backgroundImage: `url(${bgImage})` } : {}"-->
+<!--    >-->
       <div v-if="!isAuthPage" class="absolute inset-0 bg-white/40 dark:bg-black/60 z-0"></div>
       <div :class="{ 'relative z-10 container mx-auto px-4': !isAuthPage }">
         <RouterView />
