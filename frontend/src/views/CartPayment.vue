@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router'
 import { Cart } from '../service/cart.ts'
 import { Profile } from '@/service/profile.ts'
 import { OrderService } from '@/service/order.ts'
-import api from '@/service/api.ts' // ← thêm dòng này
+import api from '@/service/api.ts'
+import {notify} from "@/utils/notifier.ts"; // ← thêm dòng này
 
 const router = useRouter()
 const cartItems = ref<any[]>([])
@@ -134,9 +135,10 @@ const removeItem = async (id: number) => {
     await Cart.delete(id)
     cartItems.value = cartItems.value.filter((i) => i.id !== id)
     selectedIds.value = selectedIds.value.filter((sid) => sid !== id)
+    notify.success('Xóa sản phẩm thành công')
     syncHeaderCart()
   } catch (error) {
-    alert('Lỗi khi xóa sản phẩm.')
+    notify.error('Lỗi khi xóa sản phẩm.')
   }
 }
 
@@ -148,15 +150,16 @@ const removeSelectedItems = async () => {
     cartItems.value = cartItems.value.filter((item) => !selectedIds.value.includes(item.id))
     selectedIds.value = []
     syncHeaderCart()
+    notify.success('Xóa sản phẩm thành công')
   } catch (error) {
-    alert('Lỗi khi xóa danh sách.')
+    notify.error('Lỗi khi xóa danh sách.')
   }
 }
 
 const handleSubmit = async () => {
-  if (selectedItems.value.length === 0) return alert('Vui lòng chọn sản phẩm!')
+  if (selectedItems.value.length === 0) return notify.error('Vui lòng chọn sản phẩm!')
   if (!shippingInfo.value.fullName || !shippingInfo.value.phone || !shippingInfo.value.address) {
-    return alert('Vui lòng điền đầy đủ thông tin giao hàng!')
+    return notify.error('Vui lòng điền đầy đủ thông tin giao hàng!')
   }
   try {
     const orderPayload = {
@@ -170,13 +173,13 @@ const handleSubmit = async () => {
     }
     const response = await OrderService.createOrder(orderPayload)
     if (response) {
-      alert('Đặt hàng thành công!')
+      notify.success('Đặt hàng thành công!')
       await Cart.deleteList(selectedIds.value)
       syncHeaderCart()
       router.push('/orders')
     }
   } catch (error: any) {
-    alert('Đặt hàng thất bại!')
+    notify.error('Đặt hàng thất bại!')
   }
 }
 

@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '@/service/api.ts'
-import CommentService from '@/service/comment.ts'
+import CommentService from '@/service/comment.ts' // File chứa api getComments
 import { Cart } from '@/service/cart.ts'
 
 const route = useRoute()
@@ -39,8 +39,20 @@ const isVideo = (url: string | null) => {
   return videoExtensions.some((ext) => url.toLowerCase().endsWith(ext))
 }
 
-const openLightbox = (media: any) => {
-  currentLightboxMedia.value = media
+const formatDate = (dateString: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const openLightbox = (mediaUrl: string) => {
+  currentLightboxMedia.value = mediaUrl
   isLightboxOpen.value = true
 }
 
@@ -93,6 +105,7 @@ const fetchComments = async (id: number) => {
   isCommentsLoading.value = true
   try {
     const response = await CommentService.getComments({ productId: id })
+    // Xử lý dữ liệu trả về tùy theo cấu trúc BE (data, items, v.v...)
     const responseData = response.data || response
     comments.value = responseData.data || responseData.items || responseData || []
     commentTotal.value = responseData.meta?.total || comments.value.length
@@ -113,7 +126,7 @@ const fetchData = async () => {
       api.get(`/product/${id}`),
       api.get('/product-variant'),
       api.get('/promotion'),
-      api.get(`/bundle-item?bundleProductId=${id}`).catch(() => ({ data: [] })), // Bắt lỗi nếu API bundle không tồn tại
+      api.get(`/bundle-item?bundleProductId=${id}`).catch(() => ({ data: [] })),
     ])
 
     product.value = prodRes.data
@@ -140,6 +153,7 @@ const fetchData = async () => {
       })
     }
 
+    // Gọi API lấy đánh giá sau khi đã có ID sản phẩm
     await fetchComments(id)
   } catch (e) {
     console.error('Lỗi tải dữ liệu:', e)
@@ -172,7 +186,7 @@ watch(() => route.params.id, fetchData)
 </script>
 
 <template>
-  <main class="mx-auto max-w-[1200px] w-full px-4 py-8 font-sans">
+  <main class="mx-auto max-w-[1200px] w-full px-4 py-8 font-sans relative">
     <div v-if="loading" class="flex flex-col items-center justify-center py-32 text-slate-400">
       <span class="material-symbols-outlined text-5xl text-[#658a22] animate-bounce mb-4">eco</span>
       <p class="font-bold uppercase tracking-widest text-sm text-[#658a22]">Đang tải sản phẩm...</p>
@@ -213,7 +227,6 @@ watch(() => route.params.id, fetchData)
               :src="getImageUrl(product.mainImage)"
               class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500"
             />
-
             <div
               class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm text-[#658a22] text-[10px] font-black px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm border border-[#658a22]/20"
             >
@@ -229,20 +242,16 @@ watch(() => route.params.id, fetchData)
               {{ product.name }}
             </h1>
             <div class="flex items-center gap-4 text-sm font-bold text-slate-400">
-              <span class="flex items-center gap-1"
-                ><span class="material-symbols-outlined text-yellow-400 text-lg">star</span> 5.0 ({{
-                  commentTotal
-                }}
-                đánh giá)</span
-              >
+              <span class="flex items-center gap-1">
+                <span class="text-yellow-400 text-lg">★</span>
+                5.0 ({{ commentTotal }} đánh giá)
+              </span>
               <span>|</span>
               <span class="text-[#658a22] bg-[#eef4e6] px-2 py-0.5 rounded-md">Có sẵn hàng</span>
             </div>
           </div>
 
-          <div
-            class="flex items-center gap-4 p-5 bg-[#f4f7ee]/50 rounded-2xl border border-[#658a22]/10"
-          >
+          <div class="flex items-center gap-4 p-5 bg-[#f4f7ee]/50 rounded-2xl border border-[#658a22]/10">
             <div class="flex items-baseline gap-3">
               <p
                 v-if="selectedVariant?.promotionId"
@@ -263,13 +272,7 @@ watch(() => route.params.id, fetchData)
               v-if="selectedVariant?.promotionId"
               class="px-3 py-1 bg-[#658a22] text-white text-[11px] font-black rounded-full uppercase tracking-widest shadow-md"
             >
-              GIẢM {{ promotions.find((p) => p.id === selectedVariant.promotionId)?.discountValue
-              }}{{
-                promotions.find((p) => p.id === selectedVariant.promotionId)?.discountType ===
-                'PERCENT'
-                  ? '%'
-                  : 'đ'
-              }}
+              GIẢM {{ promotions.find((p) => p.id === selectedVariant.promotionId)?.discountValue }}{{ promotions.find((p) => p.id === selectedVariant.promotionId)?.discountType === 'PERCENT' ? '%' : 'đ' }}
             </span>
           </div>
 
@@ -290,9 +293,7 @@ watch(() => route.params.id, fetchData)
                 ]"
               >
                 {{ v.name }}
-                <span class="text-[10px] font-normal opacity-70 mt-1 uppercase tracking-wider">{{
-                  v.color
-                }}</span>
+                <span class="text-[10px] font-normal opacity-70 mt-1 uppercase tracking-wider">{{ v.color }}</span>
               </button>
             </div>
           </div>
@@ -306,30 +307,11 @@ watch(() => route.params.id, fetchData)
             </p>
           </div>
 
-          <div
-            class="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t-2 border-dashed border-slate-100 mt-auto"
-          >
-            <div
-              class="flex items-center border-2 border-slate-200 rounded-2xl bg-white h-14 overflow-hidden w-full sm:w-auto"
-            >
-              <button
-                @click="updateQuantity(-1)"
-                class="px-5 h-full hover:bg-slate-100 text-slate-700 transition-colors font-black text-lg"
-              >
-                -
-              </button>
-              <input
-                type="text"
-                readonly
-                :value="quantity"
-                class="w-12 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-lg"
-              />
-              <button
-                @click="updateQuantity(1)"
-                class="px-5 h-full hover:bg-slate-100 text-slate-700 transition-colors font-black text-lg"
-              >
-                +
-              </button>
+          <div class="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t-2 border-dashed border-slate-100 mt-auto">
+            <div class="flex items-center border-2 border-slate-200 rounded-2xl bg-white h-14 overflow-hidden w-full sm:w-auto">
+              <button @click="updateQuantity(-1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 transition-colors font-black text-lg">-</button>
+              <input type="text" readonly :value="quantity" class="w-12 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-lg" />
+              <button @click="updateQuantity(1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 transition-colors font-black text-lg">+</button>
             </div>
 
             <button
@@ -343,6 +325,117 @@ watch(() => route.params.id, fetchData)
             </button>
           </div>
         </div>
+      </div>
+
+      <div class="mt-12 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100">
+        <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-2">
+          Đánh giá sản phẩm
+          <span class="text-sm font-bold bg-[#eef4e6] text-[#658a22] px-3 py-1 rounded-full">
+            {{ commentTotal }} Đánh giá
+          </span>
+        </h2>
+
+        <div v-if="isCommentsLoading" class="py-10 text-center text-slate-400 font-bold">
+          <span class="material-symbols-outlined animate-spin text-3xl mb-2">sync</span>
+          <p>Đang tải đánh giá...</p>
+        </div>
+
+        <div v-else-if="comments.length === 0" class="py-16 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+          <span class="material-symbols-outlined text-5xl text-slate-300 mb-3">chat_bubble_outline</span>
+          <p class="text-slate-500 font-bold">Chưa có đánh giá nào cho sản phẩm này.</p>
+          <p class="text-sm text-slate-400 mt-1">Hãy là người đầu tiên trải nghiệm và chia sẻ nhé!</p>
+        </div>
+
+        <div v-else class="space-y-8">
+          <div v-for="comment in comments" :key="comment.id" class="border-b border-slate-100 pb-8 last:border-0 last:pb-0">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-white shadow-sm">
+                <img
+                  v-if="comment.account?.avatar"
+                  :src="getImageUrl(comment.account.avatar)"
+                  class="w-full h-full object-cover"
+                />
+                <span v-else class="material-symbols-outlined text-slate-400">person</span>
+              </div>
+
+              <div class="flex-1">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                  <p class="font-bold text-slate-800">{{ comment.account?.fullName || comment.account?.username || 'Khách hàng ẩn danh' }}</p>
+                  <p class="text-xs text-slate-400 font-medium">{{ formatDate(comment.createdAt) }}</p>
+                </div>
+
+                <div class="flex text-sm mb-3 gap-0.5">
+                  <span
+                    v-for="star in 5"
+                    :key="star"
+                    class="text-lg"
+                    :class="star <= Number(comment.rating || 5) ? 'text-yellow-400' : 'text-slate-200'"
+                  >
+                    ★
+                  </span>
+                </div>
+
+                <p class="text-slate-600 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
+                  {{ comment.content }}
+                </p>
+
+                <div v-if="comment.ReviewMedia && comment.ReviewMedia.length > 0" class="flex flex-wrap gap-3">
+                  <div
+                    v-for="media in comment.ReviewMedia"
+                    :key="media.id"
+                    @click="openLightbox(media.url || media.path)"
+                    class="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 cursor-pointer hover:border-[#658a22] transition-colors relative group"
+                  >
+                    <video
+                      v-if="isVideo(media.url || media.path)"
+                      :src="getImageUrl(media.url || media.path)"
+                      class="w-full h-full object-cover"
+                    ></video>
+                    <img
+                      v-else
+                      :src="getImageUrl(media.url || media.path)"
+                      class="w-full h-full object-cover"
+                    />
+
+                    <div v-if="isVideo(media.url || media.path)" class="absolute inset-0 bg-black/20 flex items-center justify-center">
+                      <span class="material-symbols-outlined text-white text-2xl drop-shadow-md">play_circle</span>
+                    </div>
+
+                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div
+      v-if="isLightboxOpen"
+      class="fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-10"
+      @click.self="closeLightbox"
+    >
+      <button
+        @click="closeLightbox"
+        class="absolute top-6 right-6 text-white hover:text-red-400 bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+      >
+        <span class="material-symbols-outlined">close</span>
+      </button>
+
+      <div class="max-w-4xl max-h-full w-full rounded-2xl overflow-hidden shadow-2xl relative">
+        <video
+          v-if="isVideo(currentLightboxMedia)"
+          :src="getImageUrl(currentLightboxMedia)"
+          controls autoplay
+          class="w-full max-h-[85vh] object-contain bg-black"
+        ></video>
+        <img
+          v-else
+          :src="getImageUrl(currentLightboxMedia)"
+          class="w-full max-h-[85vh] object-contain"
+        />
       </div>
     </div>
   </main>
