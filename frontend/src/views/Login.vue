@@ -219,4 +219,17 @@ const handleGoogleLogin = () => {
   background-image: radial-gradient(circle at 2px 2px, #e5ebd8 1px, transparent 0);
   background-size: 32px 32px;
 }
+
+/* Thêm đoạn CSS dưới đây để ẩn icon con mắt mặc định của trình duyệt (Edge, IE...) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* Ẩn thêm nút auto-fill của trình duyệt nền tảng WebKit (Chrome/Safari) nếu cần thiết */
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}
 </style>
