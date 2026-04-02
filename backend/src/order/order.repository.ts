@@ -241,14 +241,11 @@ export class OrderRepository {
     });
   }
   async getStats() {
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-
     const [
       totalUsers,
       totalOrders,
       totalProducts,
-      revenueResult,
+      totalRevenueResult,
       monthlyRaw,
       statusRaw,
     ] = await Promise.all([
@@ -261,10 +258,7 @@ export class OrderRepository {
       }),
       this.prismaService.order.groupBy({
         by: ['createdAt'],
-        where: {
-          status: 'COMPLETED',
-          createdAt: { gte: startOfYear },
-        },
+        where: { status: 'COMPLETED' },
         _sum: { totalAmount: true },
       }),
       this.prismaService.order.groupBy({
@@ -273,14 +267,12 @@ export class OrderRepository {
       }),
     ]);
 
-    // Xử lý monthly revenue thành mảng 12 tháng
     const monthlyRevenue = Array(12).fill(0);
     monthlyRaw.forEach((item) => {
-      const month = new Date(item.createdAt).getMonth(); // 0-11
+      const month = new Date(item.createdAt).getMonth();
       monthlyRevenue[month] = Number(item._sum.totalAmount || 0);
     });
 
-    // Xử lý status count
     const statusCount: Record<string, number> = {};
     statusRaw.forEach((item) => {
       statusCount[item.status] = item._count.id;
@@ -290,7 +282,7 @@ export class OrderRepository {
       totalUsers,
       totalOrders,
       totalProducts,
-      totalRevenue: Number(revenueResult._sum.totalAmount || 0),
+      totalRevenue: Number(totalRevenueResult._sum.totalAmount || 0), // ← sửa chỗ này
       monthlyRevenue,
       statusCount,
     };
