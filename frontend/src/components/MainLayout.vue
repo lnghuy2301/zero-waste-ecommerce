@@ -12,6 +12,5 @@
 </template>
 
 <script setup lang="ts">
-// Import ảnh nền từ thư mục assets
-import bgImage from '@/assets/images/main-bg.jpg' // Thay bằng tên file ảnh thực tế của bạn
+import bgImage from '@/assets/images/main-bg.jpg'
 </script>

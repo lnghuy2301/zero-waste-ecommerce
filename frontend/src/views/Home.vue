@@ -127,7 +127,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="bg-[#f8fafc] min-h-screen font-sans selection:bg-[#eef4e6] selection:text-[#658a22]">
+  <main class="bg-white min-h-screen font-sans selection:bg-[#eef4e6] selection:text-[#658a22]">
     <section
       class="relative h-[80vh] flex items-center overflow-hidden rounded-b-[3.5rem] shadow-2xl"
     >
