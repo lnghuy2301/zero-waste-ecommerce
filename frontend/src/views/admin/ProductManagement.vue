@@ -176,6 +176,69 @@ const showCategoryModal = ref(false) // ← modal tạo danh mục
 const currentProductId = ref<number | null>(null)
 const currentProductIdForImage = ref<number | null>(null)
 
+const showCategoryListModal = ref(false) // modal hiển thị danh sách danh mục
+const categoriesToEdit = ref<any[]>([]) // danh sách danh mục để chỉnh sửa/xóa
+const editingCategory = ref<any>(null) // danh mục đang chỉnh sửa
+
+// Mở modal quản lý danh mục
+const openCategoryListModal = async () => {
+  try {
+    const res = await Category.getAllCategories()
+    categoriesToEdit.value = res || []
+    showCategoryListModal.value = true
+  } catch (e) {
+    notify.error('Không tải được danh sách danh mục')
+  }
+}
+
+// Xóa danh mục
+const deleteCategory = async (id: number) => {
+  if (!confirm('Bạn có chắc muốn xóa danh mục này không?')) return
+  try {
+    await Category.deleteCategory(id)
+    notify.success('Xóa danh mục thành công')
+    // Cập nhật lại danh sách
+    categoriesToEdit.value = categoriesToEdit.value.filter((c) => c.id !== id)
+    loadData() // load lại sản phẩm
+  } catch (e) {
+    notify.error('Không thể xóa danh mục này (có thể đang có sản phẩm)')
+  }
+}
+
+// Chỉnh sửa danh mục (mở form sửa)
+const editCategory = (cat: any) => {
+  editingCategory.value = cat
+  newCategory.value = {
+    name: cat.name,
+    description: cat.description || '',
+  }
+  showCategoryModal.value = true // dùng chung modal tạo
+}
+
+// Lưu danh mục (tạo hoặc sửa)
+const saveCategory = async () => {
+  if (!newCategory.value.name?.trim()) {
+    return notify.error('Tên danh mục không được bỏ trống')
+  }
+
+  try {
+    if (editingCategory.value) {
+      // Sửa
+      await Category.updateCategory(editingCategory.value.id, newCategory.value)
+      notify.success('Cập nhật danh mục thành công')
+    } else {
+      // Tạo mới
+      await Category.createCategory(newCategory.value)
+      notify.success('Tạo danh mục thành công')
+    }
+    showCategoryModal.value = false
+    editingCategory.value = null
+    newCategory.value = { name: '', description: '' }
+    loadData()
+  } catch (e: any) {
+    notify.error('Lưu danh mục thất bại')
+  }
+}
 const newCategory = ref({
   // ← form tạo danh mục
   name: '',
@@ -446,6 +509,12 @@ onMounted(loadData)
           class="bg-[#658a22] hover:bg-[#58791d] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-100 transition-all"
         >
           <span class="material-symbols-outlined">add_circle</span> Tạo danh mục
+        </button>
+        <button
+          @click="openCategoryListModal"
+          class="bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg transition-all"
+        >
+          <span class="material-symbols-outlined">list</span> Quản lý danh mục
         </button>
       </div>
     </div>
@@ -972,6 +1041,57 @@ onMounted(loadData)
             class="px-8 py-3 text-slate-600 border border-slate-300 rounded-2xl"
           >
             Hủy
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Danh sách + Quản lý Danh mục -->
+    <div
+      v-if="showCategoryListModal"
+      class="text-slate-800 fixed inset-0 bg-slate-900/70 flex items-center justify-center z-[110] p-4"
+      @click.self="showCategoryListModal = false"
+    >
+      <div
+        class="bg-white rounded-[32px] w-full max-w-2xl p-8 shadow-2xl max-h-[85vh] overflow-auto"
+        @click.stop
+      >
+        <h2 class="text-2xl font-black mb-6">Quản lý Danh mục</h2>
+
+        <div class="space-y-3">
+          <div
+            v-for="cat in categoriesToEdit"
+            :key="cat.id"
+            class="flex justify-between items-center bg-slate-50 p-5 rounded-2xl border"
+          >
+            <div>
+              <div class="font-bold">{{ cat.name }}</div>
+              <div v-if="cat.description" class="text-sm text-slate-500 mt-1">
+                {{ cat.description }}
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <button
+                @click="editCategory(cat)"
+                class="text-blue-600 hover:text-blue-700 px-4 py-2 text-sm font-medium"
+              >
+                Sửa
+              </button>
+              <button
+                @click="deleteCategory(cat.id)"
+                class="text-red-600 hover:text-red-700 px-4 py-2 text-sm font-medium"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end mt-8">
+          <button
+            @click="showCategoryListModal = false"
+            class="px-8 py-3 border border-slate-300 rounded-2xl font-medium"
+          >
+            Đóng
           </button>
         </div>
       </div>

@@ -93,9 +93,7 @@ const logout = () => {
       </header>
 
       <!-- Nội dung trang con -->
-      <main class="flex-1 overflow-auto p-8 bg-transparent">
-        <RouterView />
-      </main>
+      <main class="flex-1 overflow-auto bg-slate-50"><RouterView /></main>
     </div>
   </div>
 </template>

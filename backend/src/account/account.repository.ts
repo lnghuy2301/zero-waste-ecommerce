@@ -170,7 +170,10 @@ export class AccountRepository {
     });
   }
 
-  async uploadAvatar(id: number, file: Express.Multer.File): Promise<Account_profileResponseDto> {
+  async uploadAvatar(
+    id: number,
+    file: Express.Multer.File,
+  ): Promise<Account_profileResponseDto> {
     const updated = await this.prismaService.account.update({
       where: { id },
       data: {

@@ -61,7 +61,7 @@ export class CategoryController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  @Delete(':id/category')
+  @Delete(':id')
   async delete(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<CategoryResponseDto | null> {
