@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
+import Chatbot from './components/Chatbot.vue'
 
 // Import ảnh nền từ thư mục assets của bạn
 // Hãy đảm bảo bạn đã có file này trong src/assets/bg-main.jpg (hoặc đổi tên cho đúng)
@@ -26,7 +27,7 @@ const isAuthPage = computed(() => {
   >
     <Navbar v-if="!isAuthPage" />
 
-    <main
+    <!-- <main
       class="flex-grow relative bg-cover bg-center bg-no-repeat transition-all duration-500"
       :class="{ 'px-10': !isAuthPage }"
       :style="!isAuthPage ? { backgroundImage: `url(${bgImage})` } : {}"
@@ -35,8 +36,10 @@ const isAuthPage = computed(() => {
       <div :class="{ 'relative z-10 container mx-auto px-4': !isAuthPage }">
         <RouterView />
       </div>
-    </main>
+    </main> -->
+    <RouterView />
 
+    <Chatbot v-if="!isAuthPage" />
     <Footer v-if="!isAuthPage" />
   </div>
 </template>

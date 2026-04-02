@@ -203,8 +203,9 @@ onMounted(() => {
     </transition>
 
     <!-- Sidebar Danh mục (slide-in mobile + desktop) -->
+    <!-- Sidebar Danh mục (slide-in mobile + desktop) -->
     <aside
-      class="fixed top-0 left-0 h-screen w-80 max-w-full bg-white z-50 shadow-[20px_0_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-in-out overflow-y-auto"
+      class="fixed top-16 left-0 h-[calc(100vh-64px)] w-80 max-w-full bg-white z-40 shadow-[20px_0_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-in-out overflow-y-auto"
       :class="isCategoryOpen ? 'translate-x-0' : '-translate-x-full'"
     >
       <div class="p-6 md:p-8">

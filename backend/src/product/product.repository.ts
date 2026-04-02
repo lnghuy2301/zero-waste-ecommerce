@@ -79,10 +79,38 @@ export class ProductRepository {
   async deleteListProducts(
     dto: DeleteListProductDto,
   ): Promise<{ count: number }> {
-    return this.prismaService.product.deleteMany({
-      where: {
-        id: { in: dto.Ids },
-      },
+    return this.prismaService.$transaction(async (prisma) => {
+      // 1. Xóa giỏ hàng liên quan đến biến thể của sản phẩm
+      await prisma.cart.deleteMany({
+        where: {
+          variant: {
+            productId: { in: dto.Ids },
+          },
+        },
+      });
+
+      // 2. Xóa chi tiết đơn hàng liên quan đến biến thể
+      await prisma.orderDetail.deleteMany({
+        where: {
+          variant: {
+            productId: { in: dto.Ids },
+          },
+        },
+      });
+
+      // 3. Xóa biến thể của sản phẩm
+      await prisma.productVariant.deleteMany({
+        where: {
+          productId: { in: dto.Ids },
+        },
+      });
+
+      // 4. Xóa sản phẩm
+      const result = await prisma.product.deleteMany({
+        where: { id: { in: dto.Ids } },
+      });
+
+      return { count: result.count };
     });
   }
 

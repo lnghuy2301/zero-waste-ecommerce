@@ -37,7 +37,7 @@ export class AccountController {
 
   @Post()
   async createAccount(
-      @Body() account: AccountRequestDto,
+    @Body() account: AccountRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.createAccount(account);
   }
@@ -47,12 +47,12 @@ export class AccountController {
   @Roles(Role.ADMIN, Role.CUSTOMER)
   @Patch(':id/avatar')
   @UseInterceptors(
-      FileInterceptor('avatar', { storage: multerStorage, fileFilter }),
+    FileInterceptor('avatar', { storage: multerStorage, fileFilter }),
   )
   async uploadAvatar(
-      @Param('id', ParseIntPipe) id: number,
-      @UploadedFile() file: Express.Multer.File,
-      @GetUser() currentUser: any,
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @GetUser() currentUser: any,
   ) {
     if (!file) throw new BadRequestException('Không có file ảnh được upload');
     return this.accountService.uploadAvatar(id, file, currentUser);
@@ -63,9 +63,9 @@ export class AccountController {
   @Roles(Role.ADMIN, Role.CUSTOMER)
   @Put(':id/password')
   async updatePassword(
-      @Param('id', ParseIntPipe) id: number,
-      @Body() resetPassword: ResetPasswordRequestDto,
-      @GetUser() currentUser: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() resetPassword: ResetPasswordRequestDto,
+    @GetUser() currentUser: any,
   ) {
     return this.accountService.resetPassword(id, resetPassword, currentUser);
   }
@@ -74,8 +74,8 @@ export class AccountController {
   @Roles(Role.ADMIN)
   @Put(':id/active')
   async updateActive(
-      @Param('id', ParseIntPipe) id: number,
-      @Body() account: UpdateActiveRequestDto,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() account: UpdateActiveRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.updateActive(id, account);
   }
@@ -84,8 +84,8 @@ export class AccountController {
   @Roles(Role.ADMIN)
   @Put(':id/role')
   async updateRole(
-      @Param('id', ParseIntPipe) id: number,
-      @Body() account: UpdateRoleRequesrDto,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() account: UpdateRoleRequesrDto,
   ): Promise<AccountResponseDto> {
     return this.accountService.updateRole(id, account);
   }
@@ -101,8 +101,8 @@ export class AccountController {
   @Roles(Role.ADMIN, Role.CUSTOMER)
   @Get(':id')
   async getAccount(
-      @Param('id', ParseIntPipe) id: number,
-      @GetUser() currentUser: any,
+    @Param('id', ParseIntPipe) id: number,
+    @GetUser() currentUser: any,
   ): Promise<AccountResponseDto | null> {
     return this.accountService.getAccountById(id, currentUser);
   }
@@ -111,7 +111,7 @@ export class AccountController {
   @Roles(Role.ADMIN)
   @Get()
   async getAllAccounts(
-      @GetUser() currentUser: any,
+    @GetUser() currentUser: any,
   ): Promise<AccountResponseDto[]> {
     return this.accountService.getAllAccounts(currentUser);
   }
@@ -120,8 +120,8 @@ export class AccountController {
   @Roles(Role.ADMIN, Role.CUSTOMER)
   @Delete(':id')
   async deleteAccountById(
-      @Param('id', ParseIntPipe) id: number,
-      @GetUser() currentUser: any,
+    @Param('id', ParseIntPipe) id: number,
+    @GetUser() currentUser: any,
   ): Promise<AccountResponseDto | null> {
     return this.accountService.deleteAccountById(id, currentUser);
   }
