@@ -18,6 +18,16 @@ const router = createRouter({
       name: 'cartpayment',
       component: () => import('../views/CartPayment.vue'),
     },
+    {
+      path: '/payment-momo',
+      name: 'FakePaymentMoMo',
+      component: () => import('../views/FakePaymentMoMo.vue'),
+    },
+    {
+      path: '/payment-paypal',
+      name: 'FakePaymentPayPal',
+      component: () => import('../views/FakePaymentPayPal.vue'),
+    },
     { path: '/profile', name: 'profile', component: () => import('../views/Profile.vue') },
     {
       path: '/change_password',

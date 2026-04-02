@@ -28,14 +28,20 @@ const updateCartCount = async () => {
     const userData = JSON.parse(savedUser)
     const response = await Cart.getByUser(userData.id)
 
-    // Đảm bảo lấy đúng mảng dữ liệu (tùy theo cấu trúc API của bạn)
+    // Đảm bảo lấy đúng mảng dữ liệu
     const items = Array.isArray(response) ? response : response.data || []
 
     // Cộng dồn tất cả quantity của các sản phẩm trong giỏ
     cartCount.value = items.reduce((total: number, item: any) => total + Number(item.quantity), 0)
-  } catch (e) {
-    console.error('Lỗi khi cập nhật số lượng giỏ hàng:', e)
-    cartCount.value = 0
+  } catch (e: any) {
+    // FIX LỖI TẠI ĐÂY: Nếu lỗi 404 (giỏ hàng trống) thì set về 0 và không báo lỗi đỏ
+    if (e.response && e.response.status === 404) {
+      cartCount.value = 0
+    } else {
+      // Các lỗi khác vẫn in ra để theo dõi nhưng không làm treo app
+      console.warn('Giỏ hàng trống hoặc chưa khởi tạo')
+      cartCount.value = 0
+    }
   }
 }
 
