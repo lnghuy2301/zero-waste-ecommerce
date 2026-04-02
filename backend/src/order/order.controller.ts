@@ -113,6 +113,7 @@ export class OrderController {
   @Roles(Role.ADMIN)
   @Get('stats')
   async getStats() {
+    // Bỏ qua ValidationPipe cho endpoint này
     return this.orderService.getStats();
   }
 }

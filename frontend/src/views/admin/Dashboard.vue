@@ -10,6 +10,7 @@ const stats = ref({
   totalProducts: 0,
   totalRevenue: 0,
   monthlyRevenue: Array(12).fill(0),
+  statusCount: {} as Record<string, number>, // ← thêm dòng này
 })
 
 let revenueChart: Chart | null = null
@@ -27,6 +28,7 @@ onMounted(async () => {
     stats.value.totalProducts = data.totalProducts
     stats.value.totalRevenue = data.totalRevenue
     stats.value.monthlyRevenue = data.monthlyRevenue
+    stats.value.statusCount = data.statusCount || {} // ← thêm dòng này
   } catch (e) {
     notify.error('Không tải được dữ liệu thống kê')
   }
