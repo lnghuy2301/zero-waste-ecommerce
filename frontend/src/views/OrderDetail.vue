@@ -307,5 +307,85 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="isReviewModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fadeIn">
+        <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden" @click.stop>
+
+          <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <h3 class="font-black text-xl text-slate-800 uppercase italic tracking-widest">Đánh giá sản phẩm</h3>
+            <button @click="closeReviewModal" class="w-10 h-10 flex items-center justify-center rounded-2xl bg-white hover:bg-slate-200 text-slate-400 hover:text-slate-600 font-bold transition-all shadow-sm">
+              <span class="text-xl leading-none">&times;</span>
+            </button>
+          </div>
+
+          <div class="p-8 space-y-6">
+            <div v-if="selectedItemToReview" class="flex items-center gap-4 border p-4 rounded-2xl shadow-sm border-slate-100">
+              <img :src="getImageUrl(selectedItemToReview.variant?.product?.mainImage)" class="w-14 h-14 object-cover rounded-xl border border-slate-100" />
+              <div>
+                <p class="font-black text-sm text-slate-800 line-clamp-1 uppercase">{{ selectedItemToReview.variant?.name }}</p>
+                <p class="text-xs text-slate-500 font-semibold mt-1">Sản phẩm tuyệt vời chứ?</p>
+              </div>
+            </div>
+
+            <div class="flex justify-center gap-2">
+              <button
+                v-for="star in 5"
+                :key="star"
+                @click="reviewRating = star"
+                class="text-4xl transition-all hover:scale-110 focus:outline-none"
+                :class="star <= reviewRating ? 'text-amber-400' : 'text-slate-200 hover:text-amber-200'"
+              >
+                ★
+              </button>
+            </div>
+
+            <div>
+              <textarea
+                v-model="reviewContent"
+                placeholder="Hãy chia sẻ nhận xét của bạn về sản phẩm này nhé..."
+                class="w-full p-5 border-2 border-slate-100 rounded-2xl outline-none focus:border-[#658a22] transition-colors resize-none h-32 text-sm font-medium text-slate-700 shadow-inner"
+              ></textarea>
+            </div>
+
+            <div>
+              <button @click="triggerFileInput" class="w-full py-4 border-2 border-dashed border-slate-300 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:border-[#658a22] hover:text-[#658a22] hover:bg-[#658a22]/5 transition-all">
+                + Tải hình ảnh lên
+              </button>
+              <input type="file" ref="fileInputRef" @change="handleFileChange" multiple accept="image/*" class="hidden" />
+
+              <div v-if="mediaPreviewUrls.length > 0" class="flex gap-3 mt-4 flex-wrap">
+                <div v-for="(url, index) in mediaPreviewUrls" :key="index" class="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm">
+                  <img :src="url" class="w-full h-full object-cover" />
+                  <button @click="removeMedia(index)" class="absolute top-1 right-1 bg-red-500 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-black hover:bg-red-600 transition-colors shadow-sm">
+                    &times;
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-8 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+            <button @click="closeReviewModal" class="px-6 py-3 bg-white border-2 border-slate-200 text-slate-500 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-100 transition-all">
+              Hủy bỏ
+            </button>
+            <button @click="submitReview" :disabled="isSubmittingReview" class="px-6 py-3 bg-[#658a22] text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-[#547320] disabled:opacity-50 transition-all shadow-md">
+              {{ isSubmittingReview ? 'Đang gửi...' : 'Gửi đánh giá' }}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>

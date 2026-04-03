@@ -132,7 +132,6 @@ const fetchData = async () => {
 
 const handleSubmit = async () => {
   if (selectedItems.value.length === 0) return notify.error('Vui lòng chọn sản phẩm!')
-  // ... (validation giữ nguyên)
 
   try {
     const orderPayload = {
@@ -145,20 +144,19 @@ const handleSubmit = async () => {
       })),
     }
 
+    // Backend tự động tạo đơn và trừ kho an toàn
     const response = await OrderService.createOrder(orderPayload)
 
     if (response) {
       const orderId = response.id || response.data?.id
 
-      // CHỈ XÓA GIỎ HÀNG NGAY NẾU LÀ COD
       if (paymentMethod.value === 'cod') {
+        // Chỉ cần xóa giỏ hàng trên máy khách sau khi hoàn tất
         await Cart.deleteList(selectedIds.value)
         syncHeaderCart()
         notify.success('Đặt hàng thành công!')
         router.push('/orders')
       } else {
-        // NẾU LÀ MOMO/PAYPAL: KHÔNG XÓA GIỎ HÀNG Ở ĐÂY
-        // Truyền list ID sản phẩm sang trang payment để xóa sau
         const ids = selectedIds.value.join(',')
         const name = paymentMethod.value === 'momo' ? 'FakePaymentMoMo' : 'FakePaymentPayPal'
 
@@ -169,15 +167,32 @@ const handleSubmit = async () => {
       }
     }
   } catch (error: any) {
-    notify.error('Đặt hàng thất bại!')
+    const errorMsg = error.response?.data?.message || error.message || 'Đặt hàng thất bại!'
+    notify.error(Array.isArray(errorMsg) ? errorMsg[0] : errorMsg)
   }
 }
 
+// --- LOGIC CẬP NHẬT SỐ LƯỢNG ---
 const updateQuantity = async (item: any, change: number) => {
+  const maxStock = item.variant?.stock ?? item.variant?.stockQuantity ?? item.variant?.quantity ?? 999
+  const MAX_LIMIT = 20
+
   const newQty = item.quantity + change
   if (newQty < 1) return
+
+  if (newQty > maxStock) {
+    alert(`Sản phẩm này chỉ còn ${maxStock} trong kho!`)
+    return
+  }
+
+  if (newQty > MAX_LIMIT) {
+    alert(`Bạn chỉ được đặt tối đa ${MAX_LIMIT} sản phẩm!`)
+    return
+  }
+
   const oldQty = item.quantity
   item.quantity = newQty
+
   try {
     const userJson = localStorage.getItem('user')
     const user = userJson ? JSON.parse(userJson) : null
@@ -191,6 +206,51 @@ const updateQuantity = async (item: any, change: number) => {
     syncHeaderCart()
   } catch (e: any) {
     item.quantity = oldQty
+  }
+}
+
+const handleManualInput = async (item: any, event: Event) => {
+  const target = event.target as HTMLInputElement
+  let val = Math.floor(Number(target.value))
+
+  const maxStock = item.variant?.stock ?? item.variant?.stockQuantity ?? item.variant?.quantity ?? 999
+  const MAX_LIMIT = 20
+
+  // Kiểm tra tính hợp lệ
+  if (isNaN(val) || val < 1) {
+    val = 1
+  } else if (val > maxStock) {
+    alert(`Sản phẩm này chỉ còn ${maxStock} trong kho!`)
+    val = maxStock
+  } else if (val > MAX_LIMIT) {
+    alert(`Bạn chỉ được đặt tối đa ${MAX_LIMIT} sản phẩm!`)
+    val = MAX_LIMIT
+  }
+
+  if (val === item.quantity) {
+    target.value = String(val)
+    return
+  }
+
+  const oldQty = item.quantity
+  item.quantity = val
+  target.value = String(val)
+
+  try {
+    const userJson = localStorage.getItem('user')
+    const user = userJson ? JSON.parse(userJson) : null
+    const vId = Number(item.variantId || item.variant?.id)
+    const payload = {
+      accountId: Number(user?.id),
+      variantId: vId,
+      quantity: Number(val),
+    }
+    await Cart.update(item.id, payload)
+    syncHeaderCart()
+  } catch (e: any) {
+    item.quantity = oldQty
+    target.value = String(oldQty)
+    notify.error('Lỗi cập nhật số lượng')
   }
 }
 
@@ -254,10 +314,23 @@ onMounted(fetchData)
                 <p v-if="item.variant?.name" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{{ item.variant.name }}</p>
                 <div class="flex justify-between items-center mt-2">
                   <span class="font-black text-[#658a22] text-sm italic">{{ formatVND(item.variant?.price || item.price || 0) }}</span>
-                  <div class="flex items-center bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
-                    <button @click="updateQuantity(item, -1)" class="px-3 py-1 text-slate-500 font-black hover:bg-slate-200 transition-colors">-</button>
-                    <span class="px-2 py-1 text-[11px] font-black text-slate-800">{{ item.quantity }}</span>
-                    <button @click="updateQuantity(item, 1)" class="px-3 py-1 text-slate-500 font-black hover:bg-slate-200 transition-colors">+</button>
+
+                  <div class="flex items-center bg-slate-100 rounded-lg overflow-hidden border border-slate-200 h-8">
+                    <button @click="updateQuantity(item, -1)" class="px-3 h-full text-slate-500 font-black hover:bg-slate-200 transition-colors">-</button>
+
+                    <input
+                      type="number"
+                      :value="item.quantity"
+                      @change="handleManualInput(item, $event)"
+                      @blur="handleManualInput(item, $event)"
+                      class="w-8 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-[12px] p-0 hide-arrows"
+                    />
+
+                    <button
+                      @click="updateQuantity(item, 1)"
+                      class="px-3 h-full text-slate-500 font-black hover:bg-slate-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      :disabled="item.quantity >= 20 || item.quantity >= (item.variant?.stock ?? item.variant?.stockQuantity ?? item.variant?.quantity ?? 999)"
+                    >+</button>
                   </div>
                 </div>
               </div>
@@ -327,4 +400,14 @@ onMounted(fetchData)
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Ẩn mũi tên lên/xuống của input number */
+.hide-arrows::-webkit-inner-spin-button,
+.hide-arrows::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.hide-arrows {
+  -moz-appearance: textfield;
+}
 </style>

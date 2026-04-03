@@ -119,4 +119,15 @@ export class ProductVariantRepository {
 
     return { count: result.count };
   }
+
+  async deductStock(id: number, quantityToDeduct: number): Promise<void> {
+    await this.prismaService.productVariant.update({
+      where: { id },
+      data: {
+        stock: {
+          decrement: quantityToDeduct,
+        },
+      },
+    });
+  }
 }

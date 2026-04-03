@@ -170,9 +170,48 @@ const getDiscountedPrice = (variant: any) => {
   return Math.max(0, finalPrice)
 }
 
+// Reset số lượng về 1 mỗi khi người dùng đổi phân loại
+watch(selectedVariant, () => {
+  quantity.value = 1
+})
+
 const updateQuantity = (val: number) => {
+  const maxStock = selectedVariant.value?.stock ?? selectedVariant.value?.stockQuantity ?? selectedVariant.value?.quantity ?? 999
+  const MAX_LIMIT = 20
+
   if (quantity.value + val < 1) return
+
+  if (quantity.value + val > maxStock) {
+    alert(`Rất tiếc, sản phẩm này chỉ còn ${maxStock} sản phẩm trong kho!`)
+    return
+  }
+
+  if (quantity.value + val > MAX_LIMIT) {
+    alert(`Bạn chỉ được đặt tối đa ${MAX_LIMIT} sản phẩm cho mỗi lần mua!`)
+    return
+  }
+
   quantity.value += val
+}
+
+// Kiểm tra tính hợp lệ khi người dùng tự nhập số vào ô input
+const validateQuantity = () => {
+  let val = Math.floor(Number(quantity.value))
+  const maxStock = selectedVariant.value?.stock ?? selectedVariant.value?.stockQuantity ?? selectedVariant.value?.quantity ?? 999
+  const MAX_LIMIT = 20
+
+  // Nếu nhập bậy (chữ, bỏ trống) hoặc <= 0 thì set về 1
+  if (isNaN(val) || val < 1) {
+    val = 1
+  } else if (val > maxStock) {
+    alert(`Rất tiếc, sản phẩm này chỉ còn ${maxStock} sản phẩm trong kho!`)
+    val = maxStock
+  } else if (val > MAX_LIMIT) {
+    alert(`Bạn chỉ được đặt tối đa ${MAX_LIMIT} sản phẩm cho mỗi lần mua!`)
+    val = MAX_LIMIT
+  }
+
+  quantity.value = val
 }
 
 onMounted(fetchData)
@@ -254,9 +293,22 @@ watch(() => route.params.id, fetchData)
           <div class="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t-2 border-dashed border-slate-100 mt-auto">
             <div class="flex items-center border-2 border-slate-200 rounded-2xl bg-white h-14 overflow-hidden w-full sm:w-auto">
               <button @click="updateQuantity(-1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg">-</button>
-              <input type="text" readonly :value="quantity" class="w-12 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-lg" />
-              <button @click="updateQuantity(1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg">+</button>
+
+              <input
+                type="number"
+                v-model.number="quantity"
+                @change="validateQuantity"
+                @blur="validateQuantity"
+                class="w-14 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-lg hide-arrows"
+              />
+
+              <button
+                @click="updateQuantity(1)"
+                class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                :disabled="quantity >= 20 || quantity >= (selectedVariant?.stock ?? selectedVariant?.stockQuantity ?? selectedVariant?.quantity ?? 999)"
+              >+</button>
             </div>
+
             <button @click="handleAddToCart" :disabled="isAdding" class="w-full flex-1 bg-[#1e293b] hover:bg-black text-white font-black h-14 rounded-2xl flex items-center justify-center gap-3 transition-all uppercase tracking-widest text-sm">
               {{ isAdding ? 'ĐANG XỬ LÝ...' : 'THÊM VÀO GIỎ' }}
             </button>
@@ -352,4 +404,14 @@ watch(() => route.params.id, fetchData)
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
 .font-sans { font-family: 'Inter', sans-serif; }
+
+/* Ẩn mũi tên lên/xuống mặc định của input type="number" */
+.hide-arrows::-webkit-inner-spin-button,
+.hide-arrows::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.hide-arrows {
+  -moz-appearance: textfield;
+}
 </style>
