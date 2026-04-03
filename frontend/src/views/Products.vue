@@ -78,10 +78,26 @@ const fetchProducts = async () => {
 
 const filteredAndSortedProducts = computed(() => {
   let list = [...products.value]
+
+  // 1. Lọc theo tên
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim()
     list = list.filter(p => p.name.toLowerCase().includes(q))
   }
+
+  // 2. Lọc theo Khuyến mãi
+  if (showOnlyPromotion.value) {
+    list = list.filter(p => {
+      const variants = variantMap.value.get(p.id) || []
+      return variants.some(v => {
+        if (!v.promotionId) return false
+        const promo = promotions.value.find(pr => pr.id === v.promotionId)
+        return promo && promo.isActive
+      })
+    })
+  }
+
+  // 3. Sắp xếp
   if (sortOption.value === 'price-asc') {
     list.sort((a, b) => (getLowestPrice(a.id) || Infinity) - (getLowestPrice(b.id) || Infinity))
   } else if (sortOption.value === 'price-desc') {
@@ -89,6 +105,7 @@ const filteredAndSortedProducts = computed(() => {
   } else {
     list.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
   }
+
   return list
 })
 
@@ -122,6 +139,7 @@ const getLowestPrice = (productId: number) => {
 }
 
 const getDiscountedPrice = (variant: any) => {
+  if (!variant || !variant.price) return 0
   if (!variant.promotionId) return Number(variant.price)
   const promo = promotions.value.find(p => p.id === variant.promotionId)
   if (!promo || !promo.isActive) return Number(variant.price)
@@ -129,6 +147,16 @@ const getDiscountedPrice = (variant: any) => {
   if (promo.discountType === 'PERCENT') finalPrice *= (1 - Number(promo.discountValue) / 100)
   else if (promo.discountType === 'FIXED_AMOUNT') finalPrice -= Number(promo.discountValue)
   return Math.max(0, finalPrice)
+}
+
+// Hàm hỗ trợ lấy nhãn phần trăm giảm giá để hiển thị lên thẻ sản phẩm
+const getDiscountBadge = (variant: any) => {
+  if (!variant || !variant.promotionId) return null
+  const promo = promotions.value.find(p => p.id === variant.promotionId)
+  if (!promo || !promo.isActive) return null
+
+  if (promo.discountType === 'PERCENT') return `-${promo.discountValue}%`
+  return 'SALE' // Nếu giảm tiền mặt thì để chữ SALE
 }
 
 watch(() => route.query.category, () => {
@@ -212,13 +240,36 @@ onMounted(() => {
             LỌC DANH MỤC
           </button>
 
-          <div class="relative flex-grow sm:flex-grow-0 sm:w-64">
+          <label
+            class="flex items-center gap-2 cursor-pointer bg-white border border-slate-200 px-4 py-3.5 rounded-2xl font-bold text-sm text-slate-600 transition-all h-[50px] select-none"
+            :class="showOnlyPromotion ? 'border-[#d00000] bg-[#fff5f5] text-[#d00000]' : 'hover:border-[#658a22]'"
+          >
+            <input type="checkbox" v-model="showOnlyPromotion" class="hidden" />
+            <span class="material-symbols-outlined text-[20px]" :class="showOnlyPromotion ? 'text-[#d00000]' : 'text-slate-400'">
+              {{ showOnlyPromotion ? 'local_offer' : 'sell' }}
+            </span>
+            Khuyến mãi
+          </label>
+
+          <div class="relative h-[50px]">
+            <select
+              v-model="sortOption"
+              class="appearance-none w-full bg-white border border-slate-200 rounded-2xl pl-4 pr-10 py-3.5 focus:border-[#658a22] outline-none transition-all font-bold text-sm text-slate-600 cursor-pointer h-full"
+            >
+              <option value="newest">Mới nhất</option>
+              <option value="price-asc">Giá: Thấp - Cao</option>
+              <option value="price-desc">Giá: Cao - Thấp</option>
+            </select>
+            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+          </div>
+
+          <div class="relative flex-grow sm:flex-grow-0 sm:w-64 h-[50px]">
             <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span>
             <input
               v-model="searchQuery"
               type="text"
               placeholder="Tìm kiếm sản phẩm..."
-              class="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 focus:border-[#658a22] outline-none transition-all font-bold text-sm"
+              class="w-full h-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 focus:border-[#658a22] outline-none transition-all font-bold text-sm"
             />
           </div>
         </div>
@@ -232,7 +283,13 @@ onMounted(() => {
         <div v-for="product in paginatedProducts" :key="product.id"
              class="group bg-white rounded-[32px] p-4 border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col">
 
-          <div class="aspect-square rounded-[24px] overflow-hidden bg-slate-50 mb-5 cursor-pointer" @click="router.push(`/product/${product.id}`)">
+          <div class="aspect-square rounded-[24px] overflow-hidden bg-slate-50 mb-5 cursor-pointer relative" @click="router.push(`/product/${product.id}`)">
+
+            <div v-if="getDiscountBadge(selectedVariants.get(product.id))"
+                 class="absolute top-3 left-3 bg-[#d00000] text-white text-xs font-black px-3 py-1.5 rounded-xl z-10 shadow-lg tracking-wide">
+              {{ getDiscountBadge(selectedVariants.get(product.id)) }}
+            </div>
+
             <img :src="getImageUrl(product.mainImage)" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
           </div>
 
@@ -242,16 +299,36 @@ onMounted(() => {
 
           <div class="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
             <div class="flex flex-col">
-              <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giá bán</span>
-              <span class="text-[17px] font-black text-[#d00000]">
-                {{ Number(getDiscountedPrice(selectedVariants.get(product.id) || {})).toLocaleString('vi-VN') }}đ
-              </span>
+
+              <template v-if="getDiscountedPrice(selectedVariants.get(product.id) || {}) < Number((selectedVariants.get(product.id) || {}).price || 0)">
+                <span class="text-[11px] font-bold text-slate-400 line-through">
+                  {{ Number((selectedVariants.get(product.id) || {}).price).toLocaleString('vi-VN') }}đ
+                </span>
+                <span class="text-[17px] font-black text-[#d00000]">
+                  {{ Number(getDiscountedPrice(selectedVariants.get(product.id) || {})).toLocaleString('vi-VN') }}đ
+                </span>
+              </template>
+
+              <template v-else>
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giá bán</span>
+                <span class="text-[17px] font-black text-[#658a22]">
+                  {{ Number(getDiscountedPrice(selectedVariants.get(product.id) || {})).toLocaleString('vi-VN') }}đ
+                </span>
+              </template>
+
             </div>
+
             <RouterLink :to="`/product/${product.id}`" class="w-10 h-10 rounded-2xl bg-[#f4f7ee] text-[#658a22] flex items-center justify-center hover:bg-[#658a22] hover:text-white transition-all">
               <span class="material-symbols-outlined text-sm">add</span>
             </RouterLink>
           </div>
         </div>
+      </div>
+
+      <div v-if="!loading && paginatedProducts.length === 0" class="text-center py-20">
+        <span class="material-symbols-outlined text-6xl text-slate-200 mb-4">search_off</span>
+        <h3 class="text-xl font-bold text-slate-800">Không tìm thấy sản phẩm nào</h3>
+        <p class="text-slate-500 mt-2">Vui lòng thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
       </div>
 
       <div v-if="totalPages > 1" class="mt-16 flex justify-center gap-2">

@@ -75,8 +75,13 @@ const handleCancelOrder = async (id: number) => {
 
   isCanceling.value = true
   try {
+    // 1. Frontend chỉ cần gọi đúng 1 API này.
+    // 2. Backend nhận được ID sẽ tự đổi status = CANCELLED và tự động HOÀN KHO (increment).
     await OrderService.cancelOrder(id)
-    notify.success('Đã hủy đơn hàng thành công!')
+
+    notify.success('Đã hủy đơn hàng và hoàn số lượng vào kho thành công!')
+
+    // 3. Cập nhật lại giao diện (chuyển chữ sang Đã hủy)
     const index = orders.value.findIndex((o) => o.id === id)
     if (index !== -1) {
       orders.value[index].status = 'CANCELLED'
