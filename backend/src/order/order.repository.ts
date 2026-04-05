@@ -13,34 +13,36 @@ export class OrderRepository {
   async createOrder(dto: OrderRequestDto): Promise<OrderResponseDto> {
     // 1. Lấy thông tin giá và tồn kho của các variants trước khi bắt đầu transaction
     const itemsWithDetails = await Promise.all(
-        dto.items.map(async (item) => {
-          const variant = await this.prismaService.productVariant.findUnique({
-            where: { id: item.variantId },
-            select: { price: true, stock: true, name: true }, // Lấy thêm stock và name
-          });
-          if (!variant)
-            throw new BadRequestException(`Biến thể ${item.variantId} không tồn tại`);
+      dto.items.map(async (item) => {
+        const variant = await this.prismaService.productVariant.findUnique({
+          where: { id: item.variantId },
+          select: { price: true, stock: true, name: true }, // Lấy thêm stock và name
+        });
+        if (!variant)
+          throw new BadRequestException(
+            `Biến thể ${item.variantId} không tồn tại`,
+          );
 
-          // Kiểm tra tồn kho trước khi tạo
-          if (variant.stock < item.quantity) {
-            throw new BadRequestException(
-                `Sản phẩm "${variant.name}" chỉ còn ${variant.stock} cái, không đủ để đặt ${item.quantity} cái!`
-            );
-          }
+        // Kiểm tra tồn kho trước khi tạo
+        if (variant.stock < item.quantity) {
+          throw new BadRequestException(
+            `Sản phẩm "${variant.name}" chỉ còn ${variant.stock} cái, không đủ để đặt ${item.quantity} cái!`,
+          );
+        }
 
-          return {
-            variantId: item.variantId,
-            bundleId: item.bundleId,
-            quantity: item.quantity,
-            price: variant.price,
-          };
-        }),
+        return {
+          variantId: item.variantId,
+          bundleId: item.bundleId,
+          quantity: item.quantity,
+          price: variant.price,
+        };
+      }),
     );
 
     // 2. Tính tổng số tiền
     const totalAmount = itemsWithDetails.reduce(
-        (sum, item) => sum + Number(item.price) * item.quantity,
-        0,
+      (sum, item) => sum + Number(item.price) * item.quantity,
+      0,
     );
 
     // 3. Sử dụng Prisma Transaction để Tạo Đơn, Tạo Chi Tiết và Trừ Kho cùng lúc
@@ -49,8 +51,10 @@ export class OrderRepository {
       const order = await tx.order.create({
         data: {
           code: `ORD-${Date.now().toString().slice(-8)}${Math.floor(
-              Math.random() * 10000,
-          ).toString().padStart(4, '0')}`,
+            Math.random() * 10000,
+          )
+            .toString()
+            .padStart(4, '0')}`,
           accountId: dto.accountId,
           totalAmount: new Prisma.Decimal(totalAmount.toFixed(2)),
           status: 'PENDING' as OrderStatus,
@@ -91,11 +95,11 @@ export class OrderRepository {
         ...oi,
         price: Number(oi.price),
         variant: oi.variant
-            ? {
+          ? {
               ...oi.variant,
               price: Number(oi.variant.price),
             }
-            : undefined,
+          : undefined,
       })),
     };
 
@@ -103,8 +107,8 @@ export class OrderRepository {
   }
 
   async updateOrderStatus(
-      id: number,
-      status: OrderStatus,
+    id: number,
+    status: OrderStatus,
   ): Promise<OrderResponseDto> {
     const updated = await this.prismaService.order.update({
       where: { id },
@@ -119,11 +123,11 @@ export class OrderRepository {
         ...oi,
         price: Number(oi.price),
         variant: oi.variant
-            ? {
+          ? {
               ...oi.variant,
               price: Number(oi.variant.price),
             }
-            : undefined,
+          : undefined,
       })),
     };
 
@@ -144,11 +148,11 @@ export class OrderRepository {
           ...oi,
           price: Number(oi.price),
           variant: oi.variant
-              ? {
+            ? {
                 ...oi.variant,
                 price: Number(oi.variant.price),
               }
-              : undefined,
+            : undefined,
         })),
       };
       return plainToInstance(OrderResponseDto, transformed);
@@ -170,11 +174,11 @@ export class OrderRepository {
         ...oi,
         price: Number(oi.price),
         variant: oi.variant
-            ? {
+          ? {
               ...oi.variant,
               price: Number(oi.variant.price),
             }
-            : undefined,
+          : undefined,
       })),
     };
 
@@ -228,11 +232,11 @@ export class OrderRepository {
         ...oi,
         price: Number(oi.price),
         variant: oi.variant
-            ? {
+          ? {
               ...oi.variant,
               price: Number(oi.variant.price),
             }
-            : undefined,
+          : undefined,
       })),
     };
 
@@ -291,11 +295,11 @@ export class OrderRepository {
           ...oi,
           price: Number(oi.price),
           variant: oi.variant
-              ? {
+            ? {
                 ...oi.variant,
                 price: Number(oi.variant.price),
               }
-              : undefined,
+            : undefined,
         })),
       };
       return plainToInstance(OrderResponseDto, transformed);
@@ -307,8 +311,8 @@ export class OrderRepository {
       totalUsers,
       totalOrders,
       totalProducts,
-      totalRevenueResult,
-      monthlyRaw,
+      revenueResult,
+      allCompletedOrders, // Thay vì groupBy, ta lấy dữ liệu cần thiết để tự group
       statusRaw,
     ] = await Promise.all([
       this.prismaService.account.count(),
@@ -318,10 +322,10 @@ export class OrderRepository {
         where: { status: 'COMPLETED' },
         _sum: { totalAmount: true },
       }),
-      this.prismaService.order.groupBy({
-        by: ['createdAt'],
+      // Lấy danh sách tiền và ngày của các đơn đã hoàn thành
+      this.prismaService.order.findMany({
         where: { status: 'COMPLETED' },
-        _sum: { totalAmount: true },
+        select: { totalAmount: true, createdAt: true },
       }),
       this.prismaService.order.groupBy({
         by: ['status'],
@@ -329,10 +333,12 @@ export class OrderRepository {
       }),
     ]);
 
+    // Xử lý monthly revenue (CỘNG DỒN thay vì GÁN)
     const monthlyRevenue = Array(12).fill(0);
-    monthlyRaw.forEach((item) => {
-      const month = new Date(item.createdAt).getMonth();
-      monthlyRevenue[month] = Number(item._sum.totalAmount || 0);
+    allCompletedOrders.forEach((item) => {
+      const month = new Date(item.createdAt).getMonth(); // 0-11
+      // Sử dụng += để cộng dồn doanh thu vào tháng đó
+      monthlyRevenue[month] += Number(item.totalAmount || 0);
     });
 
     const statusCount: Record<string, number> = {};
@@ -344,8 +350,8 @@ export class OrderRepository {
       totalUsers,
       totalOrders,
       totalProducts,
-      totalRevenue: Number(totalRevenueResult._sum.totalAmount || 0), // ← sửa chỗ này
-      monthlyRevenue,
+      totalRevenue: Number(revenueResult._sum.totalAmount || 0) as number, // Ép kiểu rõ ràng
+      monthlyRevenue: monthlyRevenue as number[],
       statusCount,
     };
   }
