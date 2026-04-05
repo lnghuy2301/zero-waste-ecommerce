@@ -144,6 +144,19 @@ const confirmApplyPromotion = async (promotionId: number) => {
   }
 }
 const products = ref<any[]>([])
+// Các biến cho Phân trang và Lọc
+// === PHÂN TRANG & LỌC ===
+const currentPage = ref(1)
+const itemsPerPage = 10
+const totalItems = ref(0)
+
+const filters = ref({
+  search: '', // tìm theo tên sản phẩm
+  categoryId: '', // lọc theo danh mục
+  fromDate: '', // từ ngày tạo
+  toDate: '', // đến ngày tạo
+})
+
 const variants = ref<any[]>([])
 const loading = ref(false)
 const categories = ref<any[]>([])
@@ -373,25 +386,40 @@ const newVariant = ref({
 const loadData = async () => {
   loading.value = true
   try {
+    const params = {
+      page: currentPage.value,
+      limit: itemsPerPage,
+      search: filters.value.search.trim() || undefined,
+      categoryId: filters.value.categoryId || undefined,
+      fromDate: filters.value.fromDate || undefined,
+      toDate: filters.value.toDate || undefined,
+    }
+
     const [prodRes, varRes, catRes, promoRes, greenRes] = await Promise.all([
-      api.get('/product?include=greenCerts'), // ← sửa dòng này
+      api.get('/product', { params }), // backend hỗ trợ phân trang + lọc
       ProductVariantService.getAll(),
       Category.getAllCategories(),
       Promotion.getAllPromotions(),
       api.get('/green-certificate'),
     ])
 
-    products.value = prodRes.data || prodRes // một số service trả data trực tiếp
+    // Xử lý response có phân trang
+    const productData = prodRes.data || prodRes
+    products.value = Array.isArray(productData) ? productData : productData.items || []
+    totalItems.value = productData.total || products.value.length
+
     variants.value = varRes
     categories.value = catRes || []
     promotions.value = promoRes || []
     greenCerts.value = greenRes.data || greenRes
   } catch (e) {
     notify.error('Không tải được dữ liệu')
+    products.value = []
   } finally {
     loading.value = false
   }
 }
+
 const toggleProductSelect = (id: number) => {
   const index = selectedProductIds.value.indexOf(id)
   if (index > -1) selectedProductIds.value.splice(index, 1)
@@ -689,18 +717,6 @@ onMounted(loadData)
                   {{ cert.name }}
                 </span>
               </div>
-            </div>
-            <div
-              v-if="product.greenCerts && product.greenCerts.length > 0"
-              class="flex flex-wrap gap-1 mt-2"
-            >
-              <span
-                v-for="cert in product.greenCerts"
-                :key="cert.id"
-                class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium"
-              >
-                {{ cert.name }}
-              </span>
             </div>
           </div>
 
