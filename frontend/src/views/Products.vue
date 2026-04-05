@@ -14,16 +14,20 @@ const searchQuery = ref('')
 
 const selectedVariants = ref<Map<number, any>>(new Map())
 const sortOption = ref('newest')
-const showOnlyPromotion = ref(false)
+const showOnlyPromotion = ref(false) // ← lọc chỉ sản phẩm có khuyến mãi
 
 const currentPage = ref(1)
 const itemsPerPage = 15
 
-// --- QUẢN LÝ SIDEBAR ---
+// === BỔ SUNG BIẾN LỌC GIÁ ===
+const minPriceInput = ref<number | null>(null)
+const maxPriceInput = ref<number | null>(null)
+
+// --- STATE QUẢN LÝ MENU DANH MỤC ---
 const isCategoryOpen = ref(false)
 
 const getImageUrl = (path: string | null) => {
-  if (!path) return 'https://via.placeholder.com/300x300?text=No+Image'
+  if (!path) return 'https://via.placeholder.com/300x300?text=Không+có+ảnh'
   return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
 }
 
@@ -63,7 +67,9 @@ const fetchProducts = async () => {
 
     products.value.forEach((p) => {
       const variants = map.get(p.id) || []
-      if (variants.length > 0) initialSelected.set(p.id, variants[0])
+      if (variants.length > 0) {
+        initialSelected.set(p.id, variants[0])
+      }
     })
 
     variantMap.value = map
@@ -76,33 +82,49 @@ const fetchProducts = async () => {
   }
 }
 
+// === COMPUTED: Lọc + Sắp xếp ===
 const filteredAndSortedProducts = computed(() => {
   let list = [...products.value]
 
-  // 1. Lọc theo tên
+  //1. Lọc theo từ khóa
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim()
-    list = list.filter((p) => p.name.toLowerCase().includes(q))
+    list = list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q)),
+    )
   }
+  // 2. BỔ SUNG: Lọc theo khoảng giá (Min - Max)
+  list = list.filter((p) => {
+    const price = getLowestPrice(p.id)
+    if (price === null) return false
 
-  // 2. Lọc theo Khuyến mãi
+    const minMatch = minPriceInput.value === null || price >= minPriceInput.value
+    const maxMatch = maxPriceInput.value === null || price <= maxPriceInput.value
+    return minMatch && maxMatch
+  })
+
+  //3. Lọc chỉ sản phẩm có khuyến mãi
   if (showOnlyPromotion.value) {
     list = list.filter((p) => {
       const variants = variantMap.value.get(p.id) || []
-      return variants.some((v) => {
-        if (!v.promotionId) return false
-        const promo = promotions.value.find((pr) => pr.id === v.promotionId)
-        return promo && promo.isActive
-      })
+      return variants.some((v) => v.promotionId != null)
     })
   }
 
-  // 3. Sắp xếp
+  // 4. Sắp xếp (Bổ sung 'sold-desc')
   if (sortOption.value === 'price-asc') {
     list.sort((a, b) => (getLowestPrice(a.id) || Infinity) - (getLowestPrice(b.id) || Infinity))
   } else if (sortOption.value === 'price-desc') {
     list.sort((a, b) => (getLowestPrice(b.id) || -Infinity) - (getLowestPrice(a.id) || -Infinity))
+  } else if (sortOption.value === 'sold-desc') {
+    // Sắp xếp theo số lượng đã bán (Bán chạy)
+    list.sort((a, b) => (b.soLuongDaBan || 0) - (a.soLuongDaBan || 0))
+  } else if (sortOption.value === 'rating-desc') {
+    list.sort((a, b) => (b.danhGiaTrungBinh || 0) - (a.danhGiaTrungBinh || 0))
   } else {
+    // newest
     list.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
   }
 
@@ -111,10 +133,13 @@ const filteredAndSortedProducts = computed(() => {
 
 const paginatedProducts = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
-  return filteredAndSortedProducts.value.slice(start, start + itemsPerPage)
+  const end = start + itemsPerPage
+  return filteredAndSortedProducts.value.slice(start, end)
 })
 
-const totalPages = computed(() => Math.ceil(filteredAndSortedProducts.value.length / itemsPerPage))
+const totalPages = computed(() => {
+  return Math.ceil(filteredAndSortedProducts.value.length / itemsPerPage)
+})
 
 const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
@@ -130,6 +155,7 @@ const handleVariantChange = (productId: number, variant: any) => {
 const getLowestPrice = (productId: number) => {
   const variants = variantMap.value.get(productId) || []
   if (variants.length === 0) return null
+
   let minPrice = Infinity
   for (const v of variants) {
     const discounted = getDiscountedPrice(v)
@@ -139,26 +165,29 @@ const getLowestPrice = (productId: number) => {
 }
 
 const getDiscountedPrice = (variant: any) => {
-  if (!variant || !variant.price) return 0
   if (!variant.promotionId) return Number(variant.price)
+
   const promo = promotions.value.find((p) => p.id === variant.promotionId)
   if (!promo || !promo.isActive) return Number(variant.price)
+
   let finalPrice = Number(variant.price)
-  if (promo.discountType === 'PERCENT') finalPrice *= 1 - Number(promo.discountValue) / 100
-  else if (promo.discountType === 'FIXED_AMOUNT') finalPrice -= Number(promo.discountValue)
+  if (promo.discountType === 'PERCENT') {
+    finalPrice *= 1 - Number(promo.discountValue) / 100
+  } else if (promo.discountType === 'FIXED_AMOUNT') {
+    finalPrice -= Number(promo.discountValue)
+  }
+
   return Math.max(0, finalPrice)
 }
 
-// Hàm hỗ trợ lấy nhãn phần trăm giảm giá để hiển thị lên thẻ sản phẩm
-const getDiscountBadge = (variant: any) => {
-  if (!variant || !variant.promotionId) return null
-  const promo = promotions.value.find((p) => p.id === variant.promotionId)
-  if (!promo || !promo.isActive) return null
+watch([searchQuery, sortOption], () => {
+  currentPage.value = 1
+})
+watch([minPriceInput, maxPriceInput], () => {
+  currentPage.value = 1
+})
 
-  if (promo.discountType === 'PERCENT') return `-${promo.discountValue}%`
-  return 'SALE' // Nếu giảm tiền mặt thì để chữ SALE
-}
-
+// Tự động đóng menu khi chọn xong danh mục
 watch(
   () => route.query.category,
   () => {
@@ -174,26 +203,28 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="font-inter">
+  <div>
+    <!-- Backdrop cho mobile menu -->
     <transition name="fade">
       <div
         v-if="isCategoryOpen"
         @click="isCategoryOpen = false"
-        class="fixed inset-0 top-[80px] bg-slate-900/40 backdrop-blur-sm z-[30]"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
       ></div>
     </transition>
 
+    <!-- Sidebar Danh mục (slide-in mobile + desktop) -->
     <aside
-      class="fixed top-[80px] left-0 w-80 max-w-full bg-white z-[40] shadow-[20px_0_40px_rgba(0,0,0,0.1)] transition-transform duration-500 ease-in-out overflow-y-auto h-[calc(100vh-80px)]"
+      class="fixed top-0 left-0 h-screen w-80 max-w-full bg-white z-50 shadow-[20px_0_40px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-in-out overflow-y-auto"
       :class="isCategoryOpen ? 'translate-x-0' : '-translate-x-full'"
     >
-      <div class="p-8">
+      <div class="p-6 md:p-8">
         <div class="flex items-center justify-between mb-8">
           <h3
             class="font-black text-2xl text-slate-800 flex items-center gap-3 uppercase tracking-tight italic"
           >
             <span
-              class="w-10 h-10 bg-[#f4f7ee] text-[#658a22] rounded-xl flex items-center justify-center"
+              class="w-10 h-10 bg-[#eef4e6] text-[#658a22] rounded-full flex items-center justify-center"
             >
               <span class="material-symbols-outlined text-xl">category</span>
             </span>
@@ -201,41 +232,56 @@ onMounted(() => {
           </h3>
           <button
             @click="isCategoryOpen = false"
-            class="lg:hidden text-slate-400 hover:text-red-500"
+            class="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors text-slate-500"
           >
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <ul class="space-y-3">
+        <ul class="space-y-2 relative">
+          <div class="absolute left-4 top-2 bottom-2 w-px bg-slate-100 -z-10"></div>
+
           <li>
             <RouterLink
               to="/products"
-              class="flex items-center justify-between py-4 px-6 rounded-2xl font-bold text-sm uppercase transition-all"
+              class="group flex items-center justify-between py-4 px-5 rounded-2xl transition-all font-bold text-sm uppercase tracking-wide relative overflow-hidden"
               :class="[
                 !route.query.category
-                  ? 'bg-[#658a22] text-white shadow-lg shadow-[#658a22]/20'
-                  : 'bg-slate-50 text-slate-600 hover:bg-[#f4f7ee] hover:text-[#658a22]',
+                  ? 'bg-[#658a22] text-white shadow-lg transform -translate-y-0.5'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-[#658a22]',
               ]"
             >
-              Tất cả sản phẩm
-              <span v-if="!route.query.category" class="material-symbols-outlined text-sm"
+              <div
+                v-if="route.query.category"
+                class="absolute inset-0 bg-[#eef4e6] transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out -z-10"
+              ></div>
+              <span class="relative z-10">Tất cả sản phẩm</span>
+              <span
+                v-if="!route.query.category"
+                class="material-symbols-outlined text-[18px] relative z-10"
                 >check_circle</span
               >
             </RouterLink>
           </li>
+
           <li v-for="cat in categories" :key="cat.id">
             <RouterLink
               :to="`/products?category=${cat.id}`"
-              class="flex items-center justify-between py-4 px-6 rounded-2xl font-bold text-sm uppercase transition-all"
+              class="group flex items-center justify-between py-4 px-5 rounded-2xl transition-all font-bold text-sm uppercase tracking-wide relative overflow-hidden"
               :class="[
                 route.query.category == cat.id
-                  ? 'bg-[#658a22] text-white shadow-lg shadow-[#658a22]/20'
-                  : 'bg-slate-50 text-slate-600 hover:bg-[#f4f7ee] hover:text-[#658a22]',
+                  ? 'bg-[#658a22] text-white shadow-lg transform -translate-y-0.5'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-[#658a22]',
               ]"
             >
-              {{ cat.name }}
-              <span v-if="route.query.category == cat.id" class="material-symbols-outlined text-sm"
+              <div
+                v-if="route.query.category != cat.id"
+                class="absolute inset-0 bg-[#eef4e6] transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out -z-10"
+              ></div>
+              <span class="relative z-10">{{ cat.name }}</span>
+              <span
+                v-if="route.query.category == cat.id"
+                class="material-symbols-outlined text-[18px] relative z-10"
                 >check_circle</span
               >
             </RouterLink>
@@ -244,178 +290,253 @@ onMounted(() => {
       </div>
     </aside>
 
-    <main class="max-w-[1400px] mx-auto px-4 md:px-8 py-12">
-      <div
-        class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12 border-b border-slate-100 pb-8"
-      >
-        <div>
-          <h1 class="text-4xl font-black text-slate-900 uppercase italic tracking-tight">
-            Cửa Hàng <span class="text-[#658a22]">Xanh</span>
-          </h1>
-          <p class="text-slate-500 mt-1 font-medium italic">
-            Khám phá {{ filteredAndSortedProducts.length }} lựa chọn bền vững
-          </p>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-          <button
-            @click="isCategoryOpen = !isCategoryOpen"
-            class="flex items-center gap-2 bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-bold hover:bg-black transition-all shadow-lg active:scale-95"
-          >
-            <span class="material-symbols-outlined">filter_list</span>
-            LỌC DANH MỤC
-          </button>
-
-          <label
-            class="flex items-center gap-2 cursor-pointer bg-white border border-slate-200 px-4 py-3.5 rounded-2xl font-bold text-sm text-slate-600 transition-all h-[50px] select-none"
-            :class="
-              showOnlyPromotion
-                ? 'border-[#d00000] bg-[#fff5f5] text-[#d00000]'
-                : 'hover:border-[#658a22]'
-            "
-          >
-            <input type="checkbox" v-model="showOnlyPromotion" class="hidden" />
-            <span
-              class="material-symbols-outlined text-[20px]"
-              :class="showOnlyPromotion ? 'text-[#d00000]' : 'text-slate-400'"
-            >
-              {{ showOnlyPromotion ? 'local_offer' : 'sell' }}
-            </span>
-            Khuyến mãi
-          </label>
-
-          <div class="relative h-[50px]">
-            <select
-              v-model="sortOption"
-              class="appearance-none w-full bg-white border border-slate-200 rounded-2xl pl-4 pr-10 py-3.5 focus:border-[#658a22] outline-none transition-all font-bold text-sm text-slate-600 cursor-pointer h-full"
-            >
-              <option value="newest">Mới nhất</option>
-              <option value="price-asc">Giá: Thấp - Cao</option>
-              <option value="price-desc">Giá: Cao - Thấp</option>
-            </select>
-            <span
-              class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-              >expand_more</span
-            >
-          </div>
-
-          <div class="relative flex-grow sm:flex-grow-0 sm:w-64 h-[50px]">
-            <span
-              class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              >search</span
-            >
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Tìm kiếm sản phẩm..."
-              class="w-full h-full bg-white border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 focus:border-[#658a22] outline-none transition-all font-bold text-sm"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div v-if="loading" class="text-center py-20">
-        <span class="material-symbols-outlined text-4xl animate-spin text-[#658a22]"
-          >progress_activity</span
-        >
-      </div>
-
-      <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+    <!-- Nội dung chính -->
+    <main
+      class="max-w-[1400px] mx-auto px-4 md:px-8 py-12 font-sans selection:bg-[#eef4e6] selection:text-[#658a22]"
+    >
+      <div class="w-full">
         <div
-          v-for="product in paginatedProducts"
-          :key="product.id"
-          class="group bg-white rounded-[32px] p-4 border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col"
+          class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10 border-b border-slate-100 pb-6"
+        >
+          <div>
+            <h1 class="text-4xl font-black text-slate-900 uppercase italic tracking-tight">
+              Sản Phẩm <span class="text-[#658a22]">Xanh</span>
+            </h1>
+            <p class="text-slate-500 mt-2 font-medium text-sm tracking-wide">
+              Hiển thị
+              <strong class="text-slate-800">{{ filteredAndSortedProducts.length }}</strong> sản
+              phẩm thân thiện
+            </p>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+            <!-- Nút mở danh mục (mobile) -->
+            <button
+              @click="isCategoryOpen = true"
+              class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#1e293b] hover:bg-black text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-md active:scale-95"
+            >
+              <span class="material-symbols-outlined">filter_list</span>
+              DANH MỤC
+            </button>
+
+            <!-- Search -->
+            <div class="relative w-full sm:w-64 lg:w-72">
+              <span
+                class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]"
+                >search</span
+              >
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Tìm sản phẩm..."
+                class="w-full bg-white border border-slate-200 text-slate-900 rounded-2xl pl-12 pr-4 py-3 focus:bg-white focus:border-[#658a22] focus:ring-4 focus:ring-[#658a22]/10 outline-none transition-all font-bold text-sm placeholder:text-slate-400 shadow-sm"
+              />
+            </div>
+            <div
+              class="flex items-center gap-2 w-full sm:w-auto bg-white border border-slate-200 rounded-5xl px-3 py-1 shadow-sm"
+            >
+              <div class="flex items-center gap-1">
+                <span class="text-[13px] font-black text-slate-400 uppercase">Từ</span>
+                <input
+                  v-model.number="minPriceInput"
+                  type="number"
+                  placeholder="0đ"
+                  class="w-20 bg-transparent outline-none text-sm font-bold text-[#658a22] placeholder:text-slate-300"
+                />
+              </div>
+              <div class="w-px h-4 bg-slate-200"></div>
+              <div class="flex items-center gap-1">
+                <span class="text-[13px] font-black text-slate-400 uppercase">Đến</span>
+                <input
+                  v-model.number="maxPriceInput"
+                  type="number"
+                  placeholder="99k..."
+                  class="w-20 bg-transparent outline-none text-sm font-bold text-[#658a22] placeholder:text-slate-300"
+                />
+              </div>
+            </div>
+            <!-- Sort -->
+            <div class="relative w-full sm:w-48 lg:w-56">
+              <span
+                class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#658a22] text-[18px]"
+                >sort</span
+              >
+              <select
+                v-model="sortOption"
+                class="w-full bg-white border border-slate-200 text-slate-900 rounded-2xl pl-12 pr-4 py-3 focus:bg-white focus:border-[#658a22] focus:ring-4 focus:ring-[#658a22]/10 outline-none transition-all font-bold text-sm appearance-none cursor-pointer shadow-sm"
+              >
+                <option value="newest">Mới nhất</option>
+                <option value="price-asc">Giá: Thấp → Cao</option>
+                <option value="price-desc">Giá: Cao → Thấp</option>
+                <option value="sold-desc">Bán chạy nhất</option>
+                <option value="rating-desc">Đánh giá cao nhất</option>
+                <option value="eco-desc">Sống xanh nhất</option>
+                <option value="promotion">Đang khuyến mãi</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div
+          v-if="loading"
+          class="flex flex-col items-center justify-center py-20 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-200"
+        >
+          <span class="material-symbols-outlined text-4xl text-[#658a22] animate-bounce mb-3"
+            >eco</span
+          >
+          <p class="font-bold text-sm uppercase tracking-widest">Đang tải...</p>
+        </div>
+
+        <!-- Không có sản phẩm -->
+        <div
+          v-else-if="paginatedProducts.length === 0"
+          class="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200 text-slate-500"
+        >
+          <span class="material-symbols-outlined text-5xl text-slate-300 mb-3">search_off</span>
+          <p class="font-bold text-lg">Chưa tìm thấy sản phẩm</p>
+        </div>
+
+        <!-- Grid sản phẩm -->
+        <div
+          v-else
+          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 lg:gap-7"
         >
           <div
-            class="aspect-square rounded-[24px] overflow-hidden bg-slate-50 mb-5 cursor-pointer relative"
-            @click="router.push(`/product/${product.id}`)"
+            v-for="product in paginatedProducts"
+            :key="product.id"
+            class="group bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 hover:border-[#658a22]/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col p-3"
           >
             <div
-              v-if="getDiscountBadge(selectedVariants.get(product.id))"
-              class="absolute top-3 left-3 bg-[#d00000] text-white text-xs font-black px-3 py-1.5 rounded-xl z-10 shadow-lg tracking-wide"
+              class="aspect-square relative overflow-hidden rounded-2xl bg-slate-50 mb-4 cursor-pointer"
+              @click="router.push(`/product/${product.id}`)"
             >
-              {{ getDiscountBadge(selectedVariants.get(product.id)) }}
+              <img
+                :src="getImageUrl(product.mainImage)"
+                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div
+                class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"
+              ></div>
             </div>
 
-            <img
-              :src="getImageUrl(product.mainImage)"
-              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-            />
-          </div>
-
-          <RouterLink
-            :to="`/product/${product.id}`"
-            class="font-black text-slate-800 text-sm mb-3 line-clamp-2 hover:text-[#658a22] transition-colors h-10"
-          >
-            {{ product.name }}
-          </RouterLink>
-
-          <div class="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
-            <div class="flex flex-col">
-              <template
-                v-if="
-                  getDiscountedPrice(selectedVariants.get(product.id) || {}) <
-                  Number((selectedVariants.get(product.id) || {}).price || 0)
-                "
-              >
-                <span class="text-[11px] font-bold text-slate-400 line-through">
-                  {{
-                    Number((selectedVariants.get(product.id) || {}).price).toLocaleString('vi-VN')
-                  }}đ
+            <div class="flex flex-col flex-grow px-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span v-if="product.soLuongDaBan > 0" class="text-[13px] font-bold text-slate-400">
+                  Đã bán {{ product.soLuongDaBan }}
                 </span>
-                <span class="text-[17px] font-black text-[#d00000]">
-                  {{
-                    Number(
-                      getDiscountedPrice(selectedVariants.get(product.id) || {}),
-                    ).toLocaleString('vi-VN')
-                  }}đ
-                </span>
-              </template>
-
-              <template v-else>
-                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
-                  >Giá bán</span
+                <span
+                  v-if="product.ecoFriendliness > 80"
+                  class="flex items-center text-[13px] font-bold text-[#658a22]"
                 >
-                <span class="text-[17px] font-black text-[#658a22]">
-                  {{
-                    Number(
-                      getDiscountedPrice(selectedVariants.get(product.id) || {}),
-                    ).toLocaleString('vi-VN')
-                  }}đ
+                  <span class="material-symbols-outlined text-[12px]">leafy_fresh</span>
+                  Eco
                 </span>
-              </template>
-            </div>
+              </div>
+              <RouterLink
+                :to="`/product/${product.id}`"
+                class="font-black text-slate-800 text-sm mb-2 line-clamp-2 leading-snug group-hover:text-[#658a22] transition-colors"
+                :title="product.name"
+              >
+                {{ product.name }}
+              </RouterLink>
 
-            <RouterLink
-              :to="`/product/${product.id}`"
-              class="w-10 h-10 rounded-2xl bg-[#f4f7ee] text-[#658a22] flex items-center justify-center hover:bg-[#658a22] hover:text-white transition-all"
-            >
-              <span class="material-symbols-outlined text-sm">add</span>
-            </RouterLink>
+              <div v-if="variantMap.get(product.id)?.length" class="mb-4">
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="variant in variantMap.get(product.id)?.slice(0, 3)"
+                    :key="variant.id"
+                    @click="handleVariantChange(product.id, variant)"
+                    :class="[
+                      'px-2.5 py-1 text-[13px] font-black rounded-lg border transition-all uppercase tracking-tight truncate max-w-[85px]',
+                      selectedVariants.get(product.id)?.id === variant.id
+                        ? 'bg-[#eef4e6] border-[#658a22] text-[#658a22]'
+                        : 'border-slate-200 text-slate-400 bg-white hover:border-[#658a22] hover:text-[#658a22]',
+                    ]"
+                    :title="variant.name"
+                  >
+                    {{ variant.name }}
+                  </button>
+                </div>
+              </div>
+
+              <div
+                class="mt-auto pt-3 flex flex-wrap items-center justify-between border-t border-slate-100/80 gap-y-2"
+              >
+                <div class="flex flex-col">
+                  <span
+                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5"
+                    >Giá từ</span
+                  >
+                  <div class="flex flex-wrap items-baseline gap-1.5">
+                    <span
+                      v-if="
+                        selectedVariants.has(product.id) &&
+                        selectedVariants.get(product.id).promotionId
+                      "
+                      class="text-[11px] text-slate-300 line-through font-bold hidden sm:inline-block"
+                    >
+                      {{ Number(selectedVariants.get(product.id).price).toLocaleString('vi-VN') }}đ
+                    </span>
+                    <span class="text-[16px] font-black text-[#d00000]">
+                      <template v-if="selectedVariants.has(product.id)">
+                        {{
+                          Number(
+                            getDiscountedPrice(selectedVariants.get(product.id)),
+                          ).toLocaleString('vi-VN')
+                        }}đ
+                      </template>
+                      <template v-else>Liên hệ</template>
+                    </span>
+                  </div>
+                </div>
+
+                <RouterLink
+                  :to="`/product/${product.id}`"
+                  class="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-[#658a22] hover:text-white hover:border-transparent transition-all hover:scale-105 active:scale-95 shadow-sm"
+                  title="Xem chi tiết"
+                >
+                  <span class="material-symbols-outlined text-[18px]">add</span>
+                </RouterLink>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div v-if="!loading && paginatedProducts.length === 0" class="text-center py-20">
-        <span class="material-symbols-outlined text-6xl text-slate-200 mb-4">search_off</span>
-        <h3 class="text-xl font-bold text-slate-800">Không tìm thấy sản phẩm nào</h3>
-        <p class="text-slate-500 mt-2">Vui lòng thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-      </div>
+        <!-- Phân trang -->
+        <div v-if="totalPages > 1" class="mt-14 flex justify-center items-center gap-2">
+          <button
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="w-10 h-10 flex items-center justify-center rounded-xl font-bold transition-all disabled:opacity-30 border border-slate-200 hover:border-[#658a22] hover:text-[#658a22] hover:bg-[#eef4e6] text-slate-600 bg-white shadow-sm"
+          >
+            <span class="material-symbols-outlined text-sm">arrow_back_ios_new</span>
+          </button>
 
-      <div v-if="totalPages > 1" class="mt-16 flex justify-center gap-2">
-        <button
-          v-for="page in totalPages"
-          :key="page"
-          @click="goToPage(page)"
-          :class="[
-            'w-12 h-12 rounded-2xl font-black transition-all border',
-            currentPage === page
-              ? 'bg-[#658a22] text-white border-[#658a22]'
-              : 'bg-white text-slate-600 border-slate-200 hover:border-[#658a22]',
-          ]"
-        >
-          {{ page }}
-        </button>
+          <div class="flex gap-2">
+            <button
+              v-for="page in totalPages"
+              :key="page"
+              @click="goToPage(page)"
+              :class="[
+                'w-10 h-10 flex items-center justify-center rounded-xl font-black text-sm transition-all border shadow-sm',
+                currentPage === page
+                  ? 'bg-[#658a22] border-[#658a22] text-white transform -translate-y-1'
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-[#658a22] hover:text-[#658a22] hover:-translate-y-0.5',
+              ]"
+            >
+              {{ page }}
+            </button>
+          </div>
+
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="w-10 h-10 flex items-center justify-center rounded-xl font-bold transition-all disabled:opacity-30 border border-slate-200 hover:border-[#658a22] hover:text-[#658a22] hover:bg-[#eef4e6] text-slate-600 bg-white shadow-sm"
+          >
+            <span class="material-symbols-outlined text-sm">arrow_forward_ios</span>
+          </button>
+        </div>
       </div>
     </main>
   </div>
@@ -423,24 +544,25 @@ onMounted(() => {
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
-.font-inter {
+
+.font-sans {
   font-family: 'Inter', sans-serif;
 }
 
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Hiệu ứng mờ cho Backdrop */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.4s ease;
+  transition: opacity 0.3s ease;
 }
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-aside::-webkit-scrollbar {
-  width: 4px;
-}
-aside::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 10px;
 }
 </style>

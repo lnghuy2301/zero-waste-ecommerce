@@ -702,20 +702,29 @@ onMounted(loadData)
             >
               {{ product.name }}
             </h3>
-            <div class="flex items-center gap-3 mt-1">
+            <div class="flex items-center gap-4 mt-1 flex-wrap">
               <p class="text-slate-400 font-bold text-sm uppercase tracking-tighter">
                 Mã: {{ product.slug }}
               </p>
 
-              <!-- Hiển thị chứng nhận xanh bên phải -->
               <div v-if="product.greenCerts && product.greenCerts.length > 0" class="flex gap-1">
                 <span
                   v-for="cert in product.greenCerts"
                   :key="cert.id"
-                  class="text-[13px] bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap"
+                  class="text-[13px] bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full font-medium"
                 >
                   {{ cert.name }}
                 </span>
+              </div>
+
+              <div
+                v-if="product.soLuongDaBan > 0"
+                class="ml-auto text-rose-600 font-medium text-sm flex items-center gap-1"
+              >
+                <span class="material-symbols-outlined">local_shipping</span>
+                Đã bán
+                <span class="font-black">{{ product.soLuongDaBan.toLocaleString('vi-VN') }}</span>
+                cái
               </div>
             </div>
           </div>

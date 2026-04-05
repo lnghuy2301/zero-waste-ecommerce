@@ -37,14 +37,34 @@ export class ProductService {
     return product;
   }
 
-  async getAllProducts(categoryId?: number): Promise<ProductResponseDto[]> {
-    const products = await this.productRepository.getAllProducts(categoryId);
-    if (products.length === 0) {
-      throw new BadRequestException('Không có sản phẩm nào tồn tại');
-    }
-    return products;
+  // async getAllProducts(categoryId?: number): Promise<ProductResponseDto[]> {
+  //   const products = await this.productRepository.getAllProducts(categoryId);
+  //   if (products.length === 0) {
+  //     throw new BadRequestException('Không có sản phẩm nào tồn tại');
+  //   }
+  //   return products;
+  // }
+  async getAllProducts(
+    categoryId?: number,
+    minPrice?: number,
+    maxPrice?: number,
+    material?: string,
+    greenCertId?: number,
+    minEco?: number,
+    minRating?: number,
+    sort?: string,
+  ): Promise<ProductResponseDto[]> {
+    return this.productRepository.getAllProducts(
+      categoryId,
+      minPrice,
+      maxPrice,
+      material,
+      greenCertId,
+      minEco,
+      minRating,
+      sort,
+    );
   }
-
   async deleteProduct(id: number): Promise<ProductResponseDto | null> {
     await this.productHelper.checkProduct(id);
     return this.productRepository.deleteProduct(id);

@@ -85,14 +85,68 @@ export class ProductRepository {
     });
   }
 
-  async getAllProducts(categoryId?: number): Promise<ProductResponseDto[]> {
-    const where = categoryId ? { categoryId } : {};
+  // async getAllProducts(categoryId?: number): Promise<ProductResponseDto[]> {
+  //   const where = categoryId ? { categoryId } : {};
+  //   return this.prismaService.product.findMany({
+  //     where,
+  //     include: {
+  //       category: true,
+  //       greenCerts: true, // ← THÊM DÒNG NÀY
+  //     },
+  //   });
+  // }
+  async getAllProducts(
+    categoryId?: number,
+    minPrice?: number,
+    maxPrice?: number,
+    material?: string,
+    greenCertId?: number,
+    minEco?: number,
+    minRating?: number,
+    sort?: string,
+  ): Promise<ProductResponseDto[]> {
+    const where: any = {};
+
+    if (categoryId) where.categoryId = categoryId;
+    if (material) where.material = { contains: material, mode: 'insensitive' };
+    if (minEco !== undefined) where.ecoFriendliness = { gte: minEco };
+    if (minRating !== undefined) where.danhGiaTrungBinh = { gte: minRating };
+
+    // Lọc chứng nhận xanh (many-to-many)
+    if (greenCertId) {
+      where.greenCerts = { some: { id: greenCertId } };
+    }
+
+    // Lọc giá qua biến thể (price nằm ở ProductVariant)
+    const variantConditions: any = {};
+    if (minPrice !== undefined) variantConditions.price = { gte: minPrice };
+    if (maxPrice !== undefined) {
+      variantConditions.price = variantConditions.price || {};
+      variantConditions.price.lte = maxPrice;
+    }
+
+    const orderBy: any = { createdAt: 'desc' }; // mặc định mới nhất
+
+    if (sort === 'price_asc')
+      orderBy.price = 'asc'; // cần join variant nếu muốn sort giá
+    else if (sort === 'price_desc') orderBy.price = 'desc';
+    else if (sort === 'sold_desc') orderBy.soLuongDaBan = 'desc';
+    else if (sort === 'rating_desc') orderBy.danhGiaTrungBinh = 'desc';
+
     return this.prismaService.product.findMany({
       where,
       include: {
         category: true,
-        greenCerts: true, // ← THÊM DÒNG NÀY
+        greenCerts: true,
+        // Nếu muốn lọc/sort theo giá biến thể thì cần join variant
+        variants: variantConditions.price
+          ? {
+              where: variantConditions,
+              select: { price: true },
+            }
+          : true,
       },
+      orderBy,
     });
   }
 

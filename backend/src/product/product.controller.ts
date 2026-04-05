@@ -55,12 +55,39 @@ export class ProductController {
     return this.productService.getProductById(id);
   }
 
+  // @Get()
+  // async getAllProducts(
+  //   @Query('categoryId', new ParseIntPipe({ optional: true }))
+  //   categoryId?: number,
+  // ): Promise<ProductResponseDto[]> {
+  //   return this.productService.getAllProducts(categoryId);
+  // }
+
   @Get()
   async getAllProducts(
     @Query('categoryId', new ParseIntPipe({ optional: true }))
     categoryId?: number,
+
+    // === LỌC MỚI ===
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+    @Query('material') material?: string,
+    @Query('greenCertId', new ParseIntPipe({ optional: true }))
+    greenCertId?: number,
+    @Query('minEco') minEco?: string,
+    @Query('minRating') minRating?: string,
+    @Query('sort') sort?: string, // newest | price_asc | price_desc | sold_desc | rating_desc
   ): Promise<ProductResponseDto[]> {
-    return this.productService.getAllProducts(categoryId);
+    return this.productService.getAllProducts(
+      categoryId,
+      minPrice ? Number(minPrice) : undefined,
+      maxPrice ? Number(maxPrice) : undefined,
+      material,
+      greenCertId,
+      minEco ? Number(minEco) : undefined,
+      minRating ? Number(minRating) : undefined,
+      sort,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
