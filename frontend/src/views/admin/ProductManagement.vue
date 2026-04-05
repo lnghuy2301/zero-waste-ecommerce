@@ -3,19 +3,20 @@ import { ref, onMounted } from 'vue'
 import ProductService from '@/service/product.ts'
 import ProductVariantService from '@/service/productVariant.ts'
 import { notify } from '@/utils/notifier.ts'
-import { Category } from '@/service/category.ts' // ← sửa thành destructuring
+import { Category } from '@/service/category.ts'
 import Promotion from '@/service/promotion.ts'
+import api from '@/service/api.ts'
 
 // Các state của khuyến mãi
 const promotions = ref<any[]>([])
-const selectedVariantIdsForPromotion = ref<number[]>([]) // ← thêm dòng này
+const selectedVariantIdsForPromotion = ref<number[]>([])
 const showPromotionModal = ref(false)
 const currentPromotion = ref<any>(null)
-const isEditPromotion = ref(false) // phân biệt tạo hay sửa
+const isEditPromotion = ref(false)
 const newPromotion = ref({
   name: '',
   code: '',
-  discountType: 'PERCENT', // PERCENT hoặc FIXED_AMOUNT
+  discountType: 'PERCENT',
   discountValue: 0,
   startDate: '',
   endDate: '',
@@ -107,21 +108,6 @@ const removePromotion = async (id: number) => {
   }
 }
 
-// Áp dụng khuyến mãi cho biến thể
-const applyPromotionToVariant = async (variantId: number) => {
-  // Bạn có thể mở một modal chọn khuyến mãi, hoặc chọn từ danh sách có sẵn
-  const promoId = prompt('Nhập ID khuyến mãi muốn áp dụng cho biến thể này:')
-  if (!promoId) return
-
-  try {
-    await Promotion.applyPromotionToVariant(variantId, Number(promoId)) // cần thêm hàm này vào service
-    notify.success('Áp dụng khuyến mãi thành công cho biến thể')
-    loadData()
-  } catch (e) {
-    notify.error('Áp dụng khuyến mãi thất bại')
-  }
-}
-
 // Áp dụng khuyến mãi cho tất cả biến thể của các sản phẩm đã chọn
 // Mở modal chọn khuyến mãi cho các sản phẩm đã chọn
 const openApplyPromotionModal = () => {
@@ -160,11 +146,12 @@ const confirmApplyPromotion = async (promotionId: number) => {
 const products = ref<any[]>([])
 const variants = ref<any[]>([])
 const loading = ref(false)
-const categories = ref<any[]>([]) // ← thêm
+const categories = ref<any[]>([])
+const greenCerts = ref<any[]>([])
 
 const selectedProductIds = ref<number[]>([])
 const showApplyPromotionModal = ref(false)
-const selectedPromotionForApply = ref<number | null>(null)
+// const selectedPromotionForApply = ref<number | null>(null)
 const selectedVariantIds = ref<number[]>([])
 
 const showProductModal = ref(false)
@@ -179,6 +166,125 @@ const currentProductIdForImage = ref<number | null>(null)
 const showCategoryListModal = ref(false) // modal hiển thị danh sách danh mục
 const categoriesToEdit = ref<any[]>([]) // danh sách danh mục để chỉnh sửa/xóa
 const editingCategory = ref<any>(null) // danh mục đang chỉnh sửa
+const showEditProductModal = ref(false)
+const showEditVariantModal = ref(false)
+
+const editingProduct = ref<any>(null)
+const editingVariant = ref<any>(null)
+
+const editProductForm = ref({
+  name: '',
+  slug: '',
+  categoryId: 1,
+  description: '',
+  material: '',
+  status: 'ACTIVE',
+  ecoFriendliness: 0,
+  reusability: '',
+  greenCertId: null as number | null,
+})
+
+const editVariantForm = ref({
+  name: '',
+  price: 0,
+  stock: 100,
+  sku: '',
+  color: '',
+  size: '',
+  weight: 0,
+  volume: 0,
+})
+// Mở form chỉnh sửa sản phẩm
+const openEditProductModal = (product: any) => {
+  editingProduct.value = product
+  editProductForm.value = {
+    name: product.name,
+    slug: product.slug,
+    categoryId: product.categoryId,
+    description: product.description || '',
+    material: product.material || '',
+    status: product.status,
+    ecoFriendliness: product.ecoFriendliness || 0,
+    reusability: product.reusability || '',
+    greenCertId:
+      product.greenCerts && product.greenCerts.length > 0 ? product.greenCerts[0].id : null,
+  }
+  showEditProductModal.value = true
+}
+
+// Mở form chỉnh sửa biến thể
+const openEditVariantModal = (variant: any) => {
+  editingVariant.value = variant
+  editVariantForm.value = {
+    name: variant.name,
+    price: Number(variant.price),
+    stock: variant.stock,
+    sku: variant.sku,
+    color: variant.color || '',
+    size: variant.size || '',
+    weight: variant.weight || 0,
+    volume: variant.volume || 0,
+  }
+  showEditVariantModal.value = true
+}
+
+// Lưu chỉnh sửa sản phẩm
+const updateProduct = async () => {
+  if (!editingProduct.value) return
+
+  const payload = {
+    name: editProductForm.value.name.trim(),
+    slug: editProductForm.value.slug.trim().toLowerCase(),
+    categoryId: Number(editProductForm.value.categoryId),
+    description: editProductForm.value.description?.trim() || undefined,
+    material: editProductForm.value.material?.trim() || undefined,
+    status: editProductForm.value.status,
+    ecoFriendliness: Number(editProductForm.value.ecoFriendliness) || 0,
+    reusability: editProductForm.value.reusability?.trim() || undefined,
+    greenCertId: editProductForm.value.greenCertId
+      ? Number(editProductForm.value.greenCertId)
+      : undefined,
+  }
+
+  try {
+    await ProductService.updateProduct(editingProduct.value.id, payload)
+    notify.success('Cập nhật sản phẩm thành công')
+    showEditProductModal.value = false
+    loadData()
+  } catch (e: any) {
+    console.error('Lỗi cập nhật sản phẩm:', e.response?.data || e)
+    const msg = e.response?.data?.message || 'Cập nhật sản phẩm thất bại'
+    notify.error(Array.isArray(msg) ? msg.join(' • ') : msg)
+  }
+}
+
+// Lưu chỉnh sửa biến thể
+const updateVariant = async () => {
+  if (!editingVariant.value) return
+
+  const payload = {
+    name: editVariantForm.value.name.trim(),
+    price: Number(editVariantForm.value.price),
+    stock: Number(editVariantForm.value.stock),
+    sku: editVariantForm.value.sku.trim() || `SKU-${Date.now()}`,
+    color: editVariantForm.value.color.trim() || null,
+    size: editVariantForm.value.size.trim() || null,
+    weight: Number(editVariantForm.value.weight) || null,
+    volume: Number(editVariantForm.value.volume) || null,
+    // KHÔNG gửi productId vì backend không cần khi update
+  }
+
+  try {
+    await ProductVariantService.updateVariant(editingVariant.value.id, payload)
+    notify.success('Cập nhật biến thể thành công')
+    showEditVariantModal.value = false
+    loadData()
+  } catch (e: any) {
+    console.error('Lỗi cập nhật biến thể:', e.response?.data || e)
+    const msg = e.response?.data?.message || 'Cập nhật biến thể thất bại'
+    notify.error(Array.isArray(msg) ? msg.join(' • ') : msg)
+  }
+}
 
 // Mở modal quản lý danh mục
 const openCategoryListModal = async () => {
@@ -251,6 +357,7 @@ const newProduct = ref({
   categoryId: 1,
   description: '',
   material: '',
+  greenCertId: null as number | null,
 })
 
 const newVariant = ref({
@@ -266,23 +373,25 @@ const newVariant = ref({
 const loadData = async () => {
   loading.value = true
   try {
-    const [prodRes, varRes, catRes, promoRes] = await Promise.all([
-      ProductService.getAllProducts(),
+    const [prodRes, varRes, catRes, promoRes, greenRes] = await Promise.all([
+      api.get('/product?include=greenCerts'), // ← sửa dòng này
       ProductVariantService.getAll(),
       Category.getAllCategories(),
       Promotion.getAllPromotions(),
+      api.get('/green-certificate'),
     ])
-    products.value = prodRes
+
+    products.value = prodRes.data || prodRes // một số service trả data trực tiếp
     variants.value = varRes
     categories.value = catRes || []
     promotions.value = promoRes || []
+    greenCerts.value = greenRes.data || greenRes
   } catch (e) {
     notify.error('Không tải được dữ liệu')
   } finally {
     loading.value = false
   }
 }
-
 const toggleProductSelect = (id: number) => {
   const index = selectedProductIds.value.indexOf(id)
   if (index > -1) selectedProductIds.value.splice(index, 1)
@@ -565,9 +674,34 @@ onMounted(loadData)
             >
               {{ product.name }}
             </h3>
-            <p class="text-slate-400 font-bold text-sm mt-1 uppercase tracking-tighter">
-              Mã: {{ product.slug }}
-            </p>
+            <div class="flex items-center gap-3 mt-1">
+              <p class="text-slate-400 font-bold text-sm uppercase tracking-tighter">
+                Mã: {{ product.slug }}
+              </p>
+
+              <!-- Hiển thị chứng nhận xanh bên phải -->
+              <div v-if="product.greenCerts && product.greenCerts.length > 0" class="flex gap-1">
+                <span
+                  v-for="cert in product.greenCerts"
+                  :key="cert.id"
+                  class="text-[13px] bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap"
+                >
+                  {{ cert.name }}
+                </span>
+              </div>
+            </div>
+            <div
+              v-if="product.greenCerts && product.greenCerts.length > 0"
+              class="flex flex-wrap gap-1 mt-2"
+            >
+              <span
+                v-for="cert in product.greenCerts"
+                :key="cert.id"
+                class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium"
+              >
+                {{ cert.name }}
+              </span>
+            </div>
           </div>
 
           <button
@@ -575,6 +709,12 @@ onMounted(loadData)
             class="px-6 py-3 bg-slate-900 hover:bg-black text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
           >
             <span class="material-symbols-outlined text-lg text-emerald-400">add</span> Biến thể
+          </button>
+          <button
+            @click.stop="openEditProductModal(product)"
+            class="px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
+          >
+            <span class="material-symbols-outlined text-lg">edit</span> Sửa SP
           </button>
         </div>
 
@@ -594,15 +734,9 @@ onMounted(loadData)
             <div class="text-[#658a22] font-black text-lg mt-1">
               {{ Number(variant.price).toLocaleString('vi-VN') }}đ
             </div>
-            <div class="text-[10px] font-bold text-slate-400 mt-3 uppercase">
+            <div class="text-[15px] font-bold text-slate-400 mt-3 uppercase">
               Kho: {{ variant.stock }} | SKU: {{ variant.sku }}
             </div>
-            <button
-              @click.stop="applyPromotionToVariant(variant.id)"
-              class="mt-2 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1 rounded-xl font-medium"
-            >
-              Áp dụng KM
-            </button>
 
             <div
               v-if="selectedVariantIds.includes(variant.id)"
@@ -610,11 +744,17 @@ onMounted(loadData)
             >
               <span class="material-symbols-outlined text-sm">remove_circle</span>
             </div>
+            <button
+              @click.stop="openEditVariantModal(variant)"
+              class="mt-2 text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-1 rounded-xl font-medium"
+            >
+              Sửa biến thể
+            </button>
           </div>
         </div>
       </div>
     </div>
-
+    <!-- model tạo sản phẩm -->
     <div
       v-if="showProductModal"
       class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
@@ -682,6 +822,22 @@ onMounted(loadData)
               v-model="newProduct.material"
               class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
             />
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+            >
+              Chứng nhận xanh
+            </label>
+            <select
+              v-model="newProduct.greenCertId"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+            >
+              <option value="">Không chọn</option>
+              <option v-for="cert in greenCerts" :key="cert.id" :value="cert.id">
+                {{ cert.name }}
+              </option>
+            </select>
           </div>
         </div>
         <div class="flex gap-4 mt-10">
@@ -1092,6 +1248,227 @@ onMounted(loadData)
             class="px-8 py-3 border border-slate-300 rounded-2xl font-medium"
           >
             Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Chỉnh Sửa Sản Phẩm -->
+    <div
+      v-if="showEditProductModal"
+      class="text-slate-800 fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4"
+      @click.self="showEditProductModal = false"
+    >
+      <div class="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl" @click.stop>
+        <h2 class="text-2xl font-black mb-8">Chỉnh sửa sản phẩm</h2>
+        <!-- Các trường giống form tạo, nhưng bind với editProductForm -->
+        <div class="space-y-6">
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Tên sản phẩm</label
+            >
+            <input
+              v-model="editProductForm.name"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+            />
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Slug</label
+            >
+            <input
+              v-model="editProductForm.slug"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+            />
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Danh mục</label
+            >
+            <select
+              v-model="editProductForm.categoryId"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+            >
+              <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                {{ cat.name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+              >Trạng thái</label
+            >
+            <select
+              v-model="editProductForm.status"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+            >
+              <option value="ACTIVE">Hoạt động</option>
+              <option value="INACTIVE">Ngừng hoạt động</option>
+              <option value="OUT_OF_STOCK">Hết hàng</option>
+            </select>
+          </div>
+          <div>
+            <label
+              class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+            >
+              Chứng nhận xanh
+            </label>
+            <select
+              v-model="editProductForm.greenCertId"
+              class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+            >
+              <option value="">Không chọn</option>
+              <option v-for="cert in greenCerts" :key="cert.id" :value="cert.id">
+                {{ cert.name }}
+              </option>
+            </select>
+          </div>
+          <!-- Thêm các trường khác nếu cần: description, material, ecoFriendliness, reusability -->
+        </div>
+        <div class="flex gap-4 mt-10">
+          <button
+            @click="showEditProductModal = false"
+            class="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600"
+          >
+            Hủy
+          </button>
+          <button
+            @click="updateProduct"
+            class="flex-1 py-4 bg-[#658a22] text-white rounded-2xl font-black"
+          >
+            Lưu thay đổi
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showEditVariantModal"
+      class="text-slate-800 fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4"
+      @click.self="showEditVariantModal = false"
+    >
+      <div
+        class="bg-white rounded-[40px] w-full max-w-md p-10 shadow-2xl overflow-y-auto max-h-[90vh]"
+        @click.stop
+      >
+        <h2 class="text-2xl font-black mb-8">Chỉnh sửa biến thể</h2>
+
+        <div class="space-y-6">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Mã SKU</label
+              >
+              <input
+                v-model="editVariantForm.sku"
+                placeholder="VD: SP001"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Tên biến thể</label
+              >
+              <input
+                v-model="editVariantForm.name"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Giá bán</label
+              >
+              <input
+                v-model="editVariantForm.price"
+                type="number"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Tồn kho</label
+              >
+              <input
+                v-model="editVariantForm.stock"
+                type="number"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Màu sắc</label
+              >
+              <input
+                v-model="editVariantForm.color"
+                placeholder="VD: Đỏ, Xanh..."
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Kích thước</label
+              >
+              <input
+                v-model="editVariantForm.size"
+                placeholder="VD: L, XL, 42..."
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Cân nặng (g)</label
+              >
+              <input
+                v-model="editVariantForm.weight"
+                type="number"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1"
+                >Thể tích (ml)</label
+              >
+              <input
+                v-model="editVariantForm.volume"
+                type="number"
+                class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all text-slate-800 font-bold"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-4 mt-10">
+          <button
+            @click="showEditVariantModal = false"
+            class="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest hover:text-slate-600"
+          >
+            Hủy
+          </button>
+          <button
+            @click="updateVariant"
+            class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition-colors"
+          >
+            Lưu thay đổi
           </button>
         </div>
       </div>

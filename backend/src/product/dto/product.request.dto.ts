@@ -52,6 +52,10 @@ export class ProductRequestDto {
   reusability?: string;
 
   @IsOptional()
+  @IsInt()
+  greenCertId?: number | null;
+
+  @IsOptional()
   @IsString()
   @MaxLength(500)
   mainImage?: string;

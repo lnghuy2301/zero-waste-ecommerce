@@ -36,7 +36,11 @@ const router = createRouter({
     },
     { path: '/products', name: 'products', component: () => import('../views/Products.vue') },
     { path: '/orders', name: 'orders', component: () => import('../views/Order.vue') },
-    { path: '/detail-orders/:id', name: 'detailorders', component: () => import('../views/OrderDetail.vue') },
+    {
+      path: '/detail-orders/:id',
+      name: 'detailorders',
+      component: () => import('../views/OrderDetail.vue'),
+    },
     {
       path: '/change-password',
       name: 'ChangePassword',
@@ -50,7 +54,7 @@ const router = createRouter({
     {
       path: '/about',
       name: 'About',
-      component: () => import('@/views/About.vue')
+      component: () => import('@/views/About.vue'),
     },
     // === ADMIN ROUTE (có bảo vệ) ===
     {
@@ -81,6 +85,11 @@ const router = createRouter({
           name: 'admin-accounts',
           component: () => import('../views/admin/AccountManagement.vue'),
           meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
+          path: 'comments',
+          name: 'admin-comments',
+          component: () => import('../views/admin/CommentManagement.vue'),
         },
       ],
     },

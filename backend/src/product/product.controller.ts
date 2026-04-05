@@ -102,4 +102,18 @@ export class ProductController {
   async getProductCount() {
     return this.productService.getProductCount();
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats/inventory')
+  async getTotalInventory() {
+    return this.productService.getTotalInventory();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats/sold')
+  async getTotalSold() {
+    return this.productService.getTotalSold();
+  }
 }

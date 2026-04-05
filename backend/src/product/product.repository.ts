@@ -8,6 +8,7 @@ import { DeleteListProductDto } from './dto/list_product_delete.dto';
 export class ProductRepository {
   constructor(private prismaService: PrismaService) {}
 
+  // === CREATE PRODUCT ===
   async createProduct(data: ProductRequestDto): Promise<ProductResponseDto> {
     return this.prismaService.product.create({
       data: {
@@ -24,11 +25,20 @@ export class ProductRepository {
         soLuongDaBan: data.soLuongDaBan ?? 0,
         danhGiaTrungBinh: data.danhGiaTrungBinh ?? 0,
         soLuongDanhGia: data.soLuongDanhGia ?? 0,
+
+        // Xử lý chứng nhận xanh (one-to-many hoặc many-to-many)
+        greenCerts: data.greenCertId
+          ? { connect: { id: data.greenCertId } }
+          : undefined,
       },
-      include: { category: true },
+      include: {
+        category: true,
+        greenCerts: true,
+      },
     });
   }
 
+  // === UPDATE PRODUCT ===
   async updateProduct(
     id: number,
     data: ProductRequestDto,
@@ -49,15 +59,29 @@ export class ProductRepository {
         soLuongDaBan: data.soLuongDaBan,
         danhGiaTrungBinh: data.danhGiaTrungBinh,
         soLuongDanhGia: data.soLuongDanhGia,
+
+        // Cập nhật chứng nhận xanh - DÙNG greenCertId (số ít)
+        greenCerts:
+          data.greenCertId !== undefined
+            ? {
+                set: data.greenCertId ? [{ id: data.greenCertId }] : [],
+              }
+            : undefined,
       },
-      include: { category: true },
+      include: {
+        category: true,
+        greenCerts: true,
+      },
     });
   }
 
   async getProductById(id: number): Promise<ProductResponseDto | null> {
     return this.prismaService.product.findUnique({
       where: { id },
-      include: { category: true },
+      include: {
+        category: true,
+        greenCerts: true, // ← THÊM DÒNG NÀY
+      },
     });
   }
 
@@ -65,7 +89,10 @@ export class ProductRepository {
     const where = categoryId ? { categoryId } : {};
     return this.prismaService.product.findMany({
       where,
-      include: { category: true },
+      include: {
+        category: true,
+        greenCerts: true, // ← THÊM DÒNG NÀY
+      },
     });
   }
 
@@ -124,5 +151,20 @@ export class ProductRepository {
     });
 
     return updated;
+  }
+  // Tổng tồn kho của tất cả sản phẩm (tổng stock của tất cả biến thể)
+  async getTotalInventory() {
+    const result = await this.prismaService.productVariant.aggregate({
+      _sum: { stock: true },
+    });
+    return result._sum.stock || 0;
+  }
+
+  // Tổng số lượng đã bán của tất cả sản phẩm
+  async getTotalSold() {
+    const result = await this.prismaService.product.aggregate({
+      _sum: { soLuongDaBan: true },
+    });
+    return result._sum.soLuongDaBan || 0;
   }
 }

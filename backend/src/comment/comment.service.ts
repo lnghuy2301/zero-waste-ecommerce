@@ -2,16 +2,23 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { GetCommentsFilterDto } from './dto/get-comments-filter.dto';
+import { CommentRepository } from './comment.repository';
+import { DeleteListCommentDto } from './dto/delete-list-comment.dto';
 
 @Injectable()
 export class CommentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private commentRepository: CommentRepository,
+  ) {}
 
+  // Tạo bình luận (người dùng)
   async create(
     userId: number,
     productId: number,
@@ -22,21 +29,10 @@ export class CommentService {
     }
 
     const hasPurchased = await this.checkPurchaseHistory(userId, productId);
-
     if (!hasPurchased) {
       throw new ForbiddenException(
         'Bạn chỉ có thể bình luận sản phẩm đã mua và đơn hàng đã hoàn thành.',
       );
-    }
-
-    if (createCommentDto.parentId) {
-      const parent = await this.prisma.comment.findUnique({
-        where: { id: createCommentDto.parentId },
-      });
-      if (!parent) throw new NotFoundException('Không tìm thấy bình luận cha.');
-      if (parent.productId !== productId) {
-        throw new ForbiddenException('Bình luận cha không thuộc sản phẩm này.');
-      }
     }
 
     return this.prisma.comment.create({
@@ -59,21 +55,29 @@ export class CommentService {
         accountId: userId,
         status: OrderStatus.COMPLETED,
         orderItems: {
-          some: {
-            variant: {
-              productId: productId,
-            },
-          },
+          some: { variant: { productId } },
         },
       },
     });
-
     return !!order;
   }
 
+  // Admin lấy tất cả bình luận
+  async getAllForAdmin() {
+    return this.commentRepository.getAllForAdmin();
+  }
+
+  // Admin xóa bình luận
+  async delete(id: number) {
+    const exist = await this.prisma.comment.findUnique({ where: { id } });
+    if (!exist) throw new NotFoundException('Bình luận không tồn tại');
+
+    return this.commentRepository.deleteComment(id);
+  }
+
+  // Hàm cũ (nếu cần giữ)
   async findAll(filterDto: GetCommentsFilterDto) {
     const { productId, accountId } = filterDto;
-
     return this.prisma.comment.findMany({
       where: {
         productId: productId ? Number(productId) : undefined,
@@ -84,19 +88,18 @@ export class CommentService {
           select: {
             id: true,
             email: true,
-            avatar: true,
-            profile: {
-              select: {
-                fullName: true,
-              }
-            }
+            profile: { select: { fullName: true } },
           },
         },
-        product: {
-          select: { id: true, name: true, slug: true },
-        },
-        media: true,
+        product: { select: { id: true, name: true } },
       },
     });
+  }
+  // Admin xóa nhiều bình luận
+  async deleteMany(dto: DeleteListCommentDto) {
+    if (!dto.Ids || dto.Ids.length === 0) {
+      throw new BadRequestException('Danh sách ID không được để trống');
+    }
+    return this.commentRepository.deleteManyComments(dto);
   }
 }

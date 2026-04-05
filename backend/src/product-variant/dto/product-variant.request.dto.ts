@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 
 export class ProductVariantRequestDto {
-  @IsNotEmpty({ message: 'ID sản phẩm không được bỏ trống' })
+  @IsOptional()
   @IsInt()
   productId: number;
 

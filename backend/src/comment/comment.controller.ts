@@ -1,52 +1,63 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
   Post,
-  Query,
+  // Query,
   Req,
   UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+// import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../auth/auth.role.guard';
+import { Roles } from '../auth/auth.role.decorator';
+import { Role } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/auth.jwt.guard';
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
-import { GetCommentsFilterDto } from './dto/get-comments-filter.dto';
+// import { GetCommentsFilterDto } from './dto/get-comments-filter.dto';
+import { DeleteListCommentDto } from './dto/delete-list-comment.dto';
 
-@ApiTags('Comments')
-@Controller('comments')
+@Controller('comment')
 export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
-  @Get()
-  @ApiOperation({ summary: 'Lấy danh sách bình luận (có thể lọc)' })
-  findAll(@Query() filterDto: GetCommentsFilterDto) {
-    return this.commentService.findAll(filterDto);
-  }
-
+  // Người dùng tạo bình luận
   @Post('product/:productId')
-  @ApiOperation({
-    summary: 'Tạo đánh giá mới (Yêu cầu đăng nhập & Đã mua hàng)',
-  })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(JwtAuthGuard)
   async create(
     @Param('productId', ParseIntPipe) productId: number,
     @Body() createCommentDto: CreateCommentDto,
     @Req() req: any,
   ) {
-    if (!req.user || !req.user.id) {
-      throw new UnauthorizedException(
-        'Không xác định được người dùng từ token',
-      );
-    }
-    const userId = req.user.id;
-    if (!userId) {
-      throw new UnauthorizedException('Token không hợp lệ hoặc hết hạn');
-    }
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Token không hợp lệ');
     return this.commentService.create(userId, productId, createCommentDto);
+  }
+
+  // Admin lấy tất cả bình luận
+  @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  getAllForAdmin() {
+    return this.commentService.getAllForAdmin();
+  }
+
+  // Admin xóa bình luận
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  delete(@Param('id', ParseIntPipe) id: number) {
+    return this.commentService.delete(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Delete()
+  async deleteMany(@Body() dto: DeleteListCommentDto) {
+    return this.commentService.deleteMany(dto);
   }
 }

@@ -68,4 +68,11 @@ export class ProductService {
     const products = await this.productRepository.getAllProducts();
     return products.length;
   }
+  async getTotalInventory(): Promise<number> {
+    return this.productRepository.getTotalInventory();
+  }
+
+  async getTotalSold(): Promise<number> {
+    return this.productRepository.getTotalSold();
+  }
 }

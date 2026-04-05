@@ -20,6 +20,10 @@ export const ProductVariantService = {
     const res = await api.patch('/product-variant/apply-promotion', data)
     return res.data
   },
+  async updateVariant(id: number, data: any) {
+    const res = await api.put(`/product-variant/${id}`, data)
+    return res.data
+  },
 }
 
 export default ProductVariantService
