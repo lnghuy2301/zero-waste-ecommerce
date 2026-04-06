@@ -26,4 +26,15 @@ export class GetCommentsFilterDto {
   @IsOptional()
   @IsString()
   visibility?: 'ALL' | 'VISIBLE' | 'HIDDEN';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  limit?: number;
 }
