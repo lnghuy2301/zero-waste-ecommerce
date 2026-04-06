@@ -263,6 +263,7 @@ model Comment {
   id        Int      @id @default(autoincrement()) @map("id")
   content   String   @map("noi_dung") @db.Text
   rating    Int      @default(5) @map("danh_gia_sao")
+  isHidden  Boolean  @default(false) @map("da_an")
   createdAt DateTime @default(now()) @map("ngay_tao")
 
   accountId Int  @map("id_tai_khoan")
