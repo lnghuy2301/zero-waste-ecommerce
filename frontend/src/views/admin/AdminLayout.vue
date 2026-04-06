@@ -89,14 +89,12 @@ const closeMenu = () => {
           <span class="material-symbols-outlined">group</span>
           <span>Khách hàng</span>
         </RouterLink>
-
         <RouterLink
           to="/admin/comments"
-          @click="closeMenu"
-          class="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/10 transition-colors font-medium text-white/90"
-          active-class="bg-white/20"
+          class="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/10 transition-colors font-medium"
+          active-class="bg-white/20 font-bold"
         >
-          <span class="material-symbols-outlined">forum</span>
+          <span class="material-symbols-outlined">reviews</span>
           <span>Bình luận</span>
         </RouterLink>
       </nav>
