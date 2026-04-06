@@ -21,6 +21,7 @@ const isAdding = ref(false)
 const comments = ref<any[]>([])
 const commentTotal = ref(0)
 const isCommentsLoading = ref(false)
+const visibilityFilter = ref('ALL')
 
 // --- STATE CHO LIGHTBOX ---
 const isLightboxOpen = ref(false)
@@ -34,7 +35,6 @@ const checkAdminRole = () => {
   if (userJson) {
     try {
       const user = JSON.parse(userJson)
-      // Sửa lại điều kiện này cho khớp với dữ liệu thực tế của bạn
       if (user.role === 'admin' || user.role === 'ADMIN' || user.roleId === 1) {
         isAdmin.value = true
       }
@@ -118,7 +118,16 @@ const handleAddToCart = async () => {
 const fetchComments = async (id: number) => {
   isCommentsLoading.value = true
   try {
-    const response = await CommentService.getComments({ productId: id })
+    // Truyền thêm isAdmin.value vào tham số thứ 2
+    const response = await CommentService.getComments(
+      {
+        productId: id,
+        visibility: visibilityFilter.value as any,
+      },
+      isAdmin.value,
+    ) // <--- QUAN TRỌNG: Thêm isAdmin.value ở đây
+
+    // Logic xử lý response giữ nguyên
     const responseData = response.data || response
     comments.value = responseData.data || responseData.items || responseData || []
     commentTotal.value = responseData.meta?.total || comments.value.length
@@ -129,18 +138,29 @@ const fetchComments = async (id: number) => {
   }
 }
 
-// --- HÀM ẨN BÌNH LUẬN (CHỈ DÀNH CHO ADMIN) ---
-const handleHideComment = async (commentId: number) => {
-  if (!confirm('Bạn có chắc chắn muốn ẩn bình luận này?')) return
+// Lắng nghe khi Admin thay đổi bộ lọc
+watch(visibilityFilter, () => {
+  const id = Number(route.params.id)
+  if (id) fetchComments(id)
+})
+
+// --- HÀM GẠT BẬT/TẮT BÌNH LUẬN ---
+const handleToggleVisibility = async (comment: any) => {
+  const isCurrentlyHidden = comment.isHidden
+  const actionText = isCurrentlyHidden ? 'hiển thị lại' : 'ẩn'
+
+  if (!confirm(`Bạn có chắc chắn muốn ${actionText} bình luận này?`)) return
 
   try {
-    await CommentService.hideComment(commentId)
-    alert('Đã ẩn bình luận thành công!')
-    // Tải lại danh sách bình luận mới nhất sau khi ẩn
+    if (isCurrentlyHidden) {
+      await CommentService.showComment(comment.id)
+    } else {
+      await CommentService.hideComment(comment.id)
+    }
     await fetchComments(Number(route.params.id))
   } catch (error) {
-    console.error('Lỗi khi ẩn bình luận:', error)
-    alert('Có lỗi xảy ra khi ẩn bình luận.')
+    console.error(`Lỗi khi ${actionText} bình luận:`, error)
+    alert(`Không thể thực hiện thao tác này.`)
   }
 }
 
@@ -167,19 +187,21 @@ const fetchData = async () => {
     }
 
     giftProducts.value = []
-    for (const b of bundleRes.data) {
-      const vRes = await api.get(`/product-variant/${b.componentVariantId}`)
-      const variant = vRes.data
-      const giftProdRes = await api.get(`/product/${variant.productId}`)
-      const giftProduct = giftProdRes.data
+    if (bundleRes.data && Array.isArray(bundleRes.data)) {
+      for (const b of bundleRes.data) {
+        const vRes = await api.get(`/product-variant/${b.componentVariantId}`)
+        const variant = vRes.data
+        const giftProdRes = await api.get(`/product/${variant.productId}`)
+        const giftProduct = giftProdRes.data
 
-      giftProducts.value.push({
-        ...giftProduct,
-        variantName: variant.name,
-        variantPrice: Number(variant.price),
-        quantity: b.quantity,
-        bundleImage: b.image || giftProduct.mainImage,
-      })
+        giftProducts.value.push({
+          ...giftProduct,
+          variantName: variant.name,
+          variantPrice: Number(variant.price),
+          quantity: b.quantity,
+          bundleImage: b.image || giftProduct.mainImage,
+        })
+      }
     }
 
     await fetchComments(id)
@@ -204,61 +226,39 @@ const getDiscountedPrice = (variant: any) => {
   return Math.max(0, finalPrice)
 }
 
-// Reset số lượng về 1 mỗi khi người dùng đổi phân loại
 watch(selectedVariant, () => {
   quantity.value = 1
 })
 
 const updateQuantity = (val: number) => {
-  const maxStock =
-    selectedVariant.value?.stock ??
-    selectedVariant.value?.stockQuantity ??
-    selectedVariant.value?.quantity ??
-    999
+  const maxStock = selectedVariant.value?.stock ?? 999
   const MAX_LIMIT = 20
-
   if (quantity.value + val < 1) return
-
-  if (quantity.value + val > maxStock) {
-    alert(`Rất tiếc, sản phẩm này chỉ còn ${maxStock} sản phẩm trong kho!`)
-    return
-  }
-
-  if (quantity.value + val > MAX_LIMIT) {
-    alert(`Bạn chỉ được đặt tối đa ${MAX_LIMIT} sản phẩm cho mỗi lần mua!`)
-    return
-  }
-
+  if (quantity.value + val > maxStock) return
+  if (quantity.value + val > MAX_LIMIT) return
   quantity.value += val
 }
 
 const validateQuantity = () => {
   let val = Math.floor(Number(quantity.value))
-  const maxStock =
-    selectedVariant.value?.stock ??
-    selectedVariant.value?.stockQuantity ??
-    selectedVariant.value?.quantity ??
-    999
-  const MAX_LIMIT = 20
-
-  if (isNaN(val) || val < 1) {
-    val = 1
-  } else if (val > maxStock) {
-    alert(`Rất tiếc, sản phẩm này chỉ còn ${maxStock} sản phẩm trong kho!`)
-    val = maxStock
-  } else if (val > MAX_LIMIT) {
-    alert(`Bạn chỉ được đặt tối đa ${MAX_LIMIT} sản phẩm cho mỗi lần mua!`)
-    val = MAX_LIMIT
-  }
-
+  const maxStock = selectedVariant.value?.stock ?? 999
+  if (isNaN(val) || val < 1) val = 1
+  if (val > maxStock) val = maxStock
+  if (val > 20) val = 20
   quantity.value = val
 }
 
-onMounted(() => {
-  checkAdminRole()
-  fetchData()
+onMounted(async () => {
+  checkAdminRole() // Chạy cái này trước để xác định danh tính
+  await fetchData() // Sau đó mới fetch data
 })
-watch(() => route.params.id, fetchData)
+
+watch(
+  () => route.params.id,
+  (newId) => {
+    if (newId) fetchData()
+  },
+)
 </script>
 
 <template>
@@ -281,8 +281,7 @@ watch(() => route.params.id, fetchData)
         class="flex items-center gap-2 mb-8 text-[13px] font-bold text-slate-400 uppercase tracking-wide"
       >
         <RouterLink to="/" class="hover:text-[#658a22] transition-colors flex items-center gap-1">
-          <span class="material-symbols-outlined text-sm">home</span>
-          Trang Chủ
+          <span class="material-symbols-outlined text-sm">home</span> Trang Chủ
         </RouterLink>
         <span class="material-symbols-outlined text-sm">chevron_right</span>
         <RouterLink to="/products" class="hover:text-[#658a22] transition-colors"
@@ -313,8 +312,7 @@ watch(() => route.params.id, fetchData)
             </h1>
             <div class="flex items-center gap-4 text-sm font-bold text-slate-400">
               <span class="flex items-center gap-1">
-                <span class="text-yellow-400 text-lg">★</span>
-                5.0 ({{ commentTotal }} đánh giá)
+                <span class="text-yellow-400 text-lg">★</span> 5.0 ({{ commentTotal }} đánh giá)
               </span>
             </div>
           </div>
@@ -381,26 +379,15 @@ watch(() => route.params.id, fetchData)
               >
                 -
               </button>
-
               <input
                 type="number"
                 v-model.number="quantity"
                 @change="validateQuantity"
-                @blur="validateQuantity"
                 class="w-14 text-center bg-transparent border-none focus:ring-0 text-slate-900 font-black text-lg hide-arrows"
               />
-
               <button
                 @click="updateQuantity(1)"
-                class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                :disabled="
-                  quantity >= 20 ||
-                  quantity >=
-                    (selectedVariant?.stock ??
-                      selectedVariant?.stockQuantity ??
-                      selectedVariant?.quantity ??
-                      999)
-                "
+                class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg"
               >
                 +
               </button>
@@ -418,12 +405,30 @@ watch(() => route.params.id, fetchData)
       </div>
 
       <div class="mt-12 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100">
-        <h2 class="text-2xl font-black text-slate-900 mb-6 flex items-center gap-2">
-          Đánh giá sản phẩm
-          <span class="text-sm font-bold bg-[#eef4e6] text-[#658a22] px-3 py-1 rounded-full">
-            {{ commentTotal }} Đánh giá
-          </span>
-        </h2>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+          <h2 class="text-2xl font-black text-slate-900 flex items-center gap-2">
+            Đánh giá sản phẩm
+            <span class="text-sm font-bold bg-[#eef4e6] text-[#658a22] px-3 py-1 rounded-full"
+              >{{ commentTotal }} Đánh giá</span
+            >
+          </h2>
+
+          <div
+            v-if="isAdmin"
+            class="flex items-center gap-3 bg-slate-50 p-2 border-2 border-slate-200 rounded-2xl"
+          >
+            <span class="material-symbols-outlined text-slate-400 pl-2">filter_alt</span>
+            <span class="text-sm font-bold text-slate-600 whitespace-nowrap">Lọc bình luận:</span>
+            <select
+              v-model="visibilityFilter"
+              class="bg-white border-2 border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:border-[#658a22] cursor-pointer w-44"
+            >
+              <option value="ALL">Tất cả</option>
+              <option value="VISIBLE">Đang hiển thị</option>
+              <option value="HIDDEN">Đang bị ẩn</option>
+            </select>
+          </div>
+        </div>
 
         <div v-if="isCommentsLoading" class="py-10 text-center text-slate-400 font-bold">
           <span class="material-symbols-outlined animate-spin text-3xl mb-2">sync</span>
@@ -437,14 +442,15 @@ watch(() => route.params.id, fetchData)
           <span class="material-symbols-outlined text-5xl text-slate-300 mb-3"
             >chat_bubble_outline</span
           >
-          <p class="text-slate-500 font-bold">Chưa có đánh giá nào cho sản phẩm này.</p>
+          <p class="text-slate-500 font-bold">Chưa có đánh giá nào phù hợp với bộ lọc.</p>
         </div>
 
         <div v-else class="space-y-8">
           <div
             v-for="comment in comments"
             :key="comment.id"
-            class="border-b border-slate-100 pb-8 last:border-0 last:pb-0"
+            class="border-b border-slate-100 pb-8 last:border-0 last:pb-0 transition-opacity duration-300"
+            :class="{ 'opacity-50 grayscale': comment.isHidden }"
           >
             <div class="flex items-start gap-4">
               <div
@@ -460,27 +466,45 @@ watch(() => route.params.id, fetchData)
 
               <div class="flex-1">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                  <p class="font-bold text-slate-800">
-                    {{
-                      comment.account?.profile?.fullName ||
-                      comment.account?.email ||
-                      'Khách hàng ẩn danh'
-                    }}
-                  </p>
-
+                  <div class="flex items-center gap-2">
+                    <p class="font-bold text-slate-800">
+                      {{
+                        comment.account?.profile?.fullName ||
+                        comment.account?.email ||
+                        'Khách hàng ẩn danh'
+                      }}
+                    </p>
+                    <span
+                      v-if="comment.isHidden"
+                      class="text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                      >Đã ẩn</span
+                    >
+                  </div>
                   <div class="flex items-center gap-3">
                     <p class="text-xs text-slate-400 font-medium">
                       {{ formatDate(comment.createdAt) }}
                     </p>
-
-                    <button
-                      v-if="isAdmin"
-                      @click="handleHideComment(comment.id)"
-                      class="text-xs font-bold text-[#d00000] bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition-colors border border-red-100 flex items-center gap-1"
-                    >
-                      <span class="material-symbols-outlined text-[14px]">visibility_off</span>
-                      Ẩn
-                    </button>
+                    <template v-if="isAdmin">
+                      <div class="flex items-center gap-2 border-l border-slate-200 pl-3 ml-1">
+                        <button
+                          @click="handleToggleVisibility(comment)"
+                          type="button"
+                          class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                          :class="comment.isHidden ? 'bg-red-200' : 'bg-[#658a22]'"
+                        >
+                          <span
+                            aria-hidden="true"
+                            class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                            :class="comment.isHidden ? 'translate-x-0' : 'translate-x-4'"
+                          ></span>
+                        </button>
+                        <span
+                          class="text-[11px] font-bold uppercase tracking-wider"
+                          :class="comment.isHidden ? 'text-[#d00000]' : 'text-[#658a22]'"
+                          >{{ comment.isHidden ? 'Đang ẩn' : 'Đang hiện' }}</span
+                        >
+                      </div>
+                    </template>
                   </div>
                 </div>
 
@@ -492,11 +516,9 @@ watch(() => route.params.id, fetchData)
                     :class="
                       star <= Number(comment.rating || 5) ? 'text-yellow-400' : 'text-slate-200'
                     "
+                    >★</span
                   >
-                    ★
-                  </span>
                 </div>
-
                 <p class="text-slate-600 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
                   {{ comment.content }}
                 </p>
@@ -518,7 +540,6 @@ watch(() => route.params.id, fetchData)
                       :src="getImageUrl(item.url || item.path)"
                       class="w-full h-full object-cover"
                     />
-
                     <div
                       v-if="isVideo(item.url || item.path)"
                       class="absolute inset-0 bg-black/20 flex items-center justify-center"
@@ -547,7 +568,6 @@ watch(() => route.params.id, fetchData)
       >
         <span class="material-symbols-outlined">close</span>
       </button>
-
       <div class="max-w-4xl max-h-full w-full rounded-2xl overflow-hidden shadow-2xl relative">
         <video
           v-if="isVideo(currentLightboxMedia)"
@@ -571,8 +591,6 @@ watch(() => route.params.id, fetchData)
 .font-sans {
   font-family: 'Inter', sans-serif;
 }
-
-/* Ẩn mũi tên lên/xuống mặc định của input type="number" */
 .hide-arrows::-webkit-inner-spin-button,
 .hide-arrows::-webkit-outer-spin-button {
   -webkit-appearance: none;

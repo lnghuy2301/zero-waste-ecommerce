@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class GetCommentsFilterDto {
   @ApiPropertyOptional({
@@ -22,4 +22,8 @@ export class GetCommentsFilterDto {
   @IsInt()
   @Min(1)
   accountId?: number;
+
+  @IsOptional()
+  @IsString()
+  visibility?: 'ALL' | 'VISIBLE' | 'HIDDEN';
 }

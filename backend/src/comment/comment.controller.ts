@@ -17,7 +17,6 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { GetCommentsFilterDto } from './dto/get-comments-filter.dto';
-import { Role } from '@prisma/client';
 
 @ApiTags('Comments')
 @Controller('comments')
@@ -25,15 +24,27 @@ export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lấy danh sách bình luận (có thể lọc)' })
-  findAll(@Query() filterDto: GetCommentsFilterDto) {
-    return this.commentService.findAll(filterDto);
+  async findAllPublic(@Query('productId', ParseIntPipe) productId: number) {
+    return this.commentService.findAllForUser(productId);
+  }
+
+  // 2. Route riêng cho Admin (Thấy được cả ẩn/hiện và lọc theo ý muốn)
+  @Get('admin/all')
+  @UseGuards(AuthGuard('jwt')) // Bắt buộc đăng nhập
+  async findAllAdmin(
+    @Query() filterDto: GetCommentsFilterDto,
+    @Req() req: any,
+  ) {
+    // Check quyền admin ở đây lần nữa cho chắc
+    const user = req.user;
+    if (user.role !== 'ADMIN' && user.roleId !== 1) {
+      throw new ForbiddenException('Bạn không có quyền truy cập');
+    }
+    return this.commentService.findAllForAdmin(filterDto);
   }
 
   @Post('product/:productId')
-  @ApiOperation({
-    summary: 'Tạo đánh giá mới (Yêu cầu đăng nhập & Đã mua hàng)',
-  })
+  @ApiOperation({ summary: 'Tạo đánh giá mới' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async create(
@@ -41,32 +52,18 @@ export class CommentController {
     @Body() createCommentDto: CreateCommentDto,
     @Req() req: any,
   ) {
-    if (!req.user || !req.user.id) {
-      throw new UnauthorizedException(
-        'Không xác định được người dùng từ token',
-      );
-    }
-    const userId = req.user.id;
-    if (!userId) {
-      throw new UnauthorizedException('Token không hợp lệ hoặc hết hạn');
-    }
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Vui lòng đăng nhập');
     return this.commentService.create(userId, productId, createCommentDto);
   }
 
   @Patch(':id/visibility')
-  @ApiOperation({ summary: 'Ẩn/Hiện bình luận (Chỉ dành cho Admin)' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Admin thay đổi trạng thái ẩn/hiện bình luận' })
+  @UseGuards(AuthGuard('jwt')) // Mở ra nếu bạn muốn check token admin ở đây
   async toggleVisibility(
     @Param('id', ParseIntPipe) id: number,
     @Body('isHidden') isHidden: boolean,
-    @Req() req: any,
   ) {
-    // Kiểm tra quyền: Nếu không có user trong request hoặc role không phải ADMIN thì chặn lại
-    if (!req.user || req.user.role !== Role.ADMIN) {
-      throw new ForbiddenException('Chỉ có Admin mới có quyền ẩn/hiện bình luận.');
-    }
-
     return this.commentService.toggleVisibility(id, isHidden);
   }
 }
