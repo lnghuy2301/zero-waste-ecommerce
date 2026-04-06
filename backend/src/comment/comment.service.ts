@@ -78,6 +78,7 @@ export class CommentService {
       where: {
         productId: productId ? Number(productId) : undefined,
         accountId: accountId ? Number(accountId) : undefined,
+        isHidden: false,
       },
       include: {
         account: {
@@ -88,8 +89,8 @@ export class CommentService {
             profile: {
               select: {
                 fullName: true,
-              }
-            }
+              },
+            },
           },
         },
         product: {
@@ -97,6 +98,21 @@ export class CommentService {
         },
         media: true,
       },
+    });
+  }
+
+  async toggleVisibility(id: number, isHidden: boolean) {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Không tìm thấy bình luận này.');
+    }
+
+    return this.prisma.comment.update({
+      where: { id },
+      data: { isHidden },
     });
   }
 }

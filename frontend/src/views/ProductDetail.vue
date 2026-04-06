@@ -26,6 +26,24 @@ const isCommentsLoading = ref(false)
 const isLightboxOpen = ref(false)
 const currentLightboxMedia = ref<any>(null)
 
+// --- STATE KIỂM TRA ADMIN ---
+const isAdmin = ref(false)
+
+const checkAdminRole = () => {
+  const userJson = localStorage.getItem('user')
+  if (userJson) {
+    try {
+      const user = JSON.parse(userJson)
+      // Sửa lại điều kiện này cho khớp với dữ liệu thực tế của bạn
+      if (user.role === 'admin' || user.role === 'ADMIN' || user.roleId === 1) {
+        isAdmin.value = true
+      }
+    } catch (e) {
+      console.error('Lỗi kiểm tra quyền:', e)
+    }
+  }
+}
+
 // --- CÁC HÀM HELPER ---
 const getImageUrl = (path: string | null) => {
   if (!path) return 'https://via.placeholder.com/400x400?text=Không+có+ảnh'
@@ -47,7 +65,7 @@ const formatDate = (dateString: string) => {
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
@@ -96,7 +114,7 @@ const handleAddToCart = async () => {
   }
 }
 
-// --- FETCH DATA ---
+// --- FETCH DATA BÌNH LUẬN ---
 const fetchComments = async (id: number) => {
   isCommentsLoading.value = true
   try {
@@ -111,6 +129,22 @@ const fetchComments = async (id: number) => {
   }
 }
 
+// --- HÀM ẨN BÌNH LUẬN (CHỈ DÀNH CHO ADMIN) ---
+const handleHideComment = async (commentId: number) => {
+  if (!confirm('Bạn có chắc chắn muốn ẩn bình luận này?')) return
+
+  try {
+    await CommentService.hideComment(commentId)
+    alert('Đã ẩn bình luận thành công!')
+    // Tải lại danh sách bình luận mới nhất sau khi ẩn
+    await fetchComments(Number(route.params.id))
+  } catch (error) {
+    console.error('Lỗi khi ẩn bình luận:', error)
+    alert('Có lỗi xảy ra khi ẩn bình luận.')
+  }
+}
+
+// --- FETCH TOÀN BỘ DỮ LIỆU ---
 const fetchData = async () => {
   const id = Number(route.params.id)
   if (!id) return
@@ -176,7 +210,11 @@ watch(selectedVariant, () => {
 })
 
 const updateQuantity = (val: number) => {
-  const maxStock = selectedVariant.value?.stock ?? selectedVariant.value?.stockQuantity ?? selectedVariant.value?.quantity ?? 999
+  const maxStock =
+    selectedVariant.value?.stock ??
+    selectedVariant.value?.stockQuantity ??
+    selectedVariant.value?.quantity ??
+    999
   const MAX_LIMIT = 20
 
   if (quantity.value + val < 1) return
@@ -194,13 +232,15 @@ const updateQuantity = (val: number) => {
   quantity.value += val
 }
 
-// Kiểm tra tính hợp lệ khi người dùng tự nhập số vào ô input
 const validateQuantity = () => {
   let val = Math.floor(Number(quantity.value))
-  const maxStock = selectedVariant.value?.stock ?? selectedVariant.value?.stockQuantity ?? selectedVariant.value?.quantity ?? 999
+  const maxStock =
+    selectedVariant.value?.stock ??
+    selectedVariant.value?.stockQuantity ??
+    selectedVariant.value?.quantity ??
+    999
   const MAX_LIMIT = 20
 
-  // Nếu nhập bậy (chữ, bỏ trống) hoặc <= 0 thì set về 1
   if (isNaN(val) || val < 1) {
     val = 1
   } else if (val > maxStock) {
@@ -214,7 +254,10 @@ const validateQuantity = () => {
   quantity.value = val
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  checkAdminRole()
+  fetchData()
+})
 watch(() => route.params.id, fetchData)
 </script>
 
@@ -225,33 +268,49 @@ watch(() => route.params.id, fetchData)
       <p class="font-bold uppercase tracking-widest text-sm text-[#658a22]">Đang tải sản phẩm...</p>
     </div>
 
-    <div v-else-if="!product" class="text-center py-32 bg-white rounded-[2rem] border-2 border-slate-100 border-dashed text-slate-500">
+    <div
+      v-else-if="!product"
+      class="text-center py-32 bg-white rounded-[2rem] border-2 border-slate-100 border-dashed text-slate-500"
+    >
       <span class="material-symbols-outlined text-6xl text-slate-300 mb-4">search_off</span>
       <p class="font-bold text-lg">Không tìm thấy sản phẩm.</p>
     </div>
 
     <div v-else>
-      <nav class="flex items-center gap-2 mb-8 text-[13px] font-bold text-slate-400 uppercase tracking-wide">
+      <nav
+        class="flex items-center gap-2 mb-8 text-[13px] font-bold text-slate-400 uppercase tracking-wide"
+      >
         <RouterLink to="/" class="hover:text-[#658a22] transition-colors flex items-center gap-1">
           <span class="material-symbols-outlined text-sm">home</span>
           Trang Chủ
         </RouterLink>
         <span class="material-symbols-outlined text-sm">chevron_right</span>
-        <RouterLink to="/products" class="hover:text-[#658a22] transition-colors">Cửa hàng</RouterLink>
+        <RouterLink to="/products" class="hover:text-[#658a22] transition-colors"
+          >Cửa hàng</RouterLink
+        >
         <span class="material-symbols-outlined text-sm">chevron_right</span>
         <span class="text-slate-800">{{ product.name }}</span>
       </nav>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100">
+      <div
+        class="grid grid-cols-1 lg:grid-cols-12 gap-10 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100"
+      >
         <div class="lg:col-span-5 space-y-4">
-          <div class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group">
-            <img :src="getImageUrl(product.mainImage)" class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500" />
+          <div
+            class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group"
+          >
+            <img
+              :src="getImageUrl(product.mainImage)"
+              class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500"
+            />
           </div>
         </div>
 
         <div class="lg:col-span-7 flex flex-col gap-6">
           <div>
-            <h1 class="text-3xl md:text-4xl font-black text-slate-900 leading-tight mb-2">{{ product.name }}</h1>
+            <h1 class="text-3xl md:text-4xl font-black text-slate-900 leading-tight mb-2">
+              {{ product.name }}
+            </h1>
             <div class="flex items-center gap-4 text-sm font-bold text-slate-400">
               <span class="flex items-center gap-1">
                 <span class="text-yellow-400 text-lg">★</span>
@@ -260,26 +319,46 @@ watch(() => route.params.id, fetchData)
             </div>
           </div>
 
-          <div class="flex items-center gap-4 p-5 bg-[#f4f7ee]/50 rounded-2xl border border-[#658a22]/10">
+          <div
+            class="flex items-center gap-4 p-5 bg-[#f4f7ee]/50 rounded-2xl border border-[#658a22]/10"
+          >
             <div class="flex items-baseline gap-3">
-              <p v-if="selectedVariant?.promotionId" class="text-xl text-slate-400 line-through font-bold">
+              <p
+                v-if="selectedVariant?.promotionId"
+                class="text-xl text-slate-400 line-through font-bold"
+              >
                 {{ Number(selectedVariant.price).toLocaleString('vi-VN') }}đ
               </p>
               <p class="text-4xl font-black text-[#d00000]">
-                {{ selectedVariant ? Number(getDiscountedPrice(selectedVariant)).toLocaleString('vi-VN') : '---' }}đ
+                {{
+                  selectedVariant
+                    ? Number(getDiscountedPrice(selectedVariant)).toLocaleString('vi-VN')
+                    : '---'
+                }}đ
               </p>
             </div>
           </div>
 
           <div v-if="variants.length > 0" class="space-y-3">
-            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Chọn phân loại</p>
+            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+              Chọn phân loại
+            </p>
             <div class="flex flex-wrap gap-3">
               <button
-                v-for="v in variants" :key="v.id" @click="selectedVariant = v"
-                :class="['px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center text-center leading-tight min-w-[100px]', selectedVariant?.id === v.id ? 'border-[#658a22] bg-[#eef4e6] text-[#658a22] shadow-sm' : 'border-slate-100 text-slate-600 hover:border-slate-300 bg-slate-50 hover:bg-white']"
+                v-for="v in variants"
+                :key="v.id"
+                @click="selectedVariant = v"
+                :class="[
+                  'px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center text-center leading-tight min-w-[100px]',
+                  selectedVariant?.id === v.id
+                    ? 'border-[#658a22] bg-[#eef4e6] text-[#658a22] shadow-sm'
+                    : 'border-slate-100 text-slate-600 hover:border-slate-300 bg-slate-50 hover:bg-white',
+                ]"
               >
                 {{ v.name }}
-                <span class="text-[10px] font-normal opacity-70 mt-1 uppercase tracking-wider">{{ v.color }}</span>
+                <span class="text-[10px] font-normal opacity-70 mt-1 uppercase tracking-wider">{{
+                  v.color
+                }}</span>
               </button>
             </div>
           </div>
@@ -290,9 +369,18 @@ watch(() => route.params.id, fetchData)
             </p>
           </div>
 
-          <div class="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t-2 border-dashed border-slate-100 mt-auto">
-            <div class="flex items-center border-2 border-slate-200 rounded-2xl bg-white h-14 overflow-hidden w-full sm:w-auto">
-              <button @click="updateQuantity(-1)" class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg">-</button>
+          <div
+            class="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t-2 border-dashed border-slate-100 mt-auto"
+          >
+            <div
+              class="flex items-center border-2 border-slate-200 rounded-2xl bg-white h-14 overflow-hidden w-full sm:w-auto"
+            >
+              <button
+                @click="updateQuantity(-1)"
+                class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg"
+              >
+                -
+              </button>
 
               <input
                 type="number"
@@ -305,11 +393,24 @@ watch(() => route.params.id, fetchData)
               <button
                 @click="updateQuantity(1)"
                 class="px-5 h-full hover:bg-slate-100 text-slate-700 font-black text-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                :disabled="quantity >= 20 || quantity >= (selectedVariant?.stock ?? selectedVariant?.stockQuantity ?? selectedVariant?.quantity ?? 999)"
-              >+</button>
+                :disabled="
+                  quantity >= 20 ||
+                  quantity >=
+                    (selectedVariant?.stock ??
+                      selectedVariant?.stockQuantity ??
+                      selectedVariant?.quantity ??
+                      999)
+                "
+              >
+                +
+              </button>
             </div>
 
-            <button @click="handleAddToCart" :disabled="isAdding" class="w-full flex-1 bg-[#1e293b] hover:bg-black text-white font-black h-14 rounded-2xl flex items-center justify-center gap-3 transition-all uppercase tracking-widest text-sm">
+            <button
+              @click="handleAddToCart"
+              :disabled="isAdding"
+              class="w-full flex-1 bg-[#1e293b] hover:bg-black text-white font-black h-14 rounded-2xl flex items-center justify-center gap-3 transition-all uppercase tracking-widest text-sm"
+            >
               {{ isAdding ? 'ĐANG XỬ LÝ...' : 'THÊM VÀO GIỎ' }}
             </button>
           </div>
@@ -329,16 +430,26 @@ watch(() => route.params.id, fetchData)
           <p>Đang tải đánh giá...</p>
         </div>
 
-        <div v-else-if="comments.length === 0" class="py-16 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-          <span class="material-symbols-outlined text-5xl text-slate-300 mb-3">chat_bubble_outline</span>
+        <div
+          v-else-if="comments.length === 0"
+          class="py-16 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200"
+        >
+          <span class="material-symbols-outlined text-5xl text-slate-300 mb-3"
+            >chat_bubble_outline</span
+          >
           <p class="text-slate-500 font-bold">Chưa có đánh giá nào cho sản phẩm này.</p>
         </div>
 
         <div v-else class="space-y-8">
-          <div v-for="comment in comments" :key="comment.id" class="border-b border-slate-100 pb-8 last:border-0 last:pb-0">
+          <div
+            v-for="comment in comments"
+            :key="comment.id"
+            class="border-b border-slate-100 pb-8 last:border-0 last:pb-0"
+          >
             <div class="flex items-start gap-4">
-
-              <div class="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-white shadow-sm">
+              <div
+                class="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border-2 border-white shadow-sm"
+              >
                 <img
                   v-if="comment.account?.avatar"
                   :src="getImageUrl(comment.account.avatar)"
@@ -350,13 +461,38 @@ watch(() => route.params.id, fetchData)
               <div class="flex-1">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
                   <p class="font-bold text-slate-800">
-                    {{ comment.account?.profile?.fullName || comment.account?.email || 'Khách hàng ẩn danh' }}
+                    {{
+                      comment.account?.profile?.fullName ||
+                      comment.account?.email ||
+                      'Khách hàng ẩn danh'
+                    }}
                   </p>
-                  <p class="text-xs text-slate-400 font-medium">{{ formatDate(comment.createdAt) }}</p>
+
+                  <div class="flex items-center gap-3">
+                    <p class="text-xs text-slate-400 font-medium">
+                      {{ formatDate(comment.createdAt) }}
+                    </p>
+
+                    <button
+                      v-if="isAdmin"
+                      @click="handleHideComment(comment.id)"
+                      class="text-xs font-bold text-[#d00000] bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition-colors border border-red-100 flex items-center gap-1"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">visibility_off</span>
+                      Ẩn
+                    </button>
+                  </div>
                 </div>
 
                 <div class="flex text-sm mb-3 gap-0.5">
-                  <span v-for="star in 5" :key="star" class="text-lg" :class="star <= Number(comment.rating || 5) ? 'text-yellow-400' : 'text-slate-200'">
+                  <span
+                    v-for="star in 5"
+                    :key="star"
+                    class="text-lg"
+                    :class="
+                      star <= Number(comment.rating || 5) ? 'text-yellow-400' : 'text-slate-200'
+                    "
+                  >
                     ★
                   </span>
                 </div>
@@ -372,11 +508,24 @@ watch(() => route.params.id, fetchData)
                     @click="openLightbox(item.url || item.path)"
                     class="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 cursor-pointer hover:border-[#658a22] transition-colors relative group"
                   >
-                    <video v-if="isVideo(item.url || item.path)" :src="getImageUrl(item.url || item.path)" class="w-full h-full object-cover"></video>
-                    <img v-else :src="getImageUrl(item.url || item.path)" class="w-full h-full object-cover" />
+                    <video
+                      v-if="isVideo(item.url || item.path)"
+                      :src="getImageUrl(item.url || item.path)"
+                      class="w-full h-full object-cover"
+                    ></video>
+                    <img
+                      v-else
+                      :src="getImageUrl(item.url || item.path)"
+                      class="w-full h-full object-cover"
+                    />
 
-                    <div v-if="isVideo(item.url || item.path)" class="absolute inset-0 bg-black/20 flex items-center justify-center">
-                      <span class="material-symbols-outlined text-white text-2xl drop-shadow-md">play_circle</span>
+                    <div
+                      v-if="isVideo(item.url || item.path)"
+                      class="absolute inset-0 bg-black/20 flex items-center justify-center"
+                    >
+                      <span class="material-symbols-outlined text-white text-2xl drop-shadow-md"
+                        >play_circle</span
+                      >
                     </div>
                   </div>
                 </div>
@@ -385,17 +534,33 @@ watch(() => route.params.id, fetchData)
           </div>
         </div>
       </div>
-
     </div>
 
-    <div v-if="isLightboxOpen" class="fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-10" @click.self="closeLightbox">
-      <button @click="closeLightbox" class="absolute top-6 right-6 text-white hover:text-red-400 bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors">
+    <div
+      v-if="isLightboxOpen"
+      class="fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-10"
+      @click.self="closeLightbox"
+    >
+      <button
+        @click="closeLightbox"
+        class="absolute top-6 right-6 text-white hover:text-red-400 bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+      >
         <span class="material-symbols-outlined">close</span>
       </button>
 
       <div class="max-w-4xl max-h-full w-full rounded-2xl overflow-hidden shadow-2xl relative">
-        <video v-if="isVideo(currentLightboxMedia)" :src="getImageUrl(currentLightboxMedia)" controls autoplay class="w-full max-h-[85vh] object-contain bg-black"></video>
-        <img v-else :src="getImageUrl(currentLightboxMedia)" class="w-full max-h-[85vh] object-contain" />
+        <video
+          v-if="isVideo(currentLightboxMedia)"
+          :src="getImageUrl(currentLightboxMedia)"
+          controls
+          autoplay
+          class="w-full max-h-[85vh] object-contain bg-black"
+        ></video>
+        <img
+          v-else
+          :src="getImageUrl(currentLightboxMedia)"
+          class="w-full max-h-[85vh] object-contain"
+        />
       </div>
     </div>
   </main>
@@ -403,7 +568,9 @@ watch(() => route.params.id, fetchData)
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
-.font-sans { font-family: 'Inter', sans-serif; }
+.font-sans {
+  font-family: 'Inter', sans-serif;
+}
 
 /* Ẩn mũi tên lên/xuống mặc định của input type="number" */
 .hide-arrows::-webkit-inner-spin-button,
