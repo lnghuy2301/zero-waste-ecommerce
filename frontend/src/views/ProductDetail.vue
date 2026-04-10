@@ -381,6 +381,11 @@ watch(
                 }}</span>
               </button>
             </div>
+            <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+              <p class="text-slate-600 text-sm leading-relaxed text-justify">
+                {{ product.description || 'Sản phẩm thay thế hoàn hảo cho đồ nhựa dùng một lần.' }}
+              </p>
+            </div>
           </div>
 
           <!-- Thông tin bổ sung của sản phẩm -->
