@@ -13,6 +13,7 @@ const currentAccount = ref<any>(null)
 
 // === Bộ lọc & Phân trang ===
 const searchQuery = ref('') // Ô tìm kiếm
+const filterStatus = ref('ALL') // 'ALL' | 'ACTIVE' | 'LOCKED' - Bộ lọc mới thêm
 const currentPage = ref(1)
 const itemsPerPage = 10
 
@@ -31,10 +32,17 @@ const loadAccounts = async () => {
   }
 }
 
-// Logic Tìm kiếm: Lọc danh sách theo email hoặc ID
+// Logic Tìm kiếm & Lọc
 const filteredList = computed(() => {
   let list = [...accounts.value]
 
+  // 1. Lọc theo trạng thái trước
+  if (filterStatus.value !== 'ALL') {
+    const isLookingForActive = filterStatus.value === 'ACTIVE'
+    list = list.filter((acc) => acc.isActive === isLookingForActive)
+  }
+
+  // 2. Lọc danh sách theo email hoặc ID
   if (searchQuery.value.trim()) {
     const term = searchQuery.value.toLowerCase().trim()
     list = list.filter(
@@ -130,20 +138,32 @@ onMounted(loadAccounts)
     </div>
 
     <div
-      class="bg-white rounded-3xl p-5 mb-8 shadow-sm border border-slate-100 flex items-center gap-4"
+      class="bg-white rounded-3xl p-5 mb-8 shadow-sm border border-slate-100 flex flex-wrap items-center gap-4"
     >
-      <div class="relative flex-1">
+      <div class="relative flex-1 min-w-[300px]">
         <span
           class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-          >search</span
+        >search</span
         >
         <input
           v-model="searchQuery"
+          @input="currentPage = 1"
           type="text"
           placeholder="Tìm kiếm tài khoản bằng Email hoặc ID..."
           class="w-full bg-slate-50 border-2 border-slate-100 focus:border-[#658a22] rounded-2xl pl-12 pr-5 py-3.5 outline-none transition-all text-slate-700 font-medium"
         />
       </div>
+
+      <select
+        v-model="filterStatus"
+        @change="currentPage = 1"
+        class="bg-slate-50 border-2 border-slate-100 text-slate-600 rounded-2xl px-5 py-3.5 outline-none transition-all font-bold cursor-pointer focus:border-[#658a22] min-w-[200px]"
+      >
+        <option value="ALL">Tất cả trạng thái</option>
+        <option value="ACTIVE">Hoạt động</option>
+        <option value="LOCKED">Đã khóa</option>
+      </select>
+
       <div class="text-sm font-bold text-slate-500 px-2 hidden sm:block">
         Tổng số: {{ filteredList.length }}
       </div>
@@ -160,49 +180,49 @@ onMounted(loadAccounts)
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-slate-50/80 border-b border-slate-100">
-            <tr>
-              <th class="w-14 px-6 py-4 text-center"></th>
-              <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">ID</th>
-              <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Email</th>
-              <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Vai trò</th>
-              <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Trạng thái</th>
-              <th class="px-6 py-4 text-center font-bold text-slate-600 text-sm">Thao tác</th>
-            </tr>
+          <tr>
+            <th class="w-14 px-6 py-4 text-center"></th>
+            <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">ID</th>
+            <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Email</th>
+            <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Vai trò</th>
+            <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Trạng thái</th>
+            <th class="px-6 py-4 text-center font-bold text-slate-600 text-sm">Thao tác</th>
+          </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr
-              v-for="account in pagedAccounts"
-              :key="account.id"
-              @click="toggleSelect(account.id)"
-              class="hover:bg-slate-50/50 cursor-pointer transition-all group"
-              :class="
+          <tr
+            v-for="account in pagedAccounts"
+            :key="account.id"
+            @click="toggleSelect(account.id)"
+            class="hover:bg-slate-50/50 cursor-pointer transition-all group"
+            :class="
                 selectedAccountIds.includes(account.id)
                   ? 'bg-[#f8fdf0] border-l-4 border-[#658a22]'
                   : 'border-l-4 border-transparent'
               "
-            >
-              <td class="px-6 py-5 text-center">
-                <div
-                  v-if="selectedAccountIds.includes(account.id)"
-                  class="w-6 h-6 mx-auto bg-[#658a22] text-white rounded-full flex items-center justify-center text-xs font-bold"
-                >
-                  ✓
-                </div>
-                <div
-                  v-else
-                  class="w-6 h-6 mx-auto border-2 border-slate-200 rounded-full flex items-center justify-center text-xs font-bold bg-white group-hover:border-slate-300"
-                ></div>
-              </td>
-              <td class="px-6 py-5 font-bold text-slate-700">{{ account.id }}</td>
-              <td class="px-6 py-5 text-slate-700 font-medium">{{ account.email }}</td>
-              <td class="px-6 py-5">
+          >
+            <td class="px-6 py-5 text-center">
+              <div
+                v-if="selectedAccountIds.includes(account.id)"
+                class="w-6 h-6 mx-auto bg-[#658a22] text-white rounded-full flex items-center justify-center text-xs font-bold"
+              >
+                ✓
+              </div>
+              <div
+                v-else
+                class="w-6 h-6 mx-auto border-2 border-slate-200 rounded-full flex items-center justify-center text-xs font-bold bg-white group-hover:border-slate-300"
+              ></div>
+            </td>
+            <td class="px-6 py-5 font-bold text-slate-700">{{ account.id }}</td>
+            <td class="px-6 py-5 text-slate-700 font-medium">{{ account.email }}</td>
+            <td class="px-6 py-5">
                 <span
                   class="inline-block px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide"
                 >
                   {{ account.role }}
                 </span>
-              </td>
-              <td class="px-6 py-5">
+            </td>
+            <td class="px-6 py-5">
                 <span
                   :class="{
                     'inline-block px-4 py-1 text-xs font-bold rounded-full': true,
@@ -212,33 +232,33 @@ onMounted(loadAccounts)
                 >
                   {{ account.isActive ? 'Hoạt động' : 'Đã khóa' }}
                 </span>
-              </td>
-              <td class="px-6 py-5 text-center">
-                <div class="flex items-center justify-center gap-4">
-                  <button
-                    @click.stop="viewDetail(account)"
-                    class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
-                  >
-                    <span class="material-symbols-outlined text-lg">visibility</span>
-                    Chi tiết
-                  </button>
-                  <button
-                    @click.stop="toggleActive(account.id, account.isActive)"
-                    class="font-semibold text-sm flex items-center gap-1"
-                    :class="
+            </td>
+            <td class="px-6 py-5 text-center">
+              <div class="flex items-center justify-center gap-4">
+                <button
+                  @click.stop="viewDetail(account)"
+                  class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
+                >
+                  <span class="material-symbols-outlined text-lg">visibility</span>
+                  Chi tiết
+                </button>
+                <button
+                  @click.stop="toggleActive(account.id, account.isActive)"
+                  class="font-semibold text-sm flex items-center gap-1"
+                  :class="
                       account.isActive
                         ? 'text-red-500 hover:text-red-700'
                         : 'text-emerald-500 hover:text-emerald-700'
                     "
-                  >
+                >
                     <span class="material-symbols-outlined text-lg">
                       {{ account.isActive ? 'lock' : 'lock_open' }}
                     </span>
-                    {{ account.isActive ? 'Khóa' : 'Mở khóa' }}
-                  </button>
-                </div>
-              </td>
-            </tr>
+                  {{ account.isActive ? 'Khóa' : 'Mở khóa' }}
+                </button>
+              </div>
+            </td>
+          </tr>
           </tbody>
         </table>
       </div>
@@ -248,7 +268,7 @@ onMounted(loadAccounts)
       v-else
       class="text-center py-20 text-slate-400 font-bold bg-white rounded-3xl shadow-sm border border-slate-100"
     >
-      Không tìm thấy tài khoản nào khớp với từ khóa.
+      Không tìm thấy tài khoản nào khớp với từ khóa/bộ lọc.
     </div>
 
     <div v-if="totalPages > 1" class="flex justify-center items-center gap-6 mt-10 pb-10">
