@@ -25,13 +25,13 @@ export class ProductResponseDto {
   description: string | null;
 
   @Expose()
-  material: string | null;
+  material: string | null; // ← bổ sung
 
   @Expose()
-  ecoFriendliness: number | null;
+  ecoFriendliness: number | null; // ← bổ sung
 
   @Expose()
-  reusability: string | null;
+  reusability: string | null; // ← bổ sung
 
   @Expose()
   mainImage: string | null;
@@ -43,7 +43,7 @@ export class ProductResponseDto {
   updatedAt: Date;
 
   @Expose()
-  soLuongDaBan: number;
+  soLuongDaBan: number; // ← bổ sung (đã có nhưng đảm bảo)
 
   @Expose()
   danhGiaTrungBinh: number | null;
@@ -54,4 +54,7 @@ export class ProductResponseDto {
   @Expose()
   @Type(() => CategoryResponseDto)
   category?: CategoryResponseDto;
+
+  @Expose()
+  greenCerts?: any[]; // ← bổ sung để hiển thị chứng nhận xanh
 }

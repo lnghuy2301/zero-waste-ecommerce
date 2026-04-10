@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import api from '@/service/api.ts'
 import CommentService from '@/service/comment.ts'
 import { Cart } from '@/service/cart.ts'
+import VueEasyLightbox from 'vue-easy-lightbox'
 
 const route = useRoute()
 const product = ref<any>(null)
@@ -27,7 +28,21 @@ const starFilter = ref(0) // 0 = tất cả sao
 
 // --- LIGHTBOX ---
 const isLightboxOpen = ref(false)
-const currentLightboxMedia = ref<any>(null)
+const imgsRef = ref<string[]>([]) // Danh sách ảnh để phóng to
+const onHide = () => (isLightboxOpen.value = false)
+
+// Hàm này dùng để mở ảnh sản phẩm chính hoặc ảnh bất kỳ
+const openMainImageLightbox = (url: string) => {
+  imgsRef.value = [getImageUrl(url)] // Đưa ảnh vào mảng
+  isLightboxOpen.value = true
+}
+
+// Sửa lại hàm openLightbox cũ của bạn để dùng chung thư viện luôn cho đồng bộ
+const openLightbox = (mediaUrl: string) => {
+  imgsRef.value = [getImageUrl(mediaUrl)]
+  isLightboxOpen.value = true
+}
+// Cập nhật lại Logic Lightbox để dùng cho cả sản phẩm và comment
 
 // --- ADMIN ---
 const isAdmin = ref(false)
@@ -67,16 +82,6 @@ const formatDate = (dateString: string) => {
     hour: '2-digit',
     minute: '2-digit',
   })
-}
-
-const openLightbox = (mediaUrl: string) => {
-  currentLightboxMedia.value = mediaUrl
-  isLightboxOpen.value = true
-}
-
-const closeLightbox = () => {
-  isLightboxOpen.value = false
-  currentLightboxMedia.value = null
 }
 
 // --- RATING STATS (tính từ allComments, không bị ảnh hưởng bởi filter sao) ---
@@ -294,13 +299,30 @@ watch(
         class="grid grid-cols-1 lg:grid-cols-12 gap-10 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100"
       >
         <div class="lg:col-span-5 space-y-4">
-          <div
+          <!-- <div
             class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group"
           >
             <img
               :src="getImageUrl(product.mainImage)"
               class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500"
             />
+          </div> -->
+          <div
+            class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group cursor-zoom-in"
+            @click="openMainImageLightbox(product.mainImage)"
+          >
+            <img
+              :src="getImageUrl(product.mainImage)"
+              class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500"
+            />
+            <div
+              class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center"
+            >
+              <span
+                class="material-symbols-outlined opacity-0 group-hover:opacity-100 text-[#658a22] text-4xl transition-opacity"
+                >zoom_in</span
+              >
+            </div>
           </div>
         </div>
 
@@ -361,10 +383,55 @@ watch(
             </div>
           </div>
 
-          <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-            <p class="text-slate-600 text-sm leading-relaxed text-justify">
-              {{ product.description || 'Sản phẩm thay thế hoàn hảo cho đồ nhựa dùng một lần.' }}
-            </p>
+          <!-- Thông tin bổ sung của sản phẩm -->
+          <div
+            class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-100 text-sm"
+          >
+            <div v-if="product.material" class="flex flex-col">
+              <span class="text-slate-400 text-xs font-bold uppercase tracking-widest"
+                >Chất liệu</span
+              >
+              <span class="font-medium text-slate-700">{{ product.material }}</span>
+            </div>
+
+            <div v-if="product.ecoFriendliness" class="flex flex-col">
+              <span class="text-slate-400 text-xs font-bold uppercase tracking-widest"
+                >Thân thiện môi trường</span
+              >
+              <span class="font-medium text-emerald-600">{{ product.ecoFriendliness }}/10</span>
+            </div>
+
+            <div v-if="product.reusability" class="flex flex-col">
+              <span class="text-slate-400 text-xs font-bold uppercase tracking-widest"
+                >Tái sử dụng</span
+              >
+              <span class="font-medium text-slate-700">{{ product.reusability }}</span>
+            </div>
+
+            <div v-if="product.soLuongDaBan > 0" class="flex flex-col">
+              <span class="text-slate-400 text-xs font-bold uppercase tracking-widest">Đã bán</span>
+              <span class="font-medium text-rose-600"
+                >{{ product.soLuongDaBan.toLocaleString('vi-VN') }} cái</span
+              >
+            </div>
+          </div>
+
+          <!-- Chứng nhận xanh -->
+          <div
+            v-if="product.greenCerts && product.greenCerts.length > 0"
+            class="mt-4 flex flex-wrap gap-2"
+          >
+            <span
+              class="text-xs font-bold text-slate-400 uppercase tracking-widest mr-2 self-center"
+              >Chứng nhận:</span
+            >
+            <span
+              v-for="cert in product.greenCerts"
+              :key="cert.id"
+              class="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full"
+            >
+              {{ cert.name }}
+            </span>
           </div>
 
           <div
@@ -695,32 +762,13 @@ watch(
     </div>
 
     <!-- Lightbox -->
-    <div
-      v-if="isLightboxOpen"
-      class="fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-10"
-      @click.self="closeLightbox"
+    <vue-easy-lightbox
+      :visible="isLightboxOpen"
+      :imgs="imgsRef"
+      @hide="onHide"
+      :maskClosable="true"
     >
-      <button
-        @click="closeLightbox"
-        class="absolute top-6 right-6 text-white hover:text-red-400 bg-white/10 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-      >
-        <span class="material-symbols-outlined">close</span>
-      </button>
-      <div class="max-w-4xl max-h-full w-full rounded-2xl overflow-hidden shadow-2xl relative">
-        <video
-          v-if="isVideo(currentLightboxMedia)"
-          :src="getImageUrl(currentLightboxMedia)"
-          controls
-          autoplay
-          class="w-full max-h-[85vh] object-contain bg-black"
-        ></video>
-        <img
-          v-else
-          :src="getImageUrl(currentLightboxMedia)"
-          class="w-full max-h-[85vh] object-contain"
-        />
-      </div>
-    </div>
+    </vue-easy-lightbox>
   </main>
 </template>
 
@@ -736,5 +784,12 @@ watch(
 }
 .hide-arrows {
   -moz-appearance: textfield;
+}
+.lightbox-content img {
+  transition: transform 0.3s ease;
+  cursor: grab;
+}
+.lightbox-content img:active {
+  cursor: grabbing;
 }
 </style>

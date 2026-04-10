@@ -7,6 +7,7 @@ const products = ref<any[]>([])
 const categories = ref<any[]>([])
 const variantMap = ref<Map<number, any[]>>(new Map())
 const promotions = ref<any[]>([])
+const greenCerts = ref<any[]>([])
 const loading = ref(true)
 const route = useRoute()
 const router = useRouter()
@@ -14,8 +15,13 @@ const searchQuery = ref('')
 
 const selectedVariants = ref<Map<number, any>>(new Map())
 const sortOption = ref('newest')
-const showOnlyPromotion = ref(false) // ← lọc chỉ sản phẩm có khuyến mãi
-
+const showOnlyPromotion = ref(false)
+// === BIẾN LỌC NÂNG CAO ===
+const selectedMaterial = ref('') // lọc theo chất liệu
+const selectedGreenCert = ref('') // lọc theo chứng nhận xanh
+const minEco = ref('') // mức độ thân thiện từ ...
+const minRating = ref('') // đánh giá từ ...
+//sắp xếp trang
 const currentPage = ref(1)
 const itemsPerPage = 15
 
@@ -47,11 +53,15 @@ const fetchProducts = async () => {
     let url = '/product'
     if (categoryId) url += `?categoryId=${categoryId}`
 
-    const [prodRes, variantRes, promoRes] = await Promise.all([
+    const [prodRes, variantRes, promoRes, greenRes] = await Promise.all([
       api.get(url),
       api.get('/product-variant'),
       api.get('/promotion'),
+      api.get('/green-certificate'), // ← thêm dòng này
     ])
+
+    promotions.value = Array.isArray(promoRes.data) ? promoRes.data : []
+    greenCerts.value = Array.isArray(greenRes.data) ? greenRes.data : [] // ← thêm dòng này
 
     products.value = prodRes.data
     const allVariants = variantRes.data
@@ -104,8 +114,31 @@ const filteredAndSortedProducts = computed(() => {
     const maxMatch = maxPriceInput.value === null || price <= maxPriceInput.value
     return minMatch && maxMatch
   })
+  // 3. Lọc theo chất liệu
+  if (selectedMaterial.value) {
+    list = list.filter((p) =>
+      p.material?.toLowerCase().includes(selectedMaterial.value.toLowerCase()),
+    )
+  }
 
-  //3. Lọc chỉ sản phẩm có khuyến mãi
+  // 4. Lọc theo chứng nhận xanh
+  if (selectedGreenCert.value) {
+    list = list.filter((p) =>
+      p.greenCerts?.some((c: any) => String(c.id) === String(selectedGreenCert.value)),
+    )
+  }
+
+  // 5. Lọc theo mức độ thân thiện (từ 1-10)
+  if (minEco.value) {
+    list = list.filter((p) => (p.ecoFriendliness || 0) >= Number(minEco.value))
+  }
+
+  // 6. Lọc theo đánh giá trung bình
+  if (minRating.value) {
+    list = list.filter((p) => (p.danhGiaTrungBinh || 0) >= Number(minRating.value))
+  }
+
+  //7. Lọc chỉ sản phẩm có khuyến mãi
   if (showOnlyPromotion.value) {
     list = list.filter((p) => {
       const variants = variantMap.value.get(p.id) || []
@@ -180,7 +213,7 @@ const getDiscountedPrice = (variant: any) => {
   return Math.max(0, finalPrice)
 }
 
-watch([searchQuery, sortOption], () => {
+watch([searchQuery, sortOption, selectedMaterial, selectedGreenCert, minEco, minRating], () => {
   currentPage.value = 1
 })
 watch([minPriceInput, maxPriceInput], () => {
@@ -309,18 +342,16 @@ onMounted(() => {
             </p>
           </div>
 
-          <div class="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-            <!-- Nút mở danh mục (mobile) -->
+          <div class="flex flex-wrap items-center gap-3 w-full">
             <button
               @click="isCategoryOpen = true"
-              class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#1e293b] hover:bg-black text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-md active:scale-95"
+              class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#1e293b] hover:bg-black text-white px-6 py-3 rounded-2xl font-bold transition-all shadow-md active:scale-95 h-[46px]"
             >
               <span class="material-symbols-outlined">filter_list</span>
               DANH MỤC
             </button>
 
-            <!-- Search -->
-            <div class="relative w-full sm:w-64 lg:w-72">
+            <div class="relative flex-1 min-w-[200px] sm:w-64 lg:w-72">
               <span
                 class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]"
                 >search</span
@@ -329,50 +360,96 @@ onMounted(() => {
                 v-model="searchQuery"
                 type="text"
                 placeholder="Tìm sản phẩm..."
-                class="w-full bg-white border border-slate-200 text-slate-900 rounded-2xl pl-12 pr-4 py-3 focus:bg-white focus:border-[#658a22] focus:ring-4 focus:ring-[#658a22]/10 outline-none transition-all font-bold text-sm placeholder:text-slate-400 shadow-sm"
+                class="w-full h-[46px] bg-white border border-slate-200 text-slate-900 rounded-2xl pl-12 pr-4 py-3 focus:bg-white focus:border-[#658a22] focus:ring-4 focus:ring-[#658a22]/10 outline-none transition-all font-bold text-sm placeholder:text-slate-400 shadow-sm"
               />
             </div>
-            <div
-              class="flex items-center gap-2 w-full sm:w-auto bg-white border border-slate-200 rounded-5xl px-3 py-1 shadow-sm"
-            >
-              <div class="flex items-center gap-1">
-                <span class="text-[13px] font-black text-slate-400 uppercase">Từ</span>
-                <input
-                  v-model.number="minPriceInput"
-                  type="number"
-                  placeholder="0đ"
-                  class="w-20 bg-transparent outline-none text-sm font-bold text-[#658a22] placeholder:text-slate-300"
-                />
-              </div>
-              <div class="w-px h-4 bg-slate-200"></div>
-              <div class="flex items-center gap-1">
-                <span class="text-[13px] font-black text-slate-400 uppercase">Đến</span>
-                <input
-                  v-model.number="maxPriceInput"
-                  type="number"
-                  placeholder="99k..."
-                  class="w-20 bg-transparent outline-none text-sm font-bold text-[#658a22] placeholder:text-slate-300"
-                />
-              </div>
-            </div>
-            <!-- Sort -->
-            <div class="relative w-full sm:w-48 lg:w-56">
-              <span
-                class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#658a22] text-[18px]"
-                >sort</span
-              >
+
+            <div class="flex flex-wrap gap-3 w-full lg:w-auto items-center text-slate-700">
+              <input
+                v-model="selectedMaterial"
+                type="text"
+                placeholder="Chất liệu (ví dụ: tre)"
+                class="flex-1 lg:w-40 h-[46px] bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none focus:border-[#658a22] transition-all"
+              />
+
               <select
-                v-model="sortOption"
-                class="w-full bg-white border border-slate-200 text-slate-900 rounded-2xl pl-12 pr-4 py-3 focus:bg-white focus:border-[#658a22] focus:ring-4 focus:ring-[#658a22]/10 outline-none transition-all font-bold text-sm appearance-none cursor-pointer shadow-sm"
+                v-model="selectedGreenCert"
+                class="flex-1 lg:w-48 h-[46px] bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none focus:border-[#658a22] transition-all cursor-pointer"
               >
-                <option value="newest">Mới nhất</option>
-                <option value="price-asc">Giá: Thấp → Cao</option>
-                <option value="price-desc">Giá: Cao → Thấp</option>
-                <option value="sold-desc">Bán chạy nhất</option>
-                <option value="rating-desc">Đánh giá cao nhất</option>
-                <option value="eco-desc">Sống xanh nhất</option>
-                <option value="promotion">Đang khuyến mãi</option>
+                <option value="">Chứng nhận xanh</option>
+                <option v-for="cert in greenCerts" :key="cert.id" :value="cert.id">
+                  {{ cert.name }}
+                </option>
               </select>
+
+              <input
+                v-model="minEco"
+                type="number"
+                min="1"
+                max="10"
+                placeholder="Thân thiện ≥"
+                class="w-28 h-[46px] bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none focus:border-[#658a22] transition-all"
+              />
+
+              <input
+                v-model="minRating"
+                type="number"
+                min="1"
+                max="5"
+                placeholder="Đánh giá ≥"
+                class="w-28 h-[46px] bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none focus:border-[#658a22] transition-all"
+              />
+
+              <div
+                class="flex items-center gap-2 w-full sm:w-auto bg-white border border-slate-200 rounded-2xl px-4 h-[46px] shadow-sm"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] font-black text-slate-400 uppercase tracking-wider"
+                    >Từ</span
+                  >
+                  <input
+                    v-model.number="minPriceInput"
+                    type="number"
+                    placeholder="0"
+                    class="w-16 bg-transparent outline-none text-sm font-bold text-[#a00000] placeholder:text-slate-300"
+                  />
+                </div>
+                <div class="w-[1px] h-4 bg-slate-200 mx-1"></div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] font-black text-slate-400 uppercase tracking-wider"
+                    >Đến</span
+                  >
+                  <input
+                    v-model.number="maxPriceInput"
+                    type="number"
+                    placeholder="1M"
+                    class="w-16 bg-transparent outline-none text-sm font-bold text-[#a00000] placeholder:text-slate-300"
+                  />
+                </div>
+              </div>
+
+              <div class="relative w-full sm:w-48 lg:w-56">
+                <span
+                  class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#658a22] text-[18px] pointer-events-none"
+                  >sort</span
+                >
+                <select
+                  v-model="sortOption"
+                  class="w-full h-[46px] bg-white border border-slate-200 text-slate-900 rounded-2xl pl-12 pr-4 py-3 focus:bg-white focus:border-[#658a22] focus:ring-4 focus:ring-[#658a22]/10 outline-none transition-all font-bold text-sm appearance-none cursor-pointer shadow-sm"
+                >
+                  <option value="newest">Mới nhất</option>
+                  <option value="price-asc">Giá: Thấp → Cao</option>
+                  <option value="price-desc">Giá: Cao → Thấp</option>
+                  <option value="sold-desc">Bán chạy nhất</option>
+                  <option value="rating-desc">Đánh giá cao nhất</option>
+                  <option value="eco-desc">Sống xanh nhất</option>
+                  <option value="promotion">Đang khuyến mãi</option>
+                </select>
+                <span
+                  class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"
+                  >expand_more</span
+                >
+              </div>
             </div>
           </div>
         </div>
@@ -440,6 +517,28 @@ onMounted(() => {
               >
                 {{ product.name }}
               </RouterLink>
+              <!-- Thông tin chi tiết sản phẩm -->
+              <div class="text-xm text-slate-500 my-4 space-y-1">
+                <div
+                  v-if="product.soLuongDaBan > 0"
+                  class="flex items-center mt-2 gap-1 text-rose-600"
+                >
+                  <span class="font-medium">Đã bán:</span>
+                  {{ product.soLuongDaBan.toLocaleString('vi-VN') }} cái
+                </div>
+                <div
+                  v-if="product.greenCerts && product.greenCerts.length > 0"
+                  class="flex flex-wrap gap-1 mt-2"
+                >
+                  <span
+                    v-for="cert in product.greenCerts"
+                    :key="cert.id"
+                    class="bg-emerald-100 text-emerald-700 text-[13px] my-2 font-bold px-2 py-0.5 rounded-full"
+                  >
+                    {{ cert.name }}
+                  </span>
+                </div>
+              </div>
 
               <div v-if="variantMap.get(product.id)?.length" class="mb-4">
                 <div class="flex flex-wrap gap-1.5">
