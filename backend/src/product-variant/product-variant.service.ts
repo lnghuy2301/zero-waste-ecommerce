@@ -70,4 +70,14 @@ export class ProductVariantService {
   async applyPromotion(dto: ApplyPromotionDto) {
     return this.productVariantRepository.applyPromotion(dto);
   }
+
+  async uploadVariantImage(id: number, file: Express.Multer.File) {
+    await this.productVariantHelper.checkVariant(id); // kiểm tra biến thể tồn tại
+    return this.productVariantRepository.uploadVariantImage(id, file);
+  }
+
+  async removeVariantImage(id: number) {
+    await this.productVariantHelper.checkVariant(id);
+    return this.productVariantRepository.removeVariantImage(id);
+  }
 }

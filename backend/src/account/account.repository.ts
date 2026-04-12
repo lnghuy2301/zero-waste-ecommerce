@@ -183,4 +183,62 @@ export class AccountRepository {
     });
     return updated;
   }
+  async getTopCustomers() {
+    // 1. Lấy danh sách khách hàng và dùng select để Prisma tự nội suy đúng kiểu dữ liệu
+    const customers = await this.prismaService.account.findMany({
+      where: {
+        role: 'CUSTOMER',
+      },
+      select: {
+        id: true,
+        email: true,
+        isActive: true,
+        avatar: true,
+        profile: {
+          select: {
+            fullName: true,
+            phone: true,
+          },
+        },
+        orders: {
+          select: {
+            totalAmount: true, // Sửa thành totalAmount chuẩn theo schema
+          },
+        },
+      },
+    });
+
+    // 2. Tính toán tổng số đơn và tổng tiền chi trả
+    const topCustomers = customers.map((customer) => {
+      // Đảm bảo orders luôn là mảng để tránh lỗi reduce
+      const customerOrders = customer.orders || [];
+      const totalOrders = customerOrders.length;
+
+      // Chuyển kiểu Decimal của Prisma sang Number trong JavaScript
+      const totalSpent = customerOrders.reduce(
+        (sum, order) => sum + Number(order.totalAmount || 0),
+        0,
+      );
+
+      return {
+        id: customer.id,
+        email: customer.email,
+        // profile là quan hệ 1-1 nên truy cập trực tiếp, không dùng [0]
+        fullName: customer.profile?.fullName || 'Chưa cập nhật',
+        phone: customer.profile?.phone || 'Chưa cập nhật',
+        avatar: customer.avatar,
+        isActive: customer.isActive,
+        totalOrders,
+        totalSpent,
+      };
+    });
+
+    // 3. Sắp xếp: Tổng tiền giảm dần -> Số lượng đơn hàng giảm dần
+    return topCustomers.sort((a, b) => {
+      if (b.totalSpent !== a.totalSpent) {
+        return b.totalSpent - a.totalSpent;
+      }
+      return b.totalOrders - a.totalOrders;
+    });
+  }
 }

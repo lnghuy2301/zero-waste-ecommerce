@@ -111,6 +111,7 @@ model ProductVariant {
   volume Int?    @map("dung_tich_ml")
   color  String? @map("mau_sac") @db.VarChar(50)
   size   String? @map("kich_thuoc") @db.VarChar(50)
+  image String? @map("hinh_anh") @db.VarChar(500)
 
   // QUAN_HE
   product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)

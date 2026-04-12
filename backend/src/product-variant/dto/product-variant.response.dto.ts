@@ -37,6 +37,9 @@ export class ProductVariantResponseDto {
   size: string | null;
 
   @Expose()
+  image: string | null;
+
+  @Expose()
   @Type(() => ProductResponseDto)
   product?: ProductResponseDto;
 }

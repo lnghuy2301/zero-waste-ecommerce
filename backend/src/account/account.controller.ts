@@ -98,6 +98,13 @@ export class AccountController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats/top-customers')
+  async getTopCustomers(@GetUser() currentUser: any) {
+    return this.accountService.getTopCustomers(currentUser);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.CUSTOMER)
   @Get(':id')
   async getAccount(

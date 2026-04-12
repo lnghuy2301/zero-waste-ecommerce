@@ -130,4 +130,35 @@ export class ProductVariantRepository {
       },
     });
   }
+  // === UPLOAD ẢNH RIÊNG CHO BIẾN THỂ (tương tự uploadMainImage của Product) ===
+  async uploadVariantImage(id: number, file: Express.Multer.File) {
+    const updated = await this.prismaService.productVariant.update({
+      where: { id },
+      data: {
+        image: `/uploads/${file.filename}`,
+      },
+      include: { product: true },
+    });
+
+    return plainToInstance(ProductVariantResponseDto, {
+      ...updated,
+      price: Number(updated.price),
+    });
+  }
+
+  // === XÓA ẢNH CỦA BIẾN THỂ (set về null) ===
+  async removeVariantImage(id: number) {
+    const updated = await this.prismaService.productVariant.update({
+      where: { id },
+      data: {
+        image: null,
+      },
+      include: { product: true },
+    });
+
+    return plainToInstance(ProductVariantResponseDto, {
+      ...updated,
+      price: Number(updated.price),
+    });
+  }
 }

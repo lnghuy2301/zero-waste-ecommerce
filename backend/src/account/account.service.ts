@@ -244,4 +244,19 @@ export class AccountService {
 
     return { message: 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập.' };
   }
+  async getTopCustomers(currentUser: any) {
+    // Chỉ Admin mới được xem thống kê này
+    await this.accountHelper.checkAdmin(currentUser.id);
+
+    const topCustomers = await this.accountRepository.getTopCustomers();
+
+    // (Tuỳ chọn) Lọc ra những khách hàng đã có ít nhất 1 đơn hàng để bảng thống kê gọn hơn
+    // const filtered = topCustomers.filter(c => c.totalOrders > 0);
+
+    if (!topCustomers || topCustomers.length === 0) {
+      throw new NotFoundException('Chưa có dữ liệu khách hàng để thống kê');
+    }
+
+    return topCustomers;
+  }
 }

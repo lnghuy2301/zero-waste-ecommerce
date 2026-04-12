@@ -85,16 +85,6 @@ export class ProductRepository {
     });
   }
 
-  // async getAllProducts(categoryId?: number): Promise<ProductResponseDto[]> {
-  //   const where = categoryId ? { categoryId } : {};
-  //   return this.prismaService.product.findMany({
-  //     where,
-  //     include: {
-  //       category: true,
-  //       greenCerts: true, // ← THÊM DÒNG NÀY
-  //     },
-  //   });
-  // }
   async getAllProducts(
     categoryId?: number,
     minPrice?: number,
@@ -220,5 +210,91 @@ export class ProductRepository {
       _sum: { soLuongDaBan: true },
     });
     return result._sum.soLuongDaBan || 0;
+  }
+  // === MỚI: CHI TIẾT ĐÃ BÁN + DOANH THU THEO TỪNG BIẾN THỂ (đã có từ lần trước) ===
+  async getSoldVariantsDetails() {
+    const result = await this.prismaService.$queryRaw<
+      {
+        variantId: number;
+        variantName: string;
+        productName: string;
+        sku: string;
+        soldQuantity: bigint;
+        revenue: string;
+      }[]
+    >`
+      SELECT 
+        pv.id AS "variantId",
+        pv."ten_bien_the" AS "variantName",
+        p."ten_san_pham" AS "productName",
+        pv.sku,
+        COALESCE(SUM(od."so_luong"), 0)::bigint AS "soldQuantity",
+        COALESCE(SUM(od."don_gia_luc_mua" * od."so_luong"), 0)::numeric(20,2) AS "revenue"
+      FROM "SAN_PHAM_BIEN_THE" pv
+      LEFT JOIN (
+        SELECT 
+          od."id_bien_the",
+          od."so_luong",
+          od."don_gia_luc_mua"
+        FROM "CHI_TIET_DON_HANG" od
+        INNER JOIN "DON_HANG" o 
+          ON o.id = od."id_don_hang"
+        WHERE o."trang_thai" IN ('PAID', 'SHIPPING', 'COMPLETED')
+      ) od ON od."id_bien_the" = pv.id
+      LEFT JOIN "SAN_PHAM" p ON pv."id_san_pham" = p.id
+      GROUP BY 
+        pv.id, 
+        pv."ten_bien_the", 
+        p."ten_san_pham", 
+        pv.sku
+      ORDER BY "soldQuantity" DESC;
+    `;
+
+    return result.map((item) => ({
+      variantId: Number(item.variantId),
+      variantName: item.variantName,
+      productName: item.productName,
+      sku: item.sku,
+      soldQuantity: Number(item.soldQuantity),
+      revenue: Number(item.revenue),
+    }));
+  }
+
+  // === MỚI: CHI TIẾT ĐÃ BÁN + DOANH THU THEO SẢN PHẨM (tổng tất cả biến thể) ===
+  async getSoldProductsDetails() {
+    const result = await this.prismaService.$queryRaw<
+      {
+        productId: number;
+        productName: string;
+        totalSoldQuantity: bigint;
+        totalRevenue: string;
+      }[]
+    >`
+      SELECT 
+        p.id AS "productId",
+        p."ten_san_pham" AS "productName",
+        COALESCE(SUM(od."so_luong"), 0)::bigint AS "totalSoldQuantity",
+        COALESCE(SUM(od."don_gia_luc_mua" * od."so_luong"), 0)::numeric(20,2) AS "totalRevenue"
+      FROM "SAN_PHAM" p
+      LEFT JOIN (
+        SELECT 
+          pv."id_san_pham",
+          od."so_luong",
+          od."don_gia_luc_mua"
+        FROM "CHI_TIET_DON_HANG" od
+        INNER JOIN "SAN_PHAM_BIEN_THE" pv ON pv.id = od."id_bien_the"
+        INNER JOIN "DON_HANG" o ON o.id = od."id_don_hang"
+        WHERE o."trang_thai" IN ('PAID', 'SHIPPING', 'COMPLETED')
+      ) od ON od."id_san_pham" = p.id
+      GROUP BY p.id, p."ten_san_pham"
+      ORDER BY "totalSoldQuantity" DESC;
+    `;
+
+    return result.map((item) => ({
+      productId: Number(item.productId),
+      productName: item.productName,
+      totalSoldQuantity: Number(item.totalSoldQuantity),
+      totalRevenue: Number(item.totalRevenue),
+    }));
   }
 }

@@ -37,13 +37,6 @@ export class ProductService {
     return product;
   }
 
-  // async getAllProducts(categoryId?: number): Promise<ProductResponseDto[]> {
-  //   const products = await this.productRepository.getAllProducts(categoryId);
-  //   if (products.length === 0) {
-  //     throw new BadRequestException('Không có sản phẩm nào tồn tại');
-  //   }
-  //   return products;
-  // }
   async getAllProducts(
     categoryId?: number,
     minPrice?: number,
@@ -94,5 +87,12 @@ export class ProductService {
 
   async getTotalSold(): Promise<number> {
     return this.productRepository.getTotalSold();
+  }
+  async getSoldVariantsDetails() {
+    return this.productRepository.getSoldVariantsDetails();
+  }
+
+  async getSoldProductsDetails() {
+    return this.productRepository.getSoldProductsDetails();
   }
 }

@@ -11,6 +11,9 @@ import {
   UseGuards,
   UsePipes,
   ValidationPipe,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { ProductVariantService } from './product-variant.service';
 import { ProductVariantRequestDto } from './dto/product-variant.request.dto';
@@ -21,7 +24,9 @@ import { JwtAuthGuard } from '../auth/auth.jwt.guard';
 import { RolesGuard } from '../auth/auth.role.guard';
 import { Roles } from '../auth/auth.role.decorator';
 import { Role } from '@prisma/client';
-
+import { FileInterceptor } from '@nestjs/platform-express';
+import { fileFilter, multerStorage } from '../media/config/multer.config';
+import { Express } from 'express';
 @Controller('product-variant')
 export class ProductVariantController {
   constructor(private readonly productVariantService: ProductVariantService) {}
@@ -87,5 +92,27 @@ export class ProductVariantController {
   )
   async applyPromotion(@Body() dto: ApplyPromotionDto) {
     return this.productVariantService.applyPromotion(dto);
+  }
+  // === UPLOAD ẢNH CHO BIẾN THỂ ===
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post(':id/image')
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multerStorage, fileFilter }),
+  )
+  async uploadVariantImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Không có file ảnh được upload');
+    return this.productVariantService.uploadVariantImage(id, file);
+  }
+
+  // === XÓA ẢNH CỦA BIẾN THỂ ===
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Delete(':id/image')
+  async removeVariantImage(@Param('id', ParseIntPipe) id: number) {
+    return this.productVariantService.removeVariantImage(id);
   }
 }

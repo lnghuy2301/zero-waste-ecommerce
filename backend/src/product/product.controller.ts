@@ -55,14 +55,6 @@ export class ProductController {
     return this.productService.getProductById(id);
   }
 
-  // @Get()
-  // async getAllProducts(
-  //   @Query('categoryId', new ParseIntPipe({ optional: true }))
-  //   categoryId?: number,
-  // ): Promise<ProductResponseDto[]> {
-  //   return this.productService.getAllProducts(categoryId);
-  // }
-
   @Get()
   async getAllProducts(
     @Query('categoryId', new ParseIntPipe({ optional: true }))
@@ -142,5 +134,20 @@ export class ProductController {
   @Get('stats/sold')
   async getTotalSold() {
     return this.productService.getTotalSold();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats/sold-variants')
+  async getSoldVariantsDetails() {
+    return this.productService.getSoldVariantsDetails();
+  }
+
+  // === ENDPOINT MỚI: CHI TIẾT ĐÃ BÁN + DOANH THU THEO SẢN PHẨM (tổng từ tất cả biến thể) ===
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('stats/sold-products')
+  async getSoldProductsDetails() {
+    return this.productService.getSoldProductsDetails();
   }
 }

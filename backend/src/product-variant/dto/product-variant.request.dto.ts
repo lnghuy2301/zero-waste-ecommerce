@@ -58,4 +58,8 @@ export class ProductVariantRequestDto {
   @IsString()
   @MaxLength(50)
   size?: string;
+
+  @IsOptional()
+  @IsString()
+  image?: string | null;
 }
