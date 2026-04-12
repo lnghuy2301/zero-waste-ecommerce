@@ -10,6 +10,14 @@ const route = useRoute()
 const product = ref<any>(null)
 const variants = ref<any[]>([])
 const selectedVariant = ref<any>(null)
+const displayImage = computed(() => {
+  // Ưu tiên ảnh của biến thể nếu có
+  if (selectedVariant.value?.image) {
+    return selectedVariant.value.image
+  }
+  // Không có thì lấy ảnh chính của sản phẩm
+  return product.value?.mainImage || null
+})
 const promotions = ref<any[]>([])
 const giftProducts = ref<any[]>([])
 const loading = ref(true)
@@ -32,15 +40,21 @@ const imgsRef = ref<string[]>([]) // Danh sách ảnh để phóng to
 const onHide = () => (isLightboxOpen.value = false)
 
 // Hàm này dùng để mở ảnh sản phẩm chính hoặc ảnh bất kỳ
-const openMainImageLightbox = (url: string) => {
-  imgsRef.value = [getImageUrl(url)] // Đưa ảnh vào mảng
-  isLightboxOpen.value = true
-}
+// const openMainImageLightbox = (url: string) => {
+//   imgsRef.value = [getImageUrl(url)] // Đưa ảnh vào mảng
+//   isLightboxOpen.value = true
+// }
 
 // Sửa lại hàm openLightbox cũ của bạn để dùng chung thư viện luôn cho đồng bộ
 const openLightbox = (mediaUrl: string) => {
   imgsRef.value = [getImageUrl(mediaUrl)]
   isLightboxOpen.value = true
+}
+const openMainImageLightbox = () => {
+  if (displayImage.value) {
+    imgsRef.value = [getImageUrl(displayImage.value)]
+    isLightboxOpen.value = true
+  }
 }
 // Cập nhật lại Logic Lightbox để dùng cho cả sản phẩm và comment
 
@@ -299,20 +313,12 @@ watch(
         class="grid grid-cols-1 lg:grid-cols-12 gap-10 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border-2 border-slate-100"
       >
         <div class="lg:col-span-5 space-y-4">
-          <!-- <div
-            class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group"
-          >
-            <img
-              :src="getImageUrl(product.mainImage)"
-              class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500"
-            />
-          </div> -->
           <div
             class="aspect-square w-full bg-[#f4f7ee]/50 rounded-3xl overflow-hidden flex items-center justify-center border-2 border-[#658a22]/10 relative group cursor-zoom-in"
-            @click="openMainImageLightbox(product.mainImage)"
+            @click="openMainImageLightbox()"
           >
             <img
-              :src="getImageUrl(product.mainImage)"
+              :src="getImageUrl(displayImage)"
               class="w-[85%] h-[85%] object-contain group-hover:scale-105 transition-transform duration-500"
             />
             <div

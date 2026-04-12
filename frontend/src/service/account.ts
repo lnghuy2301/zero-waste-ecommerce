@@ -42,7 +42,7 @@ export const Account = {
 
   async deleteAccountList(ids: number[]) {
     const response = await api.delete(`/account`, {
-      data: { Ids: ids }
+      data: { Ids: ids },
     })
     return response.data
   },
@@ -73,7 +73,12 @@ export const Account = {
   async resetPasswordWithToken(payload: { email: string; token: string; newPassword: string }) {
     const response = await api.post('/account/reset-password', payload)
     return response.data
-  }
+  },
+
+  async getTopCustomers() {
+    const response = await api.get('/account/stats/top-customers') // Đảm bảo route này khớp với Controller NestJS
+    return response.data
+  },
 }
 
 export default Account

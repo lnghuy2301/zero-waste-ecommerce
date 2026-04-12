@@ -383,6 +383,7 @@ const newVariant = ref({
 })
 
 // Load tất cả dữ liệu
+// Load tất cả dữ liệu
 const loadData = async () => {
   loading.value = true
   try {
@@ -395,26 +396,50 @@ const loadData = async () => {
       toDate: filters.value.toDate || undefined,
     }
 
-    const [prodRes, varRes, catRes, promoRes, greenRes] = await Promise.all([
-      api.get('/product', { params }), // backend hỗ trợ phân trang + lọc
-      ProductVariantService.getAll(),
-      Category.getAllCategories(),
-      Promotion.getAllPromotions(),
-      api.get('/green-certificate'),
-    ])
+    const [prodRes, varRes, soldProdRes, soldVarRes, catRes, promoRes, greenRes] =
+      await Promise.all([
+        api.get('/product', { params }),
+        ProductVariantService.getAll(),
+        api.get('/product/stats/sold-products'),
+        api.get('/product/stats/sold-variants'),
+        Category.getAllCategories(),
+        Promotion.getAllPromotions(),
+        api.get('/green-certificate'),
+      ])
 
-    // Xử lý response có phân trang
+    // Xử lý danh sách sản phẩm
     const productData = prodRes.data || prodRes
     products.value = Array.isArray(productData) ? productData : productData.items || []
     totalItems.value = productData.total || products.value.length
 
-    variants.value = varRes
+    // Gán dữ liệu đã bán + doanh thu cho sản phẩm
+    const soldProducts = soldProdRes.data || soldProdRes
+    products.value.forEach((p: any) => {
+      const stat = soldProducts.find((s: any) => s.productId === p.id)
+      p.totalSoldQuantity = stat ? stat.totalSoldQuantity : 0
+      p.totalRevenue = stat ? stat.totalRevenue : 0
+    })
+
+    // Gán dữ liệu đã bán + doanh thu cho biến thể
+    const soldVariants = soldVarRes.data || soldVarRes
+    variants.value = (varRes.data || varRes).map((v: any) => {
+      const stat = soldVariants.find((s: any) => s.variantId === v.id)
+      return {
+        ...v,
+        soldQuantity: stat ? stat.soldQuantity : 0,
+        revenue: stat ? stat.revenue : 0,
+      }
+    })
+
+    // Gán các dữ liệu còn lại
     categories.value = catRes || []
     promotions.value = promoRes || []
     greenCerts.value = greenRes.data || greenRes
   } catch (e) {
+    console.error(e)
     notify.error('Không tải được dữ liệu')
     products.value = []
+    variants.value = []
   } finally {
     loading.value = false
   }
@@ -717,14 +742,16 @@ onMounted(loadData)
                 </span>
               </div>
 
-              <div
-                v-if="product.soLuongDaBan > 0"
-                class="ml-auto text-rose-600 font-medium text-sm flex items-center gap-1"
-              >
+              <div class="ml-auto text-rose-600 font-medium text-sm flex items-center gap-1">
                 <span class="material-symbols-outlined">local_shipping</span>
                 Đã bán
-                <span class="font-black">{{ product.soLuongDaBan.toLocaleString('vi-VN') }}</span>
-                cái
+                <span class="font-black">{{
+                  product.totalSoldQuantity?.toLocaleString('vi-VN') || 0
+                }}</span>
+                cái •
+                <span class="font-black text-emerald-600">
+                  Doanh thu: {{ Number(product.totalRevenue || 0).toLocaleString('vi-VN') }}đ
+                </span>
               </div>
             </div>
           </div>
@@ -759,8 +786,24 @@ onMounted(loadData)
             <div class="text-[#658a22] font-black text-lg mt-1">
               {{ Number(variant.price).toLocaleString('vi-VN') }}đ
             </div>
+
             <div class="text-[15px] font-bold text-slate-400 mt-3 uppercase">
               Kho: {{ variant.stock }} | SKU: {{ variant.sku }}
+            </div>
+
+            <!-- THÊM: Đã bán + doanh thu của biến thể -->
+            <div class="mt-3 text-xs text-rose-600 font-medium flex items-center gap-1">
+              <span class="material-symbols-outlined text-base">local_shipping</span>
+              Đã bán:
+              <span class="font-black">{{
+                variant.soldQuantity?.toLocaleString('vi-VN') || 0
+              }}</span>
+            </div>
+            <div class="text-xs text-emerald-600 font-medium">
+              Doanh thu:
+              <span class="font-black"
+                >{{ Number(variant.revenue || 0).toLocaleString('vi-VN') }}đ</span
+              >
             </div>
 
             <div
@@ -782,10 +825,10 @@ onMounted(loadData)
     <!-- model tạo sản phẩm -->
     <div
       v-if="showProductModal"
-      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      class="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] p-4"
       @click.self="showProductModal = false"
     >
-      <div class="bg-transparent rounded-[40px] w-full max-w-lg p-10 shadow-2xl" @click.stop>
+      <div class="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl" @click.stop>
         <h2 class="text-2xl font-black mb-8 text-slate-900 flex items-center gap-2">
           <span class="w-2 h-8 bg-[#658a22] rounded-full"></span> Tạo sản phẩm mới
         </h2>

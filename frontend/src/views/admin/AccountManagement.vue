@@ -10,20 +10,22 @@ const selectedAccountIds = ref<number[]>([])
 
 const showDetailModal = ref(false)
 const currentAccount = ref<any>(null)
+const sortBy = ref('SPENT_DESC') // Mặc định sắp xếp theo tiền cao nhất
 
 // === Bộ lọc & Phân trang ===
 const searchQuery = ref('') // Ô tìm kiếm
-const filterStatus = ref('ALL') // 'ALL' | 'ACTIVE' | 'LOCKED' - Bộ lọc mới thêm
+const filterStatus = ref('ALL') // 'ALL' | 'ACTIVE' | 'LOCKED'
 const currentPage = ref(1)
 const itemsPerPage = 10
 
-// Load tất cả tài khoản
+// 1. Load tài khoản (Sửa hàm này để gọi API lấy dữ liệu có thống kê)
 const loadAccounts = async () => {
   loading.value = true
   try {
-    const res = await Account.getAllAccount()
+    // Gọi getTopCustomers để có sẵn fullName, totalSpent, totalOrders từ Backend
+    const res = await Account.getTopCustomers()
     accounts.value = Array.isArray(res) ? res : []
-    currentPage.value = 1 // Reset trang khi load lại
+    currentPage.value = 1
   } catch (e) {
     notify.error('Không tải được danh sách tài khoản')
     accounts.value = []
@@ -32,27 +34,51 @@ const loadAccounts = async () => {
   }
 }
 
-// Logic Tìm kiếm & Lọc
+// 2. Logic Tìm kiếm, Lọc & Sắp xếp (Bổ sung logic sort vào đây)
 const filteredList = computed(() => {
   let list = [...accounts.value]
 
-  // 1. Lọc theo trạng thái trước
+  // Lọc theo trạng thái trước
   if (filterStatus.value !== 'ALL') {
     const isLookingForActive = filterStatus.value === 'ACTIVE'
     list = list.filter((acc) => acc.isActive === isLookingForActive)
   }
 
-  // 2. Lọc danh sách theo email hoặc ID
+  // Lọc danh sách theo email, ID hoặc Tên khách hàng (nếu có)
   if (searchQuery.value.trim()) {
     const term = searchQuery.value.toLowerCase().trim()
     list = list.filter(
-      (acc) => acc.email?.toLowerCase().includes(term) || acc.id?.toString().includes(term),
+      (acc) =>
+        acc.email?.toLowerCase().includes(term) ||
+        acc.id?.toString().includes(term) ||
+        acc.fullName?.toLowerCase().includes(term),
     )
   }
-  return list
+
+  // LOGIC SẮP XẾP: Tiền chi trả (Giảm dần) -> Số đơn hàng (Giảm dần)
+  // Tìm phần return list.sort(...) cũ và thay bằng:
+  return list.sort((a, b) => {
+    const moneyA = Number(a.totalSpent || 0)
+    const moneyB = Number(b.totalSpent || 0)
+    const ordersA = Number(a.totalOrders || 0)
+    const ordersB = Number(b.totalOrders || 0)
+
+    switch (sortBy.value) {
+      case 'SPENT_DESC':
+        return moneyB - moneyA
+      case 'SPENT_ASC':
+        return moneyA - moneyB
+      case 'ORDERS_DESC':
+        return ordersB - ordersA
+      case 'ORDERS_ASC':
+        return ordersA - ordersB
+      default:
+        return 0
+    }
+  })
 })
 
-// Logic Phân trang: Cắt mảng để hiển thị 10 item mỗi trang
+// Logic Phân trang
 const pagedAccounts = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
   return filteredList.value.slice(start, start + itemsPerPage)
@@ -73,13 +99,12 @@ const toggleSelect = (id: number) => {
 const viewDetail = async (account: any) => {
   currentAccount.value = account
 
-  // Load profile nếu chưa có
+  // Load profile nếu chưa có (Dành cho thông tin chi tiết như địa chỉ, giới tính)
   if (!account.customerProfile) {
     try {
       const profile = await Profile.getCustomerProfile(account.id)
       currentAccount.value.customerProfile = profile
     } catch (e) {
-      // Nếu chưa có profile thì để trống
       currentAccount.value.customerProfile = null
     }
   }
@@ -143,7 +168,7 @@ onMounted(loadAccounts)
       <div class="relative flex-1 min-w-[300px]">
         <span
           class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-        >search</span
+          >search</span
         >
         <input
           v-model="searchQuery"
@@ -163,6 +188,15 @@ onMounted(loadAccounts)
         <option value="ACTIVE">Hoạt động</option>
         <option value="LOCKED">Đã khóa</option>
       </select>
+      <select
+        v-model="sortBy"
+        class="bg-slate-50 border-2 border-slate-100 text-slate-600 rounded-2xl px-5 py-3.5 outline-none transition-all font-bold cursor-pointer focus:border-[#658a22] min-w-[200px]"
+      >
+        <option value="SPENT_DESC">Khách hàng có điều kiện</option>
+        <option value="SPENT_ASC">Khách hàng ít điều kiện</option>
+        <option value="ORDERS_DESC">Khách hàng năng động</option>
+        <option value="ORDERS_ASC">Khách hàng ít sôi nổi</option>
+      </select>
 
       <div class="text-sm font-bold text-slate-500 px-2 hidden sm:block">
         Tổng số: {{ filteredList.length }}
@@ -180,49 +214,69 @@ onMounted(loadAccounts)
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-slate-50/80 border-b border-slate-100">
-          <tr>
-            <th class="w-14 px-6 py-4 text-center"></th>
-            <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">ID</th>
-            <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Email</th>
-            <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Vai trò</th>
-            <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Trạng thái</th>
-            <th class="px-6 py-4 text-center font-bold text-slate-600 text-sm">Thao tác</th>
-          </tr>
+            <tr>
+              <th class="w-14 px-6 py-4 text-center"></th>
+              <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">ID</th>
+              <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Khách hàng</th>
+              <th class="px-6 py-4 text-center font-bold text-slate-600 text-sm">Đơn hàng</th>
+              <th class="px-6 py-4 text-right font-bold text-slate-600 text-sm">Tổng chi tiêu</th>
+              <th class="px-6 py-4 text-left font-bold text-slate-600 text-sm">Trạng thái</th>
+              <th class="px-6 py-4 text-center font-bold text-slate-600 text-sm">Thao tác</th>
+            </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-          <tr
-            v-for="account in pagedAccounts"
-            :key="account.id"
-            @click="toggleSelect(account.id)"
-            class="hover:bg-slate-50/50 cursor-pointer transition-all group"
-            :class="
+            <tr
+              v-for="account in pagedAccounts"
+              :key="account.id"
+              @click="toggleSelect(account.id)"
+              class="hover:bg-slate-50/50 cursor-pointer transition-all group"
+              :class="
                 selectedAccountIds.includes(account.id)
                   ? 'bg-[#f8fdf0] border-l-4 border-[#658a22]'
                   : 'border-l-4 border-transparent'
               "
-          >
-            <td class="px-6 py-5 text-center">
-              <div
-                v-if="selectedAccountIds.includes(account.id)"
-                class="w-6 h-6 mx-auto bg-[#658a22] text-white rounded-full flex items-center justify-center text-xs font-bold"
-              >
-                ✓
-              </div>
-              <div
-                v-else
-                class="w-6 h-6 mx-auto border-2 border-slate-200 rounded-full flex items-center justify-center text-xs font-bold bg-white group-hover:border-slate-300"
-              ></div>
-            </td>
-            <td class="px-6 py-5 font-bold text-slate-700">{{ account.id }}</td>
-            <td class="px-6 py-5 text-slate-700 font-medium">{{ account.email }}</td>
-            <td class="px-6 py-5">
-                <span
-                  class="inline-block px-3 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide"
+            >
+              <td class="px-6 py-5 text-center">
+                <div
+                  v-if="selectedAccountIds.includes(account.id)"
+                  class="w-6 h-6 mx-auto bg-[#658a22] text-white rounded-full flex items-center justify-center text-xs font-bold"
                 >
-                  {{ account.role }}
+                  ✓
+                </div>
+                <div
+                  v-else
+                  class="w-6 h-6 mx-auto border-2 border-slate-200 rounded-full flex items-center justify-center text-xs font-bold bg-white group-hover:border-slate-300"
+                ></div>
+              </td>
+
+              <td class="px-6 py-5 font-bold text-slate-700">{{ account.id }}</td>
+
+              <td class="px-6 py-5">
+                <div class="flex flex-col">
+                  <span class="text-slate-700 font-bold">{{
+                    account.fullName || 'Chưa cập nhật'
+                  }}</span>
+                  <span class="text-slate-400 text-xs">{{ account.email }}</span>
+                </div>
+              </td>
+
+              <td class="px-6 py-5 text-center">
+                <span
+                  class="inline-flex items-center justify-center bg-blue-50 text-blue-700 px-3 py-1 rounded-lg font-bold text-xs"
+                >
+                  {{ account.totalOrders || 0 }} đơn
                 </span>
-            </td>
-            <td class="px-6 py-5">
+              </td>
+
+              <td class="px-6 py-5 text-right font-black text-[#658a22]">
+                {{
+                  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                    account.totalSpent || 0,
+                  )
+                }}
+              </td>
+
+              <td class="px-6 py-5">
                 <span
                   :class="{
                     'inline-block px-4 py-1 text-xs font-bold rounded-full': true,
@@ -232,33 +286,34 @@ onMounted(loadAccounts)
                 >
                   {{ account.isActive ? 'Hoạt động' : 'Đã khóa' }}
                 </span>
-            </td>
-            <td class="px-6 py-5 text-center">
-              <div class="flex items-center justify-center gap-4">
-                <button
-                  @click.stop="viewDetail(account)"
-                  class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
-                >
-                  <span class="material-symbols-outlined text-lg">visibility</span>
-                  Chi tiết
-                </button>
-                <button
-                  @click.stop="toggleActive(account.id, account.isActive)"
-                  class="font-semibold text-sm flex items-center gap-1"
-                  :class="
+              </td>
+
+              <td class="px-6 py-5 text-center">
+                <div class="flex items-center justify-center gap-4">
+                  <button
+                    @click.stop="viewDetail(account)"
+                    class="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
+                  >
+                    <span class="material-symbols-outlined text-lg">visibility</span>
+                    Chi tiết
+                  </button>
+                  <button
+                    @click.stop="toggleActive(account.id, account.isActive)"
+                    class="font-semibold text-sm flex items-center gap-1"
+                    :class="
                       account.isActive
                         ? 'text-red-500 hover:text-red-700'
                         : 'text-emerald-500 hover:text-emerald-700'
                     "
-                >
+                  >
                     <span class="material-symbols-outlined text-lg">
                       {{ account.isActive ? 'lock' : 'lock_open' }}
                     </span>
-                  {{ account.isActive ? 'Khóa' : 'Mở khóa' }}
-                </button>
-              </div>
-            </td>
-          </tr>
+                    {{ account.isActive ? 'Khóa' : 'Mở khóa' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

@@ -14,18 +14,15 @@ const isAuthPage = computed(() => {
 </script>
 
 <template>
-  <div
-    class="relative flex min-h-screen flex-col bg-background-light text-slate-900 dark:text-slate-100 antialiased"
-  >
+  <div class="relative flex min-h-screen flex-col bg-white text-slate-900 antialiased">
     <Navbar v-if="!isAuthPage" />
 
-    <!-- Đây là đoạn bạn muốn giữ -->
     <main
       class="flex-grow relative bg-cover bg-center bg-no-repeat transition-all duration-500"
       :class="{ 'px-10': !isAuthPage }"
-      :style="!isAuthPage ? { backgroundImage: `url(${bgImage})` } : {}"
     >
-      <div v-if="!isAuthPage" class="absolute inset-0 bg-white/40 dark:bg-black/60 z-0"></div>
+      <div v-if="!isAuthPage" class="absolute inset-0 bg-white/80 z-0"></div>
+
       <div :class="{ 'relative z-10 container mx-auto px-4': !isAuthPage }">
         <RouterView />
       </div>

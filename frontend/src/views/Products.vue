@@ -93,10 +93,11 @@ const fetchProducts = async () => {
 }
 
 // === COMPUTED: Lọc + Sắp xếp ===
+// === COMPUTED: Lọc + Sắp xếp ===
 const filteredAndSortedProducts = computed(() => {
   let list = [...products.value]
 
-  //1. Lọc theo từ khóa
+  // 1. Lọc theo từ khóa
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim()
     list = list.filter(
@@ -105,15 +106,16 @@ const filteredAndSortedProducts = computed(() => {
         (p.description && p.description.toLowerCase().includes(q)),
     )
   }
-  // 2. BỔ SUNG: Lọc theo khoảng giá (Min - Max)
+
+  // 2. Lọc theo khoảng giá
   list = list.filter((p) => {
     const price = getLowestPrice(p.id)
     if (price === null) return false
-
     const minMatch = minPriceInput.value === null || price >= minPriceInput.value
     const maxMatch = maxPriceInput.value === null || price <= maxPriceInput.value
     return minMatch && maxMatch
   })
+
   // 3. Lọc theo chất liệu
   if (selectedMaterial.value) {
     list = list.filter((p) =>
@@ -128,7 +130,7 @@ const filteredAndSortedProducts = computed(() => {
     )
   }
 
-  // 5. Lọc theo mức độ thân thiện (từ 1-10)
+  // 5. Lọc theo mức độ thân thiện
   if (minEco.value) {
     list = list.filter((p) => (p.ecoFriendliness || 0) >= Number(minEco.value))
   }
@@ -138,7 +140,7 @@ const filteredAndSortedProducts = computed(() => {
     list = list.filter((p) => (p.danhGiaTrungBinh || 0) >= Number(minRating.value))
   }
 
-  //7. Lọc chỉ sản phẩm có khuyến mãi
+  // 7. Lọc chỉ sản phẩm có khuyến mãi (nếu có toggle)
   if (showOnlyPromotion.value) {
     list = list.filter((p) => {
       const variants = variantMap.value.get(p.id) || []
@@ -146,18 +148,27 @@ const filteredAndSortedProducts = computed(() => {
     })
   }
 
-  // 4. Sắp xếp (Bổ sung 'sold-desc')
+  // ==================== PHẦN SẮP XẾP ====================
   if (sortOption.value === 'price-asc') {
     list.sort((a, b) => (getLowestPrice(a.id) || Infinity) - (getLowestPrice(b.id) || Infinity))
   } else if (sortOption.value === 'price-desc') {
     list.sort((a, b) => (getLowestPrice(b.id) || -Infinity) - (getLowestPrice(a.id) || -Infinity))
   } else if (sortOption.value === 'sold-desc') {
-    // Sắp xếp theo số lượng đã bán (Bán chạy)
     list.sort((a, b) => (b.soLuongDaBan || 0) - (a.soLuongDaBan || 0))
   } else if (sortOption.value === 'rating-desc') {
     list.sort((a, b) => (b.danhGiaTrungBinh || 0) - (a.danhGiaTrungBinh || 0))
+  } else if (sortOption.value === 'promotion') {
+    // === Sắp xếp theo khuyến mãi: sản phẩm có khuyến mãi sẽ lên đầu ===
+    list.sort((a, b) => {
+      const aHasPromo = (variantMap.value.get(a.id) || []).some((v: any) => v.promotionId != null)
+      const bHasPromo = (variantMap.value.get(b.id) || []).some((v: any) => v.promotionId != null)
+
+      if (aHasPromo && !bHasPromo) return -1 // a có KM → lên trước
+      if (!aHasPromo && bHasPromo) return 1 // b có KM → lên trước
+      return 0 // cùng có hoặc cùng không → giữ nguyên thứ tự
+    })
   } else {
-    // newest
+    // mặc định: newest
     list.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
   }
 
@@ -442,7 +453,6 @@ onMounted(() => {
                   <option value="price-desc">Giá: Cao → Thấp</option>
                   <option value="sold-desc">Bán chạy nhất</option>
                   <option value="rating-desc">Đánh giá cao nhất</option>
-                  <option value="eco-desc">Sống xanh nhất</option>
                   <option value="promotion">Đang khuyến mãi</option>
                 </select>
                 <span
@@ -491,10 +501,39 @@ onMounted(() => {
               <img
                 :src="getImageUrl(product.mainImage)"
                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                alt="product image"
               />
+
+              <!-- Overlay tối nhẹ khi hover -->
               <div
-                class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300"
+                class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"
               ></div>
+
+              <!-- Đánh giá trung bình - Góc trên bên TRÁI -->
+              <div
+                v-if="product.danhGiaTrungBinh && product.danhGiaTrungBinh > 0"
+                class="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-xl shadow-sm flex items-center gap-1 text-sm font-bold z-10"
+              >
+                <span class="text-[#658a22]">{{ product.danhGiaTrungBinh.toFixed(1) }}</span>
+                <span class="text-amber-400 text-base leading-none">★</span>
+              </div>
+
+              <!-- Số lượng đánh giá - Góc trên bên PHẢI -->
+              <div
+                v-if="product.soLuongDanhGia && product.soLuongDanhGia > 0"
+                class="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-xl shadow-sm text-xs font-medium text-slate-600 z-10"
+              >
+                {{ product.soLuongDanhGia.toLocaleString('vi-VN') }} đánh giá
+              </div>
+
+              <!-- Badge "Eco" nếu ecoFriendliness cao (giữ nguyên) -->
+              <div
+                v-if="product.ecoFriendliness > 80"
+                class="absolute bottom-3 left-3 bg-emerald-100 text-emerald-700 text-[13px] font-bold px-3 py-1 rounded-2xl flex items-center gap-1 shadow-sm z-10"
+              >
+                <span class="material-symbols-outlined text-sm">eco</span>
+                Eco
+              </div>
             </div>
 
             <div class="flex flex-col flex-grow px-1">
