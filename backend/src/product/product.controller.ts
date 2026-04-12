@@ -136,16 +136,12 @@ export class ProductController {
     return this.productService.getTotalSold();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  // === CHO PHÉP KHÁCH HÀNG XEM SỐ LƯỢNG ĐÃ BÁN THỰC TẾ ===
   @Get('stats/sold-variants')
   async getSoldVariantsDetails() {
     return this.productService.getSoldVariantsDetails();
   }
 
-  // === ENDPOINT MỚI: CHI TIẾT ĐÃ BÁN + DOANH THU THEO SẢN PHẨM (tổng từ tất cả biến thể) ===
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
   @Get('stats/sold-products')
   async getSoldProductsDetails() {
     return this.productService.getSoldProductsDetails();

@@ -11,7 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AccountService } from '../account/account.service';
 import { AccountRequestDto } from '../account/dto/account.request.dto';
 import { plainToInstance } from 'class-transformer';
-import {AccountHelper} from "../account/account.helper";
+import { AccountHelper } from '../account/account.helper';
 
 @Injectable()
 export class AuthService {
@@ -67,11 +67,13 @@ export class AuthService {
 
     let account = await this.prismaService.account.findUnique({
       where: { email },
-      include: { profile: true } // Lấy kèm profile
+      include: { profile: true }, // Lấy kèm profile
     });
 
     if (!account) {
-      const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      const randomPassword =
+        Math.random().toString(36).slice(-8) +
+        Math.random().toString(36).slice(-8);
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
       account = await this.prismaService.account.create({
@@ -81,14 +83,18 @@ export class AuthService {
           profile: {
             create: {
               fullName: fullName || 'Google User',
-            }
-          }
+            },
+          },
         },
-        include: { profile: true }
+        include: { profile: true },
       });
     }
 
-    const payload = { sub: account.id, email: account.email, role: account.role };
+    const payload = {
+      sub: account.id,
+      email: account.email,
+      role: account.role,
+    };
     const token = this.jwtService.sign(payload);
 
     return {
@@ -97,9 +103,9 @@ export class AuthService {
         email: account.email,
         fullName: account.profile?.fullName,
         avatar: account.avatar,
-        role: account.role
+        role: account.role,
       },
-      token
+      token,
     };
   }
 }
