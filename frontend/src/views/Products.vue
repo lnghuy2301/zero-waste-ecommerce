@@ -53,24 +53,32 @@ const fetchProducts = async () => {
     let url = '/product'
     if (categoryId) url += `?categoryId=${categoryId}`
 
-    const [prodRes, variantRes, promoRes, greenRes] = await Promise.all([
+    const [prodRes, variantRes, soldVarRes, promoRes, greenRes] = await Promise.all([
       api.get(url),
       api.get('/product-variant'),
+      api.get('/product/stats/sold-variants'), // ← thêm dòng này
       api.get('/promotion'),
-      api.get('/green-certificate'), // ← thêm dòng này
+      api.get('/green-certificate'),
     ])
 
-    promotions.value = Array.isArray(promoRes.data) ? promoRes.data : []
-    greenCerts.value = Array.isArray(greenRes.data) ? greenRes.data : [] // ← thêm dòng này
+    products.value = prodRes.data || []
+    const allVariants = variantRes.data || []
+    const soldVariants = soldVarRes.data || []
 
-    products.value = prodRes.data
-    const allVariants = variantRes.data
-    promotions.value = promoRes.data
+    promotions.value = promoRes.data || []
+    greenCerts.value = greenRes.data || []
+
+    // Merge soldQuantity vào variant
+    const variantWithSold = allVariants.map((v: any) => {
+      const sold = soldVariants.find((s: any) => s.variantId === v.id)
+      return {
+        ...v,
+        soldQuantity: sold ? sold.soldQuantity : 0,
+      }
+    })
 
     const map = new Map<number, any[]>()
-    const initialSelected = new Map<number, any>()
-
-    allVariants.forEach((v: any) => {
+    variantWithSold.forEach((v: any) => {
       if (!map.has(v.productId)) map.set(v.productId, [])
       map.get(v.productId)!.push(v)
     })
@@ -78,12 +86,11 @@ const fetchProducts = async () => {
     products.value.forEach((p) => {
       const variants = map.get(p.id) || []
       if (variants.length > 0) {
-        initialSelected.set(p.id, variants[0])
+        selectedVariants.value.set(p.id, variants[0])
       }
     })
 
     variantMap.value = map
-    selectedVariants.value = initialSelected
     currentPage.value = 1
   } catch (e) {
     console.error('Lỗi lấy sản phẩm:', e)
@@ -92,7 +99,6 @@ const fetchProducts = async () => {
   }
 }
 
-// === COMPUTED: Lọc + Sắp xếp ===
 // === COMPUTED: Lọc + Sắp xếp ===
 const filteredAndSortedProducts = computed(() => {
   let list = [...products.value]
@@ -154,7 +160,7 @@ const filteredAndSortedProducts = computed(() => {
   } else if (sortOption.value === 'price-desc') {
     list.sort((a, b) => (getLowestPrice(b.id) || -Infinity) - (getLowestPrice(a.id) || -Infinity))
   } else if (sortOption.value === 'sold-desc') {
-    list.sort((a, b) => (b.soLuongDaBan || 0) - (a.soLuongDaBan || 0))
+    list.sort((a, b) => getRealSoldQuantity(b.id) - getRealSoldQuantity(a.id))
   } else if (sortOption.value === 'rating-desc') {
     list.sort((a, b) => (b.danhGiaTrungBinh || 0) - (a.danhGiaTrungBinh || 0))
   } else if (sortOption.value === 'promotion') {
@@ -224,6 +230,11 @@ const getDiscountedPrice = (variant: any) => {
   return Math.max(0, finalPrice)
 }
 
+// === THÊM SAU getDiscountedPrice ===
+const getRealSoldQuantity = (productId: number) => {
+  const variants = variantMap.value.get(productId) || []
+  return variants.reduce((sum, v) => sum + (Number(v.soldQuantity) || 0), 0)
+}
 watch([searchQuery, sortOption, selectedMaterial, selectedGreenCert, minEco, minRating], () => {
   currentPage.value = 1
 })
@@ -538,8 +549,11 @@ onMounted(() => {
 
             <div class="flex flex-col flex-grow px-1">
               <div class="flex items-center gap-2 mb-1">
-                <span v-if="product.soLuongDaBan > 0" class="text-[13px] font-bold text-slate-400">
-                  Đã bán {{ product.soLuongDaBan }}
+                <span
+                  v-if="getRealSoldQuantity(product.id) > 0"
+                  class="text-[13px] font-bold text-slate-400"
+                >
+                  Đã bán {{ getRealSoldQuantity(product.id) }}
                 </span>
                 <span
                   v-if="product.ecoFriendliness > 80"
@@ -559,11 +573,11 @@ onMounted(() => {
               <!-- Thông tin chi tiết sản phẩm -->
               <div class="text-xm text-slate-500 my-4 space-y-1">
                 <div
-                  v-if="product.soLuongDaBan > 0"
+                  v-if="getRealSoldQuantity(product.id) > 0"
                   class="flex items-center mt-2 gap-1 text-rose-600"
                 >
                   <span class="font-medium">Đã bán:</span>
-                  {{ product.soLuongDaBan.toLocaleString('vi-VN') }} cái
+                  {{ getRealSoldQuantity(product.id).toLocaleString('vi-VN') }} cái
                 </div>
                 <div
                   v-if="product.greenCerts && product.greenCerts.length > 0"

@@ -702,6 +702,7 @@ onMounted(loadOrders)
               </div>
               <table class="w-full mb-8">
                 <thead>
+<<<<<<< HEAD
                 <tr class="bg-slate-800 text-white">
                   <th
                     class="px-5 py-3 text-left text-xs font-black uppercase tracking-wider rounded-l-xl"
@@ -739,6 +740,45 @@ onMounted(loadOrders)
                 <tr v-if="!currentOrder?.orderItems?.length">
                   <td colspan="4" class="py-8 text-center text-slate-400">Không có sản phẩm</td>
                 </tr>
+=======
+                  <tr class="bg-slate-800 text-white">
+                    <th
+                      class="px-5 py-3 text-left text-xs font-black uppercase tracking-wider rounded-l-xl"
+                    >
+                      Sản phẩm
+                    </th>
+                    <th class="px-7 py-3 text-center text-xs font-black uppercase tracking-wider">
+                      SL
+                    </th>
+                    <th class="px-5 py-3 text-center text-xs font-black uppercase tracking-wider">
+                      Đơn giá
+                    </th>
+                    <th
+                      class="px-5 py-3 text-right text-xs font-black uppercase tracking-wider rounded-r-xl"
+                    >
+                      Thành tiền
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="item in currentOrder?.orderItems || []" :key="item.id">
+                    <td class="px-5 py-4 font-semibold text-slate-700">
+                      {{ item.variant?.name || 'Sản phẩm' }}
+                    </td>
+                    <td class="px-5 py-4 text-center font-bold text-slate-600">
+                      {{ item.quantity }}
+                    </td>
+                    <td class="px-5 py-4 text-center font-black text-slate-800">
+                      {{ Number(item.price).toLocaleString('vi-VN') }}₫
+                    </td>
+                    <td class="px-5 py-4 text-right font-black text-slate-800">
+                      {{ (Number(item.price) * Number(item.quantity)).toLocaleString('vi-VN') }}₫
+                    </td>
+                  </tr>
+                  <tr v-if="!currentOrder?.orderItems?.length">
+                    <td colspan="4" class="py-8 text-center text-slate-400">Không có sản phẩm</td>
+                  </tr>
+>>>>>>> 96febe0 (Update frontend and folders xử lý giao diện)
                 </tbody>
               </table>
 

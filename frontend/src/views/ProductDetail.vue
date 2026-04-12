@@ -18,6 +18,11 @@ const displayImage = computed(() => {
   // Không có thì lấy ảnh chính của sản phẩm
   return product.value?.mainImage || null
 })
+
+// === TỔNG SỐ LƯỢNG ĐÃ BÁN CỦA TOÀN BỘ SẢN PHẨM ===
+const totalSoldQuantity = computed(() => {
+  return variants.value.reduce((sum, v) => sum + (v.soldQuantity || 0), 0)
+})
 const promotions = ref<any[]>([])
 const giftProducts = ref<any[]>([])
 const loading = ref(true)
@@ -199,17 +204,36 @@ const fetchData = async () => {
   if (!id) return
   loading.value = true
   try {
-    const [prodRes, variantRes, promoRes, bundleRes] = await Promise.all([
+    const [prodRes, variantRes, soldVarRes, promoRes, bundleRes] = await Promise.all([
       api.get(`/product/${id}`),
       api.get('/product-variant'),
+      api.get('/product/stats/sold-variants'), // ← thêm dòng này
       api.get('/promotion'),
       api.get(`/bundle-item?bundleProductId=${id}`).catch(() => ({ data: [] })),
     ])
+
     product.value = prodRes.data
     promotions.value = promoRes.data
-    variants.value = variantRes.data.filter((v: any) => v.productId === id)
-    if (variants.value.length > 0) selectedVariant.value = variants.value[0]
 
+    // Merge soldQuantity vào variants
+    let allVariants = variantRes.data || []
+    const soldVariants = soldVarRes.data || []
+
+    variants.value = allVariants
+      .filter((v: any) => v.productId === id)
+      .map((v: any) => {
+        const sold = soldVariants.find((s: any) => s.variantId === v.id)
+        return {
+          ...v,
+          soldQuantity: sold ? Number(sold.soldQuantity) : 0,
+        }
+      })
+
+    if (variants.value.length > 0) {
+      selectedVariant.value = variants.value[0]
+    }
+
+    // Bundle giữ nguyên
     giftProducts.value = []
     if (bundleRes.data && Array.isArray(bundleRes.data)) {
       for (const b of bundleRes.data) {
@@ -226,6 +250,7 @@ const fetchData = async () => {
         })
       }
     }
+
     await fetchComments(id)
   } catch (e) {
     console.error('Lỗi tải dữ liệu:', e)
@@ -382,9 +407,12 @@ watch(
                 ]"
               >
                 {{ v.name }}
-                <span class="text-[10px] font-normal opacity-70 mt-1 uppercase tracking-wider">{{
+                <span class="text-[13px] font-normal opacity-70 mt-1 uppercase tracking-wider">{{
                   v.color
                 }}</span>
+                <span v-if="v.soldQuantity > 0" class="text-[13px] text-rose-600 font-medium mt-2">
+                  Đã bán: {{ v.soldQuantity }}
+                </span>
               </button>
             </div>
             <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
@@ -419,11 +447,11 @@ watch(
               <span class="font-medium text-slate-700">{{ product.reusability }}</span>
             </div>
 
-            <div v-if="product.soLuongDaBan > 0" class="flex flex-col">
+            <div v-if="totalSoldQuantity > 0" class="flex flex-col">
               <span class="text-slate-400 text-xs font-bold uppercase tracking-widest">Đã bán</span>
-              <span class="font-medium text-rose-600"
-                >{{ product.soLuongDaBan.toLocaleString('vi-VN') }} cái</span
-              >
+              <span class="font-medium text-rose-600">
+                {{ totalSoldQuantity.toLocaleString('vi-VN') }} cái
+              </span>
             </div>
           </div>
 
