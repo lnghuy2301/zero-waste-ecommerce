@@ -25,7 +25,7 @@ const filteredOrders = computed(() => {
 
   // Lọc theo trạng thái trước
   if (filterStatus.value !== 'ALL') {
-    result = result.filter(order => order.status === filterStatus.value)
+    result = result.filter((order) => order.status === filterStatus.value)
   }
 
   // Lọc theo ID khách hàng
@@ -259,87 +259,87 @@ onMounted(loadOrders)
       <div class="overflow-x-auto">
         <table class="w-full text-base min-w-[1100px]">
           <thead class="bg-slate-50 border-b border-slate-100">
-          <tr>
-            <th class="px-6 py-5 w-12"></th>
-            <th
-              class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
-            >
-              Mã đơn
-            </th>
-            <th
-              class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
-            >
-              KH ID
-            </th>
-            <th
-              class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
-            >
-              Tổng tiền
-            </th>
-            <th
-              class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
-            >
-              Trạng thái
-            </th>
-            <th
-              class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
-            >
-              Địa chỉ giao
-            </th>
-            <th
-              class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
-            >
-              Ngày tạo
-            </th>
-            <th
-              class="px-6 py-5 text-center font-bold text-slate-400 uppercase text-xs tracking-widest"
-            >
-              Thao tác
-            </th>
-          </tr>
+            <tr>
+              <th class="px-6 py-5 w-12"></th>
+              <th
+                class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
+              >
+                Mã đơn
+              </th>
+              <th
+                class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
+              >
+                KH ID
+              </th>
+              <th
+                class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
+              >
+                Tổng tiền
+              </th>
+              <th
+                class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
+              >
+                Trạng thái
+              </th>
+              <th
+                class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
+              >
+                Địa chỉ giao
+              </th>
+              <th
+                class="px-6 py-5 text-left font-bold text-slate-400 uppercase text-xs tracking-widest"
+              >
+                Ngày tạo
+              </th>
+              <th
+                class="px-6 py-5 text-center font-bold text-slate-400 uppercase text-xs tracking-widest"
+              >
+                Thao tác
+              </th>
+            </tr>
           </thead>
           <tbody class="divide-y divide-slate-50">
-          <tr
-            v-for="order in paginatedOrders"
-            :key="order.id"
-            @click="toggleSelect(order.id)"
-            class="hover:bg-slate-50/80 cursor-pointer transition-all group"
-            :class="
+            <tr
+              v-for="order in paginatedOrders"
+              :key="order.id"
+              @click="toggleSelect(order.id)"
+              class="hover:bg-slate-50/80 cursor-pointer transition-all group"
+              :class="
                 selectedOrderIds.includes(order.id)
                   ? 'bg-[#f5fae8] border-l-4 border-[#658a22]'
                   : ''
               "
-          >
-            <td class="px-6 py-5 text-center">
-              <div
-                v-if="selectedOrderIds.includes(order.id)"
-                class="w-6 h-6 mx-auto bg-[#658a22] text-white rounded-full flex items-center justify-center text-sm font-black shadow"
-              >
-                ✓
-              </div>
-              <div
-                v-else
-                class="w-6 h-6 mx-auto border-2 border-slate-200 rounded-full group-hover:border-[#658a22]/40 transition-all"
-              ></div>
-            </td>
-
-            <td class="px-6 py-5">
-              <span class="font-black text-slate-800 text-base">{{ order.code || 'N/A' }}</span>
-            </td>
-
-            <td class="px-6 py-5">
-                <span class="bg-slate-100 text-slate-600 font-bold px-3 py-1 rounded-lg text-sm"
-                >#{{ order.accountId }}</span
+            >
+              <td class="px-6 py-5 text-center">
+                <div
+                  v-if="selectedOrderIds.includes(order.id)"
+                  class="w-6 h-6 mx-auto bg-[#658a22] text-white rounded-full flex items-center justify-center text-sm font-black shadow"
                 >
-            </td>
+                  ✓
+                </div>
+                <div
+                  v-else
+                  class="w-6 h-6 mx-auto border-2 border-slate-200 rounded-full group-hover:border-[#658a22]/40 transition-all"
+                ></div>
+              </td>
 
-            <td class="px-6 py-5">
+              <td class="px-6 py-5">
+                <span class="font-black text-slate-800 text-base">{{ order.code || 'N/A' }}</span>
+              </td>
+
+              <td class="px-6 py-5">
+                <span class="bg-slate-100 text-slate-600 font-bold px-3 py-1 rounded-lg text-sm"
+                  >#{{ order.accountId }}</span
+                >
+              </td>
+
+              <td class="px-6 py-5">
                 <span class="font-black text-emerald-600 text-base">
                   {{ Number(order.totalAmount || 0).toLocaleString('vi-VN') }}₫
                 </span>
-            </td>
+              </td>
 
-            <td class="px-6 py-5">
+              <td class="px-6 py-5">
                 <span
                   class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-tight rounded-xl"
                   :class="{
@@ -354,75 +354,75 @@ onMounted(loadOrders)
                   }"
                 >
                   <span>{{
-                      order.status === 'PENDING'
-                        ? '⏳'
-                        : order.status === 'PAID'
-                          ? '💳'
-                          : order.status === 'SHIPPING'
-                            ? '🚚'
-                            : order.status === 'COMPLETED'
-                              ? '✅'
-                              : '❌'
-                    }}</span>
+                    order.status === 'PENDING'
+                      ? '⏳'
+                      : order.status === 'PAID'
+                        ? '💳'
+                        : order.status === 'SHIPPING'
+                          ? '🚚'
+                          : order.status === 'COMPLETED'
+                            ? '✅'
+                            : '❌'
+                  }}</span>
                   {{ statusLabel[order.status] || order.status }}
                 </span>
-            </td>
+              </td>
 
-            <td class="px-6 py-5 text-slate-500 text-sm font-medium max-w-[200px] truncate">
-              {{ order.shippingAddress }}
-            </td>
+              <td class="px-6 py-5 text-slate-500 text-sm font-medium max-w-[200px] truncate">
+                {{ order.shippingAddress }}
+              </td>
 
-            <td class="px-6 py-5 text-slate-400 text-sm font-semibold whitespace-nowrap">
-              {{ new Date(order.createdAt).toLocaleString('vi-VN') }}
-            </td>
+              <td class="px-6 py-5 text-slate-400 text-sm font-semibold whitespace-nowrap">
+                {{ new Date(order.createdAt).toLocaleString('vi-VN') }}
+              </td>
 
-            <td class="px-6 py-5" @click.stop>
-              <div class="flex items-center justify-center gap-2 flex-wrap">
-                <button
-                  @click="viewDetail(order)"
-                  class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all whitespace-nowrap"
-                >
-                  Chi tiết
-                </button>
+              <td class="px-6 py-5" @click.stop>
+                <div class="flex items-center justify-center gap-2 flex-wrap">
+                  <button
+                    @click="viewDetail(order)"
+                    class="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all whitespace-nowrap"
+                  >
+                    Chi tiết
+                  </button>
 
-                <button
-                  v-if="order.status === 'PENDING'"
-                  @click="updateStatus(order.id, 'PAID')"
-                  class="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all whitespace-nowrap"
-                >
-                  Thanh toán
-                </button>
-                <button
-                  v-if="order.status === 'PAID'"
-                  @click="updateStatus(order.id, 'SHIPPING')"
-                  class="px-4 py-2 bg-violet-50 text-violet-600 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all whitespace-nowrap"
-                >
-                  Giao hàng
-                </button>
-                <button
-                  v-if="order.status === 'SHIPPING'"
-                  @click="updateStatus(order.id, 'COMPLETED')"
-                  class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-all whitespace-nowrap"
-                >
-                  Hoàn thành
-                </button>
-                <button
-                  v-if="order.status === 'PENDING'"
-                  @click="cancelOrder(order.id)"
-                  class="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-sm font-bold hover:bg-red-100 transition-all whitespace-nowrap"
-                >
-                  Hủy đơn
-                </button>
-              </div>
-            </td>
-          </tr>
+                  <button
+                    v-if="order.status === 'PENDING'"
+                    @click="updateStatus(order.id, 'PAID')"
+                    class="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all whitespace-nowrap"
+                  >
+                    Thanh toán
+                  </button>
+                  <button
+                    v-if="order.status === 'PAID'"
+                    @click="updateStatus(order.id, 'SHIPPING')"
+                    class="px-4 py-2 bg-violet-50 text-violet-600 rounded-xl text-sm font-bold hover:bg-violet-100 transition-all whitespace-nowrap"
+                  >
+                    Giao hàng
+                  </button>
+                  <button
+                    v-if="order.status === 'SHIPPING'"
+                    @click="updateStatus(order.id, 'COMPLETED')"
+                    class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-all whitespace-nowrap"
+                  >
+                    Hoàn thành
+                  </button>
+                  <button
+                    v-if="order.status === 'PENDING'"
+                    @click="cancelOrder(order.id)"
+                    class="px-4 py-2 bg-red-50 text-red-500 rounded-xl text-sm font-bold hover:bg-red-100 transition-all whitespace-nowrap"
+                  >
+                    Hủy đơn
+                  </button>
+                </div>
+              </td>
+            </tr>
 
-          <tr v-if="paginatedOrders.length === 0">
-            <td colspan="8" class="py-24 text-center">
-              <div class="text-5xl mb-4">📦</div>
-              <p class="text-slate-400 font-bold text-lg">Không có đơn hàng nào</p>
-            </td>
-          </tr>
+            <tr v-if="paginatedOrders.length === 0">
+              <td colspan="8" class="py-24 text-center">
+                <div class="text-5xl mb-4">📦</div>
+                <p class="text-slate-400 font-bold text-lg">Không có đơn hàng nào</p>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -451,7 +451,7 @@ onMounted(loadOrders)
             <span
               v-if="p === '...'"
               class="w-10 h-10 flex items-center justify-center text-slate-300 font-bold"
-            >…</span
+              >…</span
             >
             <button
               v-else
@@ -537,7 +537,7 @@ onMounted(loadOrders)
                       'bg-emerald-100 text-emerald-700': currentOrder?.status === 'COMPLETED',
                       'bg-red-100 text-red-600': currentOrder?.status === 'CANCELLED',
                     }"
-                  >{{ statusLabel[currentOrder?.status] || currentOrder?.status }}</span
+                    >{{ statusLabel[currentOrder?.status] || currentOrder?.status }}</span
                   >
                 </div>
                 <div class="bg-slate-50 rounded-2xl p-5">
@@ -708,8 +708,11 @@ onMounted(loadOrders)
                   >
                     Sản phẩm
                   </th>
-                  <th class="px-5 py-3 text-center text-xs font-black uppercase tracking-wider">
+                  <th class="px-7 py-3 text-center text-xs font-black uppercase tracking-wider">
                     SL
+                  </th>
+                  <th class="px-5 py-3 text-center text-xs font-black uppercase tracking-wider">
+                    Đơn giá
                   </th>
                   <th
                     class="px-5 py-3 text-right text-xs font-black uppercase tracking-wider rounded-r-xl"
@@ -726,12 +729,15 @@ onMounted(loadOrders)
                   <td class="px-5 py-4 text-center font-bold text-slate-600">
                     {{ item.quantity }}
                   </td>
-                  <td class="px-5 py-4 text-right font-black text-slate-800">
+                  <td class="px-5 py-4 text-center font-black text-slate-800">
                     {{ Number(item.price).toLocaleString('vi-VN') }}₫
+                  </td>
+                  <td class="px-5 py-4 text-right font-black text-slate-800">
+                    {{ (Number(item.price) * Number(item.quantity)).toLocaleString('vi-VN') }}₫
                   </td>
                 </tr>
                 <tr v-if="!currentOrder?.orderItems?.length">
-                  <td colspan="3" class="py-8 text-center text-slate-400">Không có sản phẩm</td>
+                  <td colspan="4" class="py-8 text-center text-slate-400">Không có sản phẩm</td>
                 </tr>
                 </tbody>
               </table>
@@ -739,10 +745,17 @@ onMounted(loadOrders)
               <div class="border-t-2 border-slate-200 pt-5">
                 <div class="flex justify-between items-center">
                   <span class="font-black text-slate-500 uppercase text-sm tracking-widest"
-                  >Tổng cộng</span
+                    >Tổng cộng</span
                   >
                   <span class="font-black text-3xl text-[#658a22]">
-                    {{ Number(currentOrder?.totalAmount || 0).toLocaleString('vi-VN') }}₫
+                    {{
+                      (
+                        currentOrder?.orderItems?.reduce(
+                          (total, item) => total + Number(item.price) * Number(item.quantity),
+                          0,
+                        ) || 0
+                      ).toLocaleString('vi-VN')
+                    }}₫
                   </span>
                 </div>
               </div>
