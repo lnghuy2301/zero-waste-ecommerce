@@ -59,6 +59,7 @@ export class ProductController {
   async getAllProducts(
     @Query('categoryId', new ParseIntPipe({ optional: true }))
     categoryId?: number,
+    @Query('search') search?: string, // ← THÊM DÒNG NÀY
 
     // === LỌC MỚI ===
     @Query('minPrice') minPrice?: string,
@@ -71,6 +72,7 @@ export class ProductController {
     @Query('sort') sort?: string, // newest | price_asc | price_desc | sold_desc | rating_desc
   ): Promise<ProductResponseDto[]> {
     return this.productService.getAllProducts(
+      search,
       categoryId,
       minPrice ? Number(minPrice) : undefined,
       maxPrice ? Number(maxPrice) : undefined,

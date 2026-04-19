@@ -1,8 +1,8 @@
 import api from './api.ts'
 
 export const ProductService = {
-  async getAllProducts() {
-    const res = await api.get('/product')
+  async getAllProducts(params?: any) {
+    const res = await api.get('/product', { params }) // <--- Phải có { params }
     return res.data
   },
 
