@@ -24,9 +24,7 @@ from typing import List
 from langchain_core.documents import Document
 
 
-GROQ_API_KEY = "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"
-# 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
-# YOURT_API_KEY_HERE
+GROQ_API_KEY = YOUR_KEY_HERE
 LLM_MODEL = "llama-3.1-8b-instant"
 # Đổi đường dẫn này cho phù hợp với máy cục bộ (ví dụ: "./data_txt" nếu data nằm cùng thư mục)
 DATA_FOLDER = "./data_txt" 
