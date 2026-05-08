@@ -89,4 +89,3 @@ python main.py
 
 ---
 *Cảm ơn bạn đã quan tâm đến dự án hướng tới môi trường của chúng tôi!* 🌍
-```
