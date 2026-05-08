@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import ProductService from '@/service/product.ts'
 import ProductVariantService from '@/service/productVariant.ts'
 import { notify } from '@/utils/notifier.ts'
@@ -156,6 +156,7 @@ const filters = ref({
   fromDate: '', // từ ngày tạo
   toDate: '', // đến ngày tạo
 })
+const searchQuery = ref('') // ← thêm dòng này
 
 const variants = ref<any[]>([])
 const loading = ref(false)
@@ -390,7 +391,7 @@ const loadData = async () => {
     const params = {
       page: currentPage.value,
       limit: itemsPerPage,
-      search: filters.value.search.trim() || undefined,
+      search: searchQuery.value.trim() || undefined,
       categoryId: filters.value.categoryId || undefined,
       fromDate: filters.value.fromDate || undefined,
       toDate: filters.value.toDate || undefined,
@@ -616,6 +617,11 @@ const openVariantModal = (productId: number) => {
 }
 
 onMounted(loadData)
+// Tự động tải lại khi gõ tìm kiếm
+watch(searchQuery, () => {
+  currentPage.value = 1
+  loadData()
+})
 </script>
 
 <template>
@@ -680,7 +686,23 @@ onMounted(loadData)
         </button>
       </div>
     </div>
-
+    <!-- Thanh tìm kiếm -->
+    <div class="mb-8">
+      <div class="relative max-w-md">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Tìm theo tên sản phẩm..."
+          class="w-full bg-white border-2 border-slate-200 focus:border-[#658a22] rounded-2xl px-5 py-3 pl-12 outline-none"
+          @keyup.enter.prevent="loadData"
+        />
+        <span
+          class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+        >
+          search
+        </span>
+      </div>
+    </div>
     <div
       v-if="loading"
       class="text-center py-20 font-bold text-slate-400 uppercase tracking-widest animate-pulse"

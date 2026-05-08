@@ -44,12 +44,6 @@ const isLightboxOpen = ref(false)
 const imgsRef = ref<string[]>([]) // Danh sách ảnh để phóng to
 const onHide = () => (isLightboxOpen.value = false)
 
-// Hàm này dùng để mở ảnh sản phẩm chính hoặc ảnh bất kỳ
-// const openMainImageLightbox = (url: string) => {
-//   imgsRef.value = [getImageUrl(url)] // Đưa ảnh vào mảng
-//   isLightboxOpen.value = true
-// }
-
 // Sửa lại hàm openLightbox cũ của bạn để dùng chung thư viện luôn cho đồng bộ
 const openLightbox = (mediaUrl: string) => {
   imgsRef.value = [getImageUrl(mediaUrl)]

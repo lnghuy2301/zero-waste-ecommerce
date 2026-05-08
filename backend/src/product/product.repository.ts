@@ -86,6 +86,7 @@ export class ProductRepository {
   }
 
   async getAllProducts(
+    search?: string, // <--- Thêm tham số nhận vào
     categoryId?: number,
     minPrice?: number,
     maxPrice?: number,
@@ -96,7 +97,12 @@ export class ProductRepository {
     sort?: string,
   ): Promise<ProductResponseDto[]> {
     const where: any = {};
-
+    if (search) {
+      where.name = {
+        contains: search,
+        mode: 'insensitive', // Tìm kiếm không phân biệt hoa thường
+      };
+    }
     if (categoryId) where.categoryId = categoryId;
     if (material) where.material = { contains: material, mode: 'insensitive' };
     if (minEco !== undefined) where.ecoFriendliness = { gte: minEco };

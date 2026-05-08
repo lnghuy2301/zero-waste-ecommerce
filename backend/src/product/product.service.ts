@@ -38,6 +38,7 @@ export class ProductService {
   }
 
   async getAllProducts(
+    search?: string,
     categoryId?: number,
     minPrice?: number,
     maxPrice?: number,
@@ -48,6 +49,7 @@ export class ProductService {
     sort?: string,
   ): Promise<ProductResponseDto[]> {
     return this.productRepository.getAllProducts(
+      search,
       categoryId,
       minPrice,
       maxPrice,
