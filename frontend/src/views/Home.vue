@@ -51,7 +51,7 @@ const displayPromoProducts = computed(() => {
 })
 
 // --- HELPER & API ---
-const BACKEND_URL = 'http://localhost:3000'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
 const getImageUrl = (path: string | null) => {
   if (!path) return 'https://placehold.co/400x400/f4f7ee/658a22?text=Eco+Store'
   return `${BACKEND_URL}${path.startsWith('/') ? '' : '/'}${path}`

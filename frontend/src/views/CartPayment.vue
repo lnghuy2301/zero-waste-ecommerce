@@ -36,7 +36,8 @@ const getImageUrl = (item: any) => {
     item.image
   if (!path) return 'https://placehold.co/400x400/eef2e6/658a22?text=No+Image'
   if (path.startsWith('http')) return path
-  return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+  return `${backendUrl}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
 const syncHeaderCart = () => {

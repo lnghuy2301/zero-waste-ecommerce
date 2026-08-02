@@ -2,12 +2,12 @@ import api from './api.ts'
 
 export const Cart = {
 
-  async create(payload: { productId: number; quantity: number }) {
+  async create(payload: { productId?: number; variantId?: number; accountId?: number; quantity: number }) {
     const response = await api.post('/cart', payload)
     return response.data
   },
 
-  async update(id: number, payload: { productId: number; quantity: number }) {
+  async update(id: number, payload: { productId?: number; variantId?: number; accountId?: number; quantity: number }) {
     const response = await api.put(`/cart/${id}`, payload)
     return response.data
   },

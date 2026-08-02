@@ -106,8 +106,8 @@ const parseShippingAddress = (addressStr?: string) => {
   const parts = addressStr.split(' - ')
   if (parts.length >= 3) {
     return {
-      name: parts[0].trim(),
-      phone: parts[1].trim(),
+      name: (parts[0] || '').trim(),
+      phone: (parts[1] || '').trim(),
       detail: parts.slice(2).join(' - ').trim(),
     }
   }
@@ -751,7 +751,7 @@ onMounted(loadOrders)
                     {{
                       (
                         currentOrder?.orderItems?.reduce(
-                          (total, item) => total + Number(item.price) * Number(item.quantity),
+                          (total: number, item: any) => total + Number(item.price) * Number(item.quantity),
                           0,
                         ) || 0
                       ).toLocaleString('vi-VN')

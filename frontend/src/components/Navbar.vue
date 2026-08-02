@@ -13,7 +13,8 @@ const cartCount = ref(0)
 const getAvatarUrl = (path: string | null) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
-  return `http://localhost:3000${path}`
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+  return `${backendUrl}${path}`
 }
 
 // Hàm lấy dữ liệu giỏ hàng và cập nhật con số hiển thị

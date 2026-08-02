@@ -33,7 +33,8 @@ const profile = reactive({
 const getAvatarUrl = (path: string | null) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
-  return `http://localhost:3000${path}`;
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+  return `${backendUrl}${path}`;
 };
 
 const fetchProfile = async () => {
@@ -82,7 +83,7 @@ const fetchProfile = async () => {
         profile.accountId = p.accountId || accountRes.id
 
         if (p.dob) {
-          profile.dob = new Date(p.dob).toISOString().split('T')[0]
+          profile.dob = (new Date(p.dob).toISOString().split('T')[0]) || ''
         }
       }
     }
@@ -101,12 +102,11 @@ const onFileChange = async (event: Event) => {
   if (!input.files || input.files.length === 0) return
 
   const file = input.files[0]
+  if (!file) return
   if (!accountInfo.id) {
     notify.error('Không tìm thấy tài khoản để upload!')
     return
   }
-  const responseAccount = await Account.uploadAvatar(accountInfo.id, file)
-  console.log('responseAccount sau upload:', responseAccount)
   avatarLoading.value = true
   try {
     const responseAccount = await Account.uploadAvatar(accountInfo.id, file)

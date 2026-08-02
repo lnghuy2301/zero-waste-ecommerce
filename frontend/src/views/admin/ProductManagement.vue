@@ -604,11 +604,18 @@ const deleteSelectedVariants = async () => {
 }
 
 const resetProductForm = () => {
-  newProduct.value = { name: '', slug: '', categoryId: 1, description: '', material: '' }
+  newProduct.value = { name: '', slug: '', categoryId: 1, description: '', material: '', greenCertId: null }
 }
 
 const resetVariantForm = () => {
   newVariant.value = { name: '', price: 0, stock: 100, sku: '', color: '', size: '' }
+}
+
+const getImageUrl = (path: string | null) => {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+  return `${backendUrl}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
 const openVariantModal = (productId: number) => {
@@ -732,7 +739,7 @@ watch(searchQuery, () => {
         <div class="flex items-center gap-6">
           <img
             v-if="product.mainImage"
-            :src="`http://localhost:3000${product.mainImage}`"
+            :src="getImageUrl(product.mainImage)"
             class="w-24 h-24 object-cover rounded-3xl border-2 border-slate-50 shadow-sm"
           />
           <div

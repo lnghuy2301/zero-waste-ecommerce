@@ -20,7 +20,12 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-npm-debug.log*
+# Python / Virtual Env / Chatbot
+.venv/
+.venv-*/
+chatbot/
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
 

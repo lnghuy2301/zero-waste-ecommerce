@@ -6,7 +6,7 @@ export const Category = {
     return response.data
   },
 
-  async createCategory(data: { name: string; slug: string }) {
+  async createCategory(data: { name: string; slug?: string; description?: string | null }) {
     const response = await api.post('/category', data)
     return response.data
   },

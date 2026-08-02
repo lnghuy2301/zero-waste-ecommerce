@@ -41,7 +41,8 @@ const formatCurrency = (amount: number | string) => {
 const getImageUrl = (path: string | null) => {
   if (!path) return '/placeholder.jpg'
   if (path.startsWith('http://') || path.startsWith('https://')) return path
-  return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+  return `${backendUrl}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
 const getStatusInfo = (status: string) => {
@@ -162,7 +163,8 @@ const handleFileChange = (event: Event) => {
   })
 }
 const removeMedia = (index: number) => {
-  URL.revokeObjectURL(mediaPreviewUrls.value[index])
+  const url = mediaPreviewUrls.value[index]
+  if (url) URL.revokeObjectURL(url)
   mediaPreviewUrls.value.splice(index, 1)
   selectedMediaFiles.value.splice(index, 1)
 }

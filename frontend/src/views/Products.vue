@@ -34,7 +34,8 @@ const isCategoryOpen = ref(false)
 
 const getImageUrl = (path: string | null) => {
   if (!path) return 'https://via.placeholder.com/300x300?text=Không+có+ảnh'
-  return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+  return `${backendUrl}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
 const fetchCategories = async () => {

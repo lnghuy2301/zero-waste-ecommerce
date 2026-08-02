@@ -78,7 +78,8 @@ const checkAdminRole = () => {
 const getImageUrl = (path: string | null) => {
   if (!path) return 'https://via.placeholder.com/400x400?text=Không+có+ảnh'
   if (path.startsWith('http://') || path.startsWith('https://')) return path
-  return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+  return `${backendUrl}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
 const isVideo = (url: string | null) => {

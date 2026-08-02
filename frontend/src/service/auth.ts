@@ -29,7 +29,8 @@ export const Auth = {
   },
 
   async LoginGoogle() {
-    window.location.href = 'http://localhost:3000/api/v1/auth/google'
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+    window.location.href = `${apiUrl}/auth/google`
   },
 
   saveToken(token: string) {

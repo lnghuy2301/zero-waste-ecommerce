@@ -12,9 +12,13 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
-  // Sửa CORS để cho phép frontend tải ảnh từ uploads
+  // Allow local origins and dynamic FRONTEND_URL environment variable for Render/Vercel deployment
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000']
+    : true;
+
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'], // thêm port frontend
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization',
     credentials: true,
@@ -38,21 +42,14 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  // Serve uploads (đã đúng)
+  // Serve uploads
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 
-  await app.listen(3000);
-  console.log(`Application is running on: ${await app.getUrl()}`);
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  console.log(`Application is running on port: ${port}`);
   console.log(`Swagger Docs is running on: ${await app.getUrl()}/api/docs`);
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
 }
 bootstrap();
